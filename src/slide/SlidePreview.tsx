@@ -2,9 +2,12 @@ import type { CSSProperties } from "react";
 import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from "./spec";
 
 // HTML approximation of a PPTX slide. 96 px/in matches CSS's "in" unit and
-// keeps positions roughly faithful to PowerPoint.
+// keeps positions faithful to PowerPoint. Font sizes are in points in the
+// spec, so we convert pt→px before applying the canvas scale; otherwise the
+// preview renders fonts ~33% smaller than the exported PPTX would.
 const PX_PER_IN = 96;
 const PT_TO_PX = 96 / 72;
+const DEFAULT_LINE_HEIGHT = 1.15;
 
 function withHash(c: string) {
   return c.startsWith("#") ? c : `#${c}`;
@@ -77,12 +80,12 @@ function renderElement(el: SlideElement, scale: number, idx: number) {
           color: withHash(el.color),
           opacity: el.opacity ?? 1,
           fontFamily:
-            (el.fontFace ?? "Helvetica") +
-            ", -apple-system, Arial, sans-serif",
-          fontSize: el.fontSize * scale,
+            (el.fontFace ?? "Arial") +
+            ", -apple-system, Helvetica, sans-serif",
+          fontSize: el.fontSize * PT_TO_PX * scale,
           fontWeight: el.bold ? 700 : 400,
           fontStyle: el.italic ? "italic" : "normal",
-          lineHeight: el.lineHeight ?? 1.15,
+          lineHeight: el.lineHeight ?? DEFAULT_LINE_HEIGHT,
           letterSpacing: el.charSpacing
             ? (el.charSpacing / 100) * PT_TO_PX * scale
             : undefined,
@@ -106,8 +109,8 @@ function renderElement(el: SlideElement, scale: number, idx: number) {
         listStyle: "none",
         color: withHash(el.color),
         fontFamily:
-          (el.fontFace ?? "Helvetica") + ", -apple-system, Arial, sans-serif",
-        fontSize: el.fontSize * scale,
+          (el.fontFace ?? "Arial") + ", -apple-system, Helvetica, sans-serif",
+        fontSize: el.fontSize * PT_TO_PX * scale,
         lineHeight: el.lineSpacingMultiple ?? 1.3,
       }}
     >
@@ -116,20 +119,21 @@ function renderElement(el: SlideElement, scale: number, idx: number) {
           key={i}
           style={{
             display: "flex",
-            gap: 8 * scale,
+            // 12pt indent in pptxgenjs ≈ 12 * (96/72) px = 16px at scale 1.
+            gap: 12 * (96 / 72) * scale,
             alignItems: "baseline",
-            marginBottom: 4 * scale,
+            // paraSpaceAfter in pptx defaults to 4pt → match it here.
+            marginBottom: 4 * (96 / 72) * scale,
           }}
         >
           <span
             style={{
               color: withHash(el.bulletColor ?? el.color),
-              fontSize: el.fontSize * scale * 0.7,
+              fontSize: el.fontSize * PT_TO_PX * scale,
               lineHeight: 1,
-              transform: `translateY(${-1 * scale}px)`,
             }}
           >
-            ●
+            •
           </span>
           <span style={{ flex: 1 }}>{item}</span>
         </li>

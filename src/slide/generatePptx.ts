@@ -62,16 +62,26 @@ function addElement(
       y: el.y,
       w: el.w,
       h: el.h,
-      fontFace: el.fontFace ?? "Helvetica",
+      fontFace: el.fontFace ?? "Arial",
       fontSize: el.fontSize,
       bold: el.bold,
       italic: el.italic,
       color: el.color,
       align: el.align ?? "left",
       valign: VALIGN[el.valign ?? "top"],
-      charSpacing: el.charSpacing,
+      // Spec uses hundredths-of-a-point (matches the OOXML `spc` unit and our
+      // CSS letter-spacing math). pptxgenjs takes points directly, so divide.
+      charSpacing: el.charSpacing != null ? el.charSpacing / 100 : undefined,
       transparency: transparencyPct(el.opacity),
-      lineSpacingMultiple: el.lineHeight,
+      // Use absolute line height in points (= multiplier × fontSize) so PPTX
+      // matches CSS's `line-height: X` (which is also a multiplier of fontSize).
+      // PowerPoint's "multiple" mode applies the multiplier to the font's
+      // intrinsic baseline-to-baseline distance, which is ~1.15× fontSize —
+      // that would produce taller lines than CSS for the same setting.
+      lineSpacing: (el.lineHeight ?? 1.15) * el.fontSize,
+      // Zero the text-frame inset so coordinates match the React preview
+      // (which has no padding inside its boxes).
+      margin: 0,
     });
     return;
   }
@@ -80,7 +90,11 @@ function addElement(
   const runs = el.items.map((t) => ({
     text: t,
     options: {
-      bullet: { code: "25CF", color: el.bulletColor ?? el.color },
+      bullet: {
+        code: "2022", // BULLET (smaller dot — matches the React preview)
+        indent: 12, // points of space between bullet and text
+        color: el.bulletColor ?? el.color,
+      },
     },
   }));
   s.addText(runs, {
@@ -88,12 +102,14 @@ function addElement(
     y: el.y,
     w: el.w,
     h: el.h,
-    fontFace: el.fontFace ?? "Helvetica",
+    fontFace: el.fontFace ?? "Arial",
     fontSize: el.fontSize,
     color: el.color,
     valign: "top",
     paraSpaceAfter: 4,
-    lineSpacingMultiple: el.lineSpacingMultiple ?? 1.3,
+    paraSpaceBefore: 0,
+    lineSpacing: (el.lineSpacingMultiple ?? 1.3) * el.fontSize,
+    margin: 0,
   });
 }
 

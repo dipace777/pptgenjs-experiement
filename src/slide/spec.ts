@@ -86,7 +86,10 @@ const INK = "1A2B45";
 const MUTED = "6A7894";
 const MUTED_DK = "9AA7BD";
 
-const SANS = "Helvetica";
+// Arial renders the same in Google Slides, PowerPoint Web, Keynote, and on
+// Windows/macOS. Helvetica isn't bundled with Google's renderer and gets
+// substituted with a wider face, which breaks our hand-tuned line wraps.
+const SANS = "Arial";
 
 // ── Shared chrome ───────────────────────────────────────────────────────
 function footer(num: number, total: number, onDark: boolean): SlideElement[] {
@@ -161,15 +164,15 @@ const slide1Title: Slide = {
     {
       kind: "text",
       x: 0.6,
-      y: 1.7,
+      y: 1.5,
       w: 8.5,
-      h: 2.3,
+      h: 2.55,
       text: "LIONEL\nMESSI",
-      fontSize: 84,
+      fontSize: 78,
       bold: true,
       color: "FFFFFF",
       charSpacing: 50,
-      lineHeight: 1,
+      lineHeight: 1.05,
       fontFace: SANS,
     },
     // Divider + tagline
@@ -467,14 +470,14 @@ function statCard(
     {
       kind: "text",
       x: x + 0.35,
-      y: y + 0.25,
+      y: y + 0.2,
       w: w - 0.5,
-      h: h * 0.55,
+      h: h * 0.6,
       text: big,
-      fontSize: 56,
+      fontSize: 48,
       bold: true,
       color: NAVY,
-      lineHeight: 1,
+      lineHeight: 1.05,
       fontFace: SANS,
     },
     // Label
@@ -633,9 +636,7 @@ const slide5WorldCup: Slide = {
       y: 3.1,
       w: 6.5,
       h: 0.8,
-      text:
-        "After a 36-year wait, Argentina lift the World Cup — Messi finally\n" +
-        "claims the only trophy missing from his cabinet.",
+      text: "After a 36-year wait, Argentina lift the World Cup — Messi finally claims the only trophy missing from his cabinet.",
       fontSize: 13,
       color: "D5DCE8",
       lineHeight: 1.5,
@@ -662,11 +663,11 @@ const slide6Legacy: Slide = {
     {
       kind: "text",
       x: 0.3,
-      y: -0.6,
-      w: 3,
-      h: 4,
+      y: -0.4,
+      w: 3.5,
+      h: 4.2,
       text: "“",
-      fontSize: 320,
+      fontSize: 260,
       bold: true,
       color: GOLD,
       opacity: 0.18,
@@ -688,17 +689,16 @@ const slide6Legacy: Slide = {
       fontFace: SANS,
     },
 
-    // Quote
+    // Quote — no manual \n; let the engine wrap inside the box so wrapping
+    // is identical between the CSS preview and the PPTX export.
     {
       kind: "text",
       x: 1.2,
-      y: 1.4,
+      y: 1.3,
       w: 7.6,
-      h: 2.6,
-      text:
-        "Messi is the greatest of all time. He has won everything,\n" +
-        "and he has won it for longer than anyone else.",
-      fontSize: 26,
+      h: 2.8,
+      text: "Messi is the greatest of all time. He has won everything, and he has won it for longer than anyone else.",
+      fontSize: 24,
       italic: true,
       color: INK,
       lineHeight: 1.35,
