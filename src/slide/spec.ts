@@ -129,15 +129,16 @@ const slide1Title: Slide = {
   title: "Title",
   background: NAVY,
   elements: [
-    // Massive watermark "10" on the right
+    // Massive watermark "10" on the right. Box stays inside the slide and
+    // gives ample horizontal room so the digits never wrap or get clipped.
     {
       kind: "text",
-      x: 4.5,
-      y: -0.6,
-      w: 6,
-      h: 6.5,
+      x: 3.8,
+      y: 0.1,
+      w: 6.2,
+      h: 5.4,
       text: "10",
-      fontSize: 320,
+      fontSize: 300,
       bold: true,
       color: "FFFFFF",
       opacity: 0.05,
@@ -466,27 +467,28 @@ function statCard(
     { kind: "rect", x, y, w, h, fill: PAPER, rx: 0.08 },
     // Left accent stripe
     { kind: "rect", x, y, w: 0.06, h, fill: GOLD },
-    // Big number
+    // Big number — sized to its own line-box so the frame doesn't extend
+    // into the label area below.
     {
       kind: "text",
       x: x + 0.35,
-      y: y + 0.2,
+      y: y + 0.22,
       w: w - 0.5,
-      h: h * 0.6,
+      h: 0.75,
       text: big,
       fontSize: 48,
       bold: true,
       color: NAVY,
-      lineHeight: 1.05,
+      lineHeight: 1.0,
       fontFace: SANS,
     },
-    // Label
+    // Label — anchored to the card bottom with a clear gap above.
     {
       kind: "text",
       x: x + 0.35,
-      y: y + h - 0.6,
+      y: y + h - 0.4,
       w: w - 0.5,
-      h: 0.35,
+      h: 0.28,
       text: label,
       fontSize: 11,
       bold: true,
@@ -585,15 +587,17 @@ const slide5WorldCup: Slide = {
   title: "Qatar 2022",
   background: NAVY,
   elements: [
-    // Decorative big "22" watermark
+    // Decorative big "22" watermark. Box is intentionally much wider/taller
+    // than the text so engine-to-engine metric differences (Chrome vs Google
+    // Slides) can't cause wrapping or clipping.
     {
       kind: "text",
-      x: 6.5,
-      y: -0.4,
-      w: 4,
-      h: 5.5,
+      x: 3.5,
+      y: 0.1,
+      w: 6.5,
+      h: 5.4,
       text: "22",
-      fontSize: 260,
+      fontSize: 240,
       bold: true,
       color: "FFFFFF",
       opacity: 0.05,
