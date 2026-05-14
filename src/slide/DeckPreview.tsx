@@ -134,7 +134,11 @@ export function DeckPreview({ deck, onDownload }: Props) {
                       lineHeight: 0,
                     }}
                   >
-                    <SlidePreview slide={slide} width={THUMB_W} framed={false} />
+                    <SlidePreview
+                      slide={slide}
+                      width={THUMB_W}
+                      framed={false}
+                    />
                   </div>
                 </div>
               </button>
