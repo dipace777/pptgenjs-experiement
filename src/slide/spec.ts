@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // Single source of truth for the deck. Both the React preview and the
 // pptxgenjs generator consume this spec, so what you see ≈ what you export.
 //
@@ -7,72 +9,99 @@
 export const SLIDE_W = 10;
 export const SLIDE_H = 5.625;
 
-export type Inches = number;
+export const HexColorSchema = z
+  .string()
+  .regex(/^#?[0-9A-Fa-f]{6}$/, "Use 6-digit hex colors, with or without #.");
 
-export interface Box {
-  x: Inches;
-  y: Inches;
-  w: Inches;
-  h: Inches;
-}
+export const LineSchema = z.object({
+  color: HexColorSchema,
+  width: z.number().min(0).max(8),
+});
 
-export interface TextElement extends Box {
-  kind: "text";
-  text: string;
-  fontFace?: string;
-  fontSize: number; // points
-  bold?: boolean;
-  italic?: boolean;
-  color: string; // hex without '#'
-  align?: "left" | "center" | "right";
-  valign?: "top" | "middle" | "bottom";
-  charSpacing?: number; // hundredths of a point (pptxgenjs convention)
-  opacity?: number; // 0..1
-  lineHeight?: number; // multiplier, defaults to ~1.15
-}
+export const BoxSchema = z.object({
+  x: z.number().min(0).max(SLIDE_W),
+  y: z.number().min(0).max(SLIDE_H),
+  w: z.number().positive().max(SLIDE_W),
+  h: z.number().positive().max(SLIDE_H),
+});
 
-export interface RectElement extends Box {
-  kind: "rect";
-  fill: string;
-  line?: { color: string; width: number };
-  rx?: Inches; // corner radius in inches; 0 / undefined = square corners
-  opacity?: number; // 0..1
-}
+const baseElement = {
+  ...BoxSchema.shape,
+  opacity: z.number().min(0).max(1).nullish(),
+};
 
-export interface EllipseElement extends Box {
-  kind: "ellipse";
-  fill: string;
-  line?: { color: string; width: number };
-  opacity?: number;
-}
+export const TextElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("text"),
+  text: z.string().min(1).max(700),
+  fontFace: z.string().min(1).max(80).nullish(),
+  fontSize: z.number().min(6).max(180),
+  bold: z.boolean().nullish(),
+  italic: z.boolean().nullish(),
+  color: HexColorSchema,
+  align: z.enum(["left", "center", "right"]).nullish(),
+  valign: z.enum(["top", "middle", "bottom"]).nullish(),
+  // Hundredths of a point (pptxgenjs/OOXML convention).
+  charSpacing: z.number().min(-200).max(600).nullish(),
+  // Multiplier, defaults to ~1.15 in the renderers.
+  lineHeight: z.number().min(0.8).max(2.2).nullish(),
+});
 
-export interface BulletsElement extends Box {
-  kind: "bullets";
-  items: string[];
-  fontFace?: string;
-  fontSize: number;
-  color: string;
-  bulletColor?: string;
-  lineSpacingMultiple?: number;
-}
+export const RectElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("rect"),
+  fill: HexColorSchema,
+  line: LineSchema.nullish(),
+  // Corner radius in inches; 0 / undefined = square corners.
+  rx: z.number().min(0).max(0.5).nullish(),
+});
 
-export type SlideElement =
-  | TextElement
-  | RectElement
-  | EllipseElement
-  | BulletsElement;
+export const EllipseElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("ellipse"),
+  fill: HexColorSchema,
+  line: LineSchema.nullish(),
+});
 
-export interface Slide {
-  background: string;
-  elements: SlideElement[];
+export const BulletsElementSchema = z.object({
+  ...BoxSchema.shape,
+  kind: z.literal("bullets"),
+  items: z.array(z.string().min(1).max(180)).min(1).max(8),
+  fontFace: z.string().min(1).max(80).nullish(),
+  fontSize: z.number().min(8).max(36),
+  color: HexColorSchema,
+  bulletColor: HexColorSchema.nullish(),
+  lineSpacingMultiple: z.number().min(0.9).max(2).nullish(),
+});
+
+export const SlideElementSchema = z.discriminatedUnion("kind", [
+  TextElementSchema,
+  RectElementSchema,
+  EllipseElementSchema,
+  BulletsElementSchema,
+]);
+
+export const SlideSchema = z.object({
+  background: HexColorSchema,
+  elements: z.array(SlideElementSchema).min(1).max(60),
   /** Optional short label shown in the thumbnail rail. */
-  title?: string;
-}
+  title: z.string().min(1).max(60).nullish(),
+});
 
-export interface Deck {
-  title: string;
-  slides: Slide[];
-}
+export const DeckSchema = z.object({
+  title: z.string().min(1).max(90),
+  slides: z.array(SlideSchema).min(1).max(12),
+});
+
+export type Inches = number;
+export type Box = z.infer<typeof BoxSchema>;
+export type TextElement = z.infer<typeof TextElementSchema>;
+export type RectElement = z.infer<typeof RectElementSchema>;
+export type EllipseElement = z.infer<typeof EllipseElementSchema>;
+export type BulletsElement = z.infer<typeof BulletsElementSchema>;
+export type SlideElement = z.infer<typeof SlideElementSchema>;
+export type Slide = z.infer<typeof SlideSchema>;
+export type Deck = z.infer<typeof DeckSchema>;
 
 // ── Palette ─────────────────────────────────────────────────────────────
 const NAVY = "0B1F3A";

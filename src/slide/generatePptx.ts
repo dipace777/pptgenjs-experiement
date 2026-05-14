@@ -47,7 +47,10 @@ function addElement(
       y: el.y,
       w: el.w,
       h: el.h,
-      fill: { color: el.fill, transparency: transparencyPct(el.opacity) },
+      fill: {
+        color: el.fill,
+        transparency: transparencyPct(el.opacity ?? undefined),
+      },
       line: el.line
         ? { color: el.line.color, width: el.line.width }
         : { type: "none" },
@@ -66,7 +69,10 @@ function addElement(
       y: el.y,
       w: el.w,
       h: el.h,
-      fill: { color: el.fill, transparency: transparencyPct(el.opacity) },
+      fill: {
+        color: el.fill,
+        transparency: transparencyPct(el.opacity ?? undefined),
+      },
       line: el.line
         ? { color: el.line.color, width: el.line.width }
         : { type: "none" },
@@ -86,8 +92,8 @@ function addElement(
       h: el.h,
       fontFace: el.fontFace ?? "Arial",
       fontSize: el.fontSize,
-      bold: el.bold,
-      italic: el.italic,
+      bold: el.bold ?? undefined,
+      italic: el.italic ?? undefined,
       color,
       align: el.align ?? "left",
       valign: VALIGN[el.valign ?? "top"],
