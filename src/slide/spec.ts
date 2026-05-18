@@ -35,7 +35,7 @@ export const TextElementSchema = z.object({
   kind: z.literal("text"),
   text: z.string().min(1).max(700),
   fontFace: z.string().min(1).max(80).nullish(),
-  fontSize: z.number().min(6).max(180),
+  fontSize: z.number().min(6).max(360),
   bold: z.boolean().nullish(),
   italic: z.boolean().nullish(),
   color: HexColorSchema,
