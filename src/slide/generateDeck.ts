@@ -127,7 +127,7 @@ function deckOutputSchema() {
         },
       },
     },
-  } as const;
+  };
 }
 
 const RawLineSchema = z
@@ -892,17 +892,19 @@ function fallbackDeck(data: GenerateDeckInput): Deck {
   );
 }
 
+export async function generateDeckData(data: GenerateDeckInput): Promise<Deck> {
+  try {
+    const generated = deckFromRaw(await requestDeck(data));
+    const issue = qualityIssue(generated, data.slideCount);
+    return issue ? fallbackDeck(data) : generated;
+  } catch (err) {
+    console.error("Falling back to local deck template", err);
+    return fallbackDeck(data);
+  }
+}
+
 export const generateDeck = createServerFn({ method: "POST" })
   .inputValidator((data: GenerateDeckInput) =>
     GenerateDeckInputSchema.parse(data),
   )
-  .handler(async ({ data }) => {
-    try {
-      const generated = deckFromRaw(await requestDeck(data));
-      const issue = qualityIssue(generated, data.slideCount);
-      return issue ? fallbackDeck(data) : generated;
-    } catch (err) {
-      console.error("Falling back to local deck template", err);
-      return fallbackDeck(data);
-    }
-  });
+  .handler(async ({ data }) => generateDeckData(data));
