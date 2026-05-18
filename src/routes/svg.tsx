@@ -13,8 +13,10 @@ import { useServerFn } from "@tanstack/react-start";
 import PptxGenJS from "pptxgenjs";
 import { type FormEvent, useMemo, useState } from "react";
 import {
+  SVG_THEMES,
   generateSvgDeck,
   type SvgDeck,
+  type SvgThemeId,
 } from "../slide/generateSvgDeck";
 import { SLIDE_H, SLIDE_W } from "../slide/spec";
 
@@ -63,6 +65,7 @@ async function exportSvgDeck(deck: SvgDeck) {
 function RouteComponent() {
   const generateSvgDeckFn = useServerFn(generateSvgDeck);
   const [prompt, setPrompt] = useState(defaultPrompt);
+  const [theme, setTheme] = useState<SvgThemeId>("landing");
   const [deck, setDeck] = useState<SvgDeck | null>(null);
   const [active, setActive] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -83,11 +86,8 @@ function RouteComponent() {
       const nextDeck = await generateSvgDeckFn({
         data: {
           topic: prompt,
-          audience: "startup buyers, product leaders, and investors",
-          tone: "confident, concise, landing-page polish",
+          theme,
           slideCount: 6,
-          visualStyle:
-            "premium SaaS landing page, bold type, editorial sections, bright accents, crisp cards",
         },
       });
       setDeck(nextDeck);
@@ -132,6 +132,32 @@ function RouteComponent() {
             required
             style={styles.textarea}
           />
+
+          <label style={styles.label} htmlFor="theme">
+            Theme
+          </label>
+          <select
+            id="theme"
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as SvgThemeId)}
+            style={styles.select}
+          >
+            {Object.entries(SVG_THEMES).map(([id, option]) => (
+              <option key={id} value={id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div style={styles.swatches}>
+            {SVG_THEMES[theme].swatches.map((color) => (
+              <span
+                key={color}
+                aria-hidden="true"
+                style={{ ...styles.swatch, background: color }}
+              />
+            ))}
+          </div>
+
           <button type="submit" disabled={isGenerating} style={styles.primaryButton}>
             {isGenerating ? "Generating SVG..." : "Generate SVG"}
           </button>
@@ -277,6 +303,30 @@ const styles = {
     lineHeight: 1.45,
     fontFamily: font,
     outline: "none",
+  },
+  select: {
+    width: "100%",
+    boxSizing: "border-box",
+    border: "1px solid #2a3548",
+    borderRadius: 6,
+    background: "#070a0f",
+    color: "#eef3fb",
+    padding: "10px 12px",
+    fontSize: 13,
+    fontFamily: font,
+    outline: "none",
+  },
+  swatches: {
+    display: "flex",
+    gap: 8,
+    marginTop: -2,
+    marginBottom: 2,
+  },
+  swatch: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    border: "1px solid rgba(255,255,255,0.18)",
   },
   primaryButton: {
     height: 42,

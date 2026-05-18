@@ -27,6 +27,51 @@ const FONT_CANDIDATES = {
   ],
 };
 
+export const SVG_THEMES = {
+  landing: {
+    label: "Landing Page",
+    swatches: ["#08111e", "#4aa3ff", "#e2b85c"],
+    audience: "startup buyers, product leaders, and investors",
+    tone: "confident, concise, landing-page polish",
+    visualStyle:
+      "premium SaaS landing page, bold type, editorial sections, bright accents, crisp cards",
+  },
+  minimal: {
+    label: "Minimal",
+    swatches: ["#f7f8fb", "#141821", "#6f7d95"],
+    audience: "executives and strategic decision makers",
+    tone: "calm, precise, restrained",
+    visualStyle:
+      "minimal Swiss editorial deck, generous whitespace, tight typography, thin rules, neutral palette",
+  },
+  investor: {
+    label: "Investor",
+    swatches: ["#071425", "#2dd4bf", "#f8fafc"],
+    audience: "investors, founders, and board members",
+    tone: "crisp, evidence-led, commercially sharp",
+    visualStyle:
+      "investor memo deck, dark executive palette, metric cards, proof points, structured comparison layouts",
+  },
+  editorial: {
+    label: "Editorial",
+    swatches: ["#172033", "#f4f0e8", "#c84c31"],
+    audience: "brand, marketing, and creative leaders",
+    tone: "polished, narrative, magazine-like",
+    visualStyle:
+      "modern magazine editorial deck, expressive scale shifts, section labels, strong contrast, refined accents",
+  },
+  playful: {
+    label: "Playful",
+    swatches: ["#102a43", "#ffd166", "#ef476f"],
+    audience: "product teams, launch teams, and creative stakeholders",
+    tone: "bright, energetic, optimistic",
+    visualStyle:
+      "playful product launch deck, colorful accents, rounded panels, upbeat hierarchy, friendly momentum",
+  },
+} as const;
+
+export type SvgThemeId = keyof typeof SVG_THEMES;
+
 export const imageCatalog = defineCatalog(schema, {
   components: standardComponentDefinitions,
 });
@@ -63,10 +108,11 @@ type SerializableSpec = {
 
 const GenerateSvgDeckInputSchema = z.object({
   topic: z.string().min(2).max(3000),
-  audience: z.string().min(2).max(160),
-  tone: z.string().min(2).max(120),
+  theme: z.enum(Object.keys(SVG_THEMES) as [SvgThemeId, ...SvgThemeId[]]),
+  audience: z.string().min(2).max(160).optional(),
+  tone: z.string().min(2).max(120).optional(),
   slideCount: z.number().int().min(3).max(8),
-  visualStyle: z.string().min(2).max(180),
+  visualStyle: z.string().min(2).max(600).optional(),
 });
 
 export type GenerateSvgDeckInput = z.infer<typeof GenerateSvgDeckInputSchema>;
@@ -81,8 +127,57 @@ export type SvgDeck = {
   }>;
 };
 
+function normalizePromptText(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function titleCase(value: string) {
+  return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
+function conciseTopic(prompt: string) {
+  const normalized = normalizePromptText(prompt);
+  const productMatch = normalized.match(
+    /(?:called|named|for|about)\s+["']?([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,3})["']?/,
+  );
+
+  if (productMatch?.[1]) {
+    return `${productMatch[1].trim()} launch deck`;
+  }
+
+  const firstSentence = normalized.split(/[.!?]/)[0] ?? normalized;
+  const cleaned = firstSentence
+    .replace(/^(create|make|generate|build)\s+(a|an|the)?\s*/i, "")
+    .replace(/\b(deck|presentation|slides?)\b.*$/i, "$1")
+    .trim();
+
+  return titleCase((cleaned || normalized).slice(0, 72));
+}
+
 function withHash(color: string) {
   return color.startsWith("#") ? color : `#${color}`;
+}
+
+function hexToRgb(color: string) {
+  const hex = color.replace("#", "");
+  return [
+    parseInt(hex.slice(0, 2), 16),
+    parseInt(hex.slice(2, 4), 16),
+    parseInt(hex.slice(4, 6), 16),
+  ] as const;
+}
+
+function blendHex(fg: string, bg: string, opacity?: number) {
+  if (opacity == null || opacity >= 1) return withHash(fg);
+  const alpha = Math.max(0, Math.min(1, opacity));
+  const [fr, fg_, fb] = hexToRgb(fg);
+  const [br, bg_, bb] = hexToRgb(bg);
+  const mix = (front: number, back: number) =>
+    Math.round(back + (front - back) * alpha)
+      .toString(16)
+      .padStart(2, "0");
+
+  return `#${mix(fr, br)}${mix(fg_, bg_)}${mix(fb, bb)}`;
 }
 
 function px(value: number) {
@@ -152,6 +247,7 @@ function addTextElement(
   spec: SerializableSpec,
   el: Extract<SlideElement, { kind: "text" }>,
   index: number,
+  background: string,
 ) {
   const key = elementKey(index);
   const textKey = elementKey(index, "-text");
@@ -173,7 +269,7 @@ function addTextElement(
     props: {
       text: el.text,
       fontSize: fontPx(el.fontSize),
-      color: withHash(el.color),
+      color: blendHex(el.color, background, el.opacity ?? undefined),
       align: el.align ?? "left",
       fontWeight: el.bold ? "bold" : "normal",
       fontStyle: el.italic ? "italic" : "normal",
@@ -229,6 +325,7 @@ function addShapeElement(
   spec: SerializableSpec,
   el: Extract<SlideElement, { kind: "rect" | "ellipse" }>,
   index: number,
+  background: string,
 ) {
   const radius =
     el.kind === "ellipse"
@@ -241,7 +338,7 @@ function addShapeElement(
     type: "Box",
     props: {
       ...boxProps(el),
-      backgroundColor: withHash(el.fill),
+      backgroundColor: blendHex(el.fill, background, el.opacity ?? undefined),
       borderWidth: el.line?.width ?? null,
       borderColor: el.line ? withHash(el.line.color) : null,
       borderRadius: radius,
@@ -272,9 +369,9 @@ function slideToSpec(slide: Slide): SerializableSpec {
   };
 
   for (const [index, el] of slide.elements.entries()) {
-    if (el.kind === "text") addTextElement(spec, el, index);
+    if (el.kind === "text") addTextElement(spec, el, index, slide.background);
     else if (el.kind === "bullets") addBulletsElement(spec, el, index);
-    else addShapeElement(spec, el, index);
+    else addShapeElement(spec, el, index, slide.background);
   }
 
   return spec;
@@ -285,7 +382,16 @@ export const generateSvgDeck = createServerFn({ method: "POST" })
     GenerateSvgDeckInputSchema.parse(data),
   )
   .handler(async ({ data }): Promise<SvgDeck> => {
-    const deck = await generateDeckData(data);
+    const theme = SVG_THEMES[data.theme];
+    const deck = await generateDeckData({
+      topic: conciseTopic(data.topic),
+      audience: data.audience ?? theme.audience,
+      tone: data.tone ?? theme.tone,
+      slideCount: data.slideCount,
+      visualStyle: [theme.visualStyle, data.visualStyle]
+        .filter(Boolean)
+        .join(". "),
+    });
     const fonts = await loadSvgFonts();
     const slides = await Promise.all(
       deck.slides.map(async (slide) => {
