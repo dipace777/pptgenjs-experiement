@@ -66,6 +66,7 @@ function RouteComponent() {
   const generateSvgDeckFn = useServerFn(generateSvgDeck);
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [theme, setTheme] = useState<SvgThemeId>("landing");
+  const [slideCount, setSlideCount] = useState(6);
   const [deck, setDeck] = useState<SvgDeck | null>(null);
   const [active, setActive] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -87,7 +88,7 @@ function RouteComponent() {
         data: {
           topic: prompt,
           theme,
-          slideCount: 6,
+          slideCount,
         },
       });
       setDeck(nextDeck);
@@ -157,6 +158,23 @@ function RouteComponent() {
               />
             ))}
           </div>
+
+          <label style={styles.label} htmlFor="slide-count">
+            Slides
+          </label>
+          <input
+            id="slide-count"
+            type="number"
+            min={3}
+            max={8}
+            value={slideCount}
+            onChange={(event) =>
+              setSlideCount(
+                Math.min(8, Math.max(3, Number(event.target.value) || 3)),
+              )
+            }
+            style={styles.numberInput}
+          />
 
           <button type="submit" disabled={isGenerating} style={styles.primaryButton}>
             {isGenerating ? "Generating SVG..." : "Generate SVG"}
@@ -305,6 +323,18 @@ const styles = {
     outline: "none",
   },
   select: {
+    width: "100%",
+    boxSizing: "border-box",
+    border: "1px solid #2a3548",
+    borderRadius: 6,
+    background: "#070a0f",
+    color: "#eef3fb",
+    padding: "10px 12px",
+    fontSize: 13,
+    fontFamily: font,
+    outline: "none",
+  },
+  numberInput: {
     width: "100%",
     boxSizing: "border-box",
     border: "1px solid #2a3548",

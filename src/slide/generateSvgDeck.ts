@@ -347,6 +347,26 @@ function addShapeElement(
   };
 }
 
+function isTemplateFallback(deck: Deck) {
+  const text = deck.slides
+    .flatMap((slide) =>
+      slide.elements.flatMap((el) => {
+        if (el.kind === "text") return [el.text];
+        if (el.kind === "bullets") return el.items;
+        return [];
+      }),
+    )
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("generated template") ||
+    text.includes("a template with room") ||
+    text.includes("replace with") ||
+    text.includes("use this slide to turn")
+  );
+}
+
 function slideToSpec(slide: Slide): SerializableSpec {
   const spec: SerializableSpec = {
     root: "frame",
@@ -383,15 +403,25 @@ export const generateSvgDeck = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<SvgDeck> => {
     const theme = SVG_THEMES[data.theme];
-    const deck = await generateDeckData({
-      topic: conciseTopic(data.topic),
-      audience: data.audience ?? theme.audience,
-      tone: data.tone ?? theme.tone,
-      slideCount: data.slideCount,
-      visualStyle: [theme.visualStyle, data.visualStyle]
-        .filter(Boolean)
-        .join(". "),
-    });
+    const contentBrief = normalizePromptText(data.topic).slice(0, 1200);
+    const deck = await generateDeckData(
+      {
+        topic: `${conciseTopic(data.topic)}. User brief: ${contentBrief}`,
+        audience: data.audience ?? theme.audience,
+        tone: data.tone ?? theme.tone,
+        slideCount: data.slideCount,
+        visualStyle: [theme.visualStyle, data.visualStyle]
+          .filter(Boolean)
+          .join(". "),
+      },
+      { fallback: false },
+    );
+
+    if (isTemplateFallback(deck)) {
+      throw new Error(
+        "The model returned template placeholder content instead of real slide content. Please regenerate or make the prompt more specific.",
+      );
+    }
     const fonts = await loadSvgFonts();
     const slides = await Promise.all(
       deck.slides.map(async (slide) => {

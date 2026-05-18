@@ -166,7 +166,7 @@ const RawDeckSchema = z.object({
   title: z.string(),
   slides: z.array(
     z.object({
-      title: z.string().nullable(),
+      title: z.string().nullish(),
       background: z.string(),
       elements: z.array(RawElementSchema),
     }),
@@ -274,7 +274,7 @@ function elementFromRaw(el: RawElement): SlideElement {
     kind: "rect",
     fill: optionalColor(el.fill, "FFFFFF"),
     line: optionalLine(el.line),
-    rx: el.rx ?? undefined,
+    rx: el.rx != null ? clampNumber(el.rx, 0, 0, 0.5) : undefined,
   };
 }
 
@@ -283,8 +283,8 @@ function deckFromRaw(raw: unknown): Deck {
   return DeckSchema.parse(
     normalizeDeck({
       title: deck.title,
-      slides: deck.slides.map((slide) => ({
-        title: slide.title ?? undefined,
+      slides: deck.slides.map((slide, index) => ({
+        title: slide.title?.trim() || `Slide ${index + 1}`,
         background: slide.background,
         elements: slide.elements.map(elementFromRaw),
       })),
@@ -418,13 +418,6 @@ async function requestDeck(data: GenerateDeckInput, retryNote?: string) {
 function qualityIssue(deck: Deck, slideCount: number): string | null {
   if (deck.slides.length !== slideCount) {
     return `expected ${slideCount} slides, got ${deck.slides.length}`;
-  }
-
-  const sparseSlide = deck.slides.findIndex(
-    (slide) => slide.elements.length < 8,
-  );
-  if (sparseSlide >= 0) {
-    return `slide ${sparseSlide + 1} has fewer than 8 elements`;
   }
 
   return null;
@@ -892,12 +885,26 @@ function fallbackDeck(data: GenerateDeckInput): Deck {
   );
 }
 
-export async function generateDeckData(data: GenerateDeckInput): Promise<Deck> {
+export async function generateDeckData(
+  data: GenerateDeckInput,
+  options: { fallback?: boolean } = {},
+): Promise<Deck> {
+  const shouldFallback = options.fallback ?? true;
+
   try {
     const generated = deckFromRaw(await requestDeck(data));
     const issue = qualityIssue(generated, data.slideCount);
-    return issue ? fallbackDeck(data) : generated;
+    if (issue) {
+      if (!shouldFallback) {
+        throw new Error(`Generated deck failed quality check: ${issue}`);
+      }
+      return fallbackDeck(data);
+    }
+    return generated;
   } catch (err) {
+    if (!shouldFallback) {
+      throw err;
+    }
     console.error("Falling back to local deck template", err);
     return fallbackDeck(data);
   }
