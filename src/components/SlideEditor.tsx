@@ -7,7 +7,16 @@ import { Inspector } from "./Inspector";
 import { KonvaSlide } from "./KonvaSlide";
 import { Segmented } from "./Segmented";
 import { styles } from "./editorStyles";
-import { EXPORT_H, EXPORT_W, STAGE_W, clamp, filenameFromTitle, kindLabel } from "./editorUtils";
+import {
+  EXPORT_H,
+  EXPORT_W,
+  STAGE_W,
+  clamp,
+  filenameFromTitle,
+  kindLabel,
+  withHash,
+  withoutHash,
+} from "./editorUtils";
 
 export function SlideEditor() {
   const [deck, setDeck] = useState<Deck>(messiDeck);
@@ -342,6 +351,21 @@ export function SlideEditor() {
             <div style={styles.drawerHint}>
               Select an object on the slide, then adjust it here.
             </div>
+
+            <label style={styles.field}>
+              <span>Slide background</span>
+              <input
+                type="color"
+                value={withHash(activeSlide.background)}
+                onChange={(event) =>
+                  updateActiveSlide((slide) => ({
+                    ...slide,
+                    background: withoutHash(event.target.value),
+                  }))
+                }
+                style={styles.colorInput}
+              />
+            </label>
 
             {selectedElement ? (
               <Inspector
