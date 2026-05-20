@@ -327,6 +327,22 @@ function normalizeDeck(deck: Deck): Deck {
             fontFace: fitted.fontFace ?? SANS,
           };
         }
+        if (fitted.kind === "chart") {
+          return {
+            ...fitted,
+            color: normalizeColor(fitted.color),
+            axisColor: fitted.axisColor
+              ? normalizeColor(fitted.axisColor)
+              : fitted.axisColor,
+            labelColor: fitted.labelColor
+              ? normalizeColor(fitted.labelColor)
+              : fitted.labelColor,
+            data: fitted.data.map((datum) => ({
+              ...datum,
+              color: datum.color ? normalizeColor(datum.color) : datum.color,
+            })),
+          };
+        }
         return {
           ...fitted,
           fill: normalizeColor(fitted.fill),

@@ -347,6 +347,67 @@ function addShapeElement(
   };
 }
 
+function addChartElement(
+  spec: SerializableSpec,
+  el: Extract<SlideElement, { kind: "chart" }>,
+  index: number,
+) {
+  const key = elementKey(index);
+  const titleKey = elementKey(index, "-title");
+  const lines = el.data
+    .map((datum) => `${datum.label}: ${datum.value}`)
+    .join("   ");
+  const dataKey = elementKey(index, "-data");
+
+  spec.elements[key] = {
+    type: "Box",
+    props: {
+      ...boxProps(el),
+      padding: 18,
+      backgroundColor: "rgba(255,255,255,0.92)",
+      borderWidth: 1,
+      borderColor: withHash(el.axisColor ?? "9AA7BD"),
+      borderRadius: 10,
+      overflow: "hidden",
+    },
+    children: el.title ? [titleKey, dataKey] : [dataKey],
+  };
+
+  if (el.title) {
+    spec.elements[titleKey] = {
+      type: "Text",
+      props: {
+        text: `${el.title} (${el.chartType})`,
+        fontSize: 18,
+        color: withHash(el.labelColor ?? "6A7894"),
+        align: "left",
+        fontWeight: "bold",
+        fontStyle: "normal",
+        lineHeight: 1.1,
+        letterSpacing: null,
+        textDecoration: "none",
+      },
+      children: [],
+    };
+  }
+
+  spec.elements[dataKey] = {
+    type: "Text",
+    props: {
+      text: lines,
+      fontSize: 15,
+      color: withHash(el.color),
+      align: "left",
+      fontWeight: "normal",
+      fontStyle: "normal",
+      lineHeight: 1.2,
+      letterSpacing: null,
+      textDecoration: "none",
+    },
+    children: [],
+  };
+}
+
 function isTemplateFallback(deck: Deck) {
   const text = deck.slides
     .flatMap((slide) =>
@@ -391,6 +452,7 @@ function slideToSpec(slide: Slide): SerializableSpec {
   for (const [index, el] of slide.elements.entries()) {
     if (el.kind === "text") addTextElement(spec, el, index, slide.background);
     else if (el.kind === "bullets") addBulletsElement(spec, el, index);
+    else if (el.kind === "chart") addChartElement(spec, el, index);
     else addShapeElement(spec, el, index, slide.background);
   }
 

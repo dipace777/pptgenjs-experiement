@@ -2,6 +2,7 @@ import PptxGenJS from "pptxgenjs";
 import {
   SLIDE_H,
   SLIDE_W,
+  type ChartElement,
   type Deck,
   type Slide,
   type SlideElement,
@@ -31,6 +32,174 @@ function blendHex(fg: string, bg: string, opacity: number): string {
   const mix = (f: number, b: number) => Math.round(b + (f - b) * a);
   const toHex = (n: number) => n.toString(16).padStart(2, "0").toUpperCase();
   return toHex(mix(fr, br)) + toHex(mix(fg_, bg_)) + toHex(mix(fb, bb));
+}
+
+function chartMax(el: ChartElement): number {
+  return Math.max(1, ...el.data.map((datum) => datum.value));
+}
+
+function addChartElement(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: ChartElement,
+): void {
+  const titleH = el.title ? 0.28 : 0;
+  const pad = 0.14;
+  const plot = {
+    x: el.x + pad,
+    y: el.y + pad + titleH,
+    w: el.w - pad * 2,
+    h: el.h - pad * 2 - titleH - 0.18,
+  };
+  const axisColor = el.axisColor ?? "9AA7BD";
+  const labelColor = el.labelColor ?? "6A7894";
+  const max = chartMax(el);
+
+  s.addShape(pptx.ShapeType.roundRect, {
+    x: el.x,
+    y: el.y,
+    w: el.w,
+    h: el.h,
+    rectRadius: 0.04,
+    fill: { color: "FFFFFF", transparency: transparencyPct(el.opacity ?? 0.92) },
+    line: { color: axisColor, transparency: 80 },
+  });
+
+  if (el.title) {
+    s.addText(el.title, {
+      x: el.x + pad,
+      y: el.y + 0.08,
+      w: el.w - pad * 2,
+      h: 0.22,
+      fontFace: "Arial",
+      fontSize: 9,
+      bold: true,
+      color: labelColor,
+      margin: 0,
+    });
+  }
+
+  if (el.chartType === "donut") {
+    const size = Math.min(plot.w, plot.h);
+    const cx = plot.x + size * 0.04;
+    const cy = plot.y + (plot.h - size) / 2;
+    s.addShape(pptx.ShapeType.donut, {
+      x: cx,
+      y: cy,
+      w: size,
+      h: size,
+      fill: { color: el.data[0]?.color ?? el.color },
+      line: { type: "none" },
+    });
+    s.addText(String(el.data.reduce((sum, datum) => sum + datum.value, 0)), {
+      x: cx + size * 0.22,
+      y: cy + size * 0.35,
+      w: size * 0.56,
+      h: size * 0.22,
+      fontFace: "Arial",
+      fontSize: 10,
+      bold: true,
+      color: el.color,
+      align: "center",
+      margin: 0,
+    });
+
+    el.data.forEach((datum, index) => {
+      const y = plot.y + index * 0.24;
+      s.addShape(pptx.ShapeType.rect, {
+        x: plot.x + size + 0.16,
+        y,
+        w: 0.1,
+        h: 0.1,
+        fill: { color: datum.color ?? el.color },
+        line: { type: "none" },
+      });
+      s.addText(`${datum.label}${el.showValues ? ` ${datum.value}` : ""}`, {
+        x: plot.x + size + 0.3,
+        y: y - 0.02,
+        w: Math.max(0.2, plot.w - size - 0.34),
+        h: 0.16,
+        fontFace: "Arial",
+        fontSize: 7,
+        color: labelColor,
+        margin: 0,
+      });
+    });
+    return;
+  }
+
+  s.addShape(pptx.ShapeType.line, {
+    x: plot.x,
+    y: plot.y + plot.h,
+    w: plot.w,
+    h: 0,
+    line: { color: axisColor, width: 0.75 },
+  });
+  s.addShape(pptx.ShapeType.line, {
+    x: plot.x,
+    y: plot.y,
+    w: 0,
+    h: plot.h,
+    line: { color: axisColor, width: 0.75 },
+  });
+
+  if (el.chartType === "bar") {
+    const gap = 0.08;
+    const barW = Math.max(0.08, (plot.w - gap * (el.data.length - 1)) / el.data.length);
+    el.data.forEach((datum, index) => {
+      const h = (datum.value / max) * (plot.h * 0.82);
+      const x = plot.x + index * (barW + gap);
+      const y = plot.y + plot.h - h;
+      s.addShape(pptx.ShapeType.rect, {
+        x,
+        y,
+        w: barW,
+        h,
+        fill: { color: datum.color ?? el.color },
+        line: { type: "none" },
+      });
+      if (el.showValues) {
+        s.addText(String(datum.value), {
+          x,
+          y: y - 0.16,
+          w: barW,
+          h: 0.13,
+          fontFace: "Arial",
+          fontSize: 6.5,
+          color: labelColor,
+          align: "center",
+          margin: 0,
+        });
+      }
+    });
+    return;
+  }
+
+  const points = el.data.map((datum, index) => ({
+    x: plot.x + (el.data.length === 1 ? 0 : (index / (el.data.length - 1)) * plot.w),
+    y: plot.y + plot.h - (datum.value / max) * (plot.h * 0.82),
+    color: datum.color ?? el.color,
+  }));
+  points.slice(1).forEach((point, index) => {
+    const prev = points[index];
+    s.addShape(pptx.ShapeType.line, {
+      x: prev.x,
+      y: prev.y,
+      w: point.x - prev.x,
+      h: point.y - prev.y,
+      line: { color: el.color, width: 2 },
+    });
+  });
+  points.forEach((point) => {
+    s.addShape(pptx.ShapeType.ellipse, {
+      x: point.x - 0.035,
+      y: point.y - 0.035,
+      w: 0.07,
+      h: 0.07,
+      fill: { color: point.color },
+      line: { color: "FFFFFF", width: 0.5 },
+    });
+  });
 }
 
 function addElement(
@@ -107,6 +276,11 @@ function addElement(
       // (which has no padding inside its boxes).
       margin: 0,
     });
+    return;
+  }
+
+  if (el.kind === "chart") {
+    addChartElement(pptx, s, el);
     return;
   }
 

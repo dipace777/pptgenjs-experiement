@@ -10,8 +10,11 @@ import {
   useState,
 } from "react";
 import {
+  Arc,
   Ellipse,
+  Group,
   Layer,
+  Line,
   Rect,
   Stage,
   Text,
@@ -123,6 +126,24 @@ function RouteComponent() {
         ? { ...base, kind, fill: "D4A24C", rx: 0.08 }
         : kind === "ellipse"
           ? { ...base, kind, fill: "75AADB" }
+          : kind === "chart"
+            ? {
+                ...base,
+                w: 4.2,
+                h: 1.8,
+                kind,
+                chartType: "bar",
+                title: "Chart title",
+                color: "D4A24C",
+                axisColor: "9AA7BD",
+                labelColor: "6A7894",
+                showValues: true,
+                data: [
+                  { label: "A", value: 42, color: "D4A24C" },
+                  { label: "B", value: 68, color: "3E78B2" },
+                  { label: "C", value: 54, color: "0B1F3A" },
+                ],
+              }
           : kind === "bullets"
             ? {
                 ...base,
@@ -385,7 +406,7 @@ function RouteComponent() {
             ) : null}
 
             <div style={styles.addGrid}>
-              {(["text", "rect", "ellipse", "bullets"] as const).map((kind) => (
+              {(["text", "rect", "ellipse", "bullets", "chart"] as const).map((kind) => (
                 <button
                   key={kind}
                   type="button"
@@ -610,6 +631,87 @@ function KonvaElement({
     );
   }
 
+  if (element.kind === "chart") {
+    const max = Math.max(1, ...element.data.map((datum) => datum.value));
+    const titleH = element.title ? 24 * (scale / PX_PER_IN) : 8;
+    const pad = 12 * (scale / PX_PER_IN);
+    const chartColor = withHash(element.color);
+    const axisColor = withHash(element.axisColor ?? "9AA7BD");
+    const labelColor = withHash(element.labelColor ?? "6A7894");
+    const plot = {
+      x: pad,
+      y: titleH,
+      w: Math.max(1, width - pad * 2),
+      h: Math.max(1, height - titleH - pad),
+    };
+
+    return (
+      <Group
+        ref={setRef}
+        name={`element-${index}`}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        opacity={element.opacity ?? 1}
+        {...events}
+      >
+        <Rect
+          width={width}
+          height={height}
+          fill="#ffffff"
+          opacity={0.92}
+          cornerRadius={6}
+          stroke={stroke ?? axisColor}
+          strokeWidth={selected ? strokeWidth : 0.5}
+        />
+        {element.title ? (
+          <Text
+            x={pad}
+            y={8 * (scale / PX_PER_IN)}
+            width={width - pad * 2}
+            height={14 * (scale / PX_PER_IN)}
+            text={element.title}
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontSize={9 * (scale / PX_PER_IN)}
+            fontStyle="bold"
+            fill={labelColor}
+          />
+        ) : null}
+        {element.chartType === "bar" ? (
+          <BarChartParts
+            data={element.data}
+            max={max}
+            plot={plot}
+            color={chartColor}
+            axisColor={axisColor}
+            labelColor={labelColor}
+            scale={scale}
+            showValues={element.showValues ?? false}
+          />
+        ) : element.chartType === "line" ? (
+          <LineChartParts
+            data={element.data}
+            max={max}
+            plot={plot}
+            color={chartColor}
+            axisColor={axisColor}
+            scale={scale}
+          />
+        ) : (
+          <DonutChartParts
+            data={element.data}
+            plot={plot}
+            color={chartColor}
+            labelColor={labelColor}
+            scale={scale}
+            showValues={element.showValues ?? false}
+          />
+        )}
+      </Group>
+    );
+  }
+
   const fontSize =
     element.kind === "bullets"
       ? element.fontSize * PT_TO_PX * (scale / PX_PER_IN)
@@ -658,6 +760,193 @@ function KonvaElement({
       strokeWidth={strokeWidth}
       {...events}
     />
+  );
+}
+
+function BarChartParts({
+  data,
+  max,
+  plot,
+  color,
+  axisColor,
+  labelColor,
+  scale,
+  showValues,
+}: {
+  data: Array<{ label: string; value: number; color?: string | null }>;
+  max: number;
+  plot: { x: number; y: number; w: number; h: number };
+  color: string;
+  axisColor: string;
+  labelColor: string;
+  scale: number;
+  showValues: boolean;
+}) {
+  const gap = 8 * (scale / PX_PER_IN);
+  const barW = Math.max(4, (plot.w - gap * (data.length - 1)) / data.length);
+  return (
+    <>
+      <Line points={[plot.x, plot.y + plot.h, plot.x + plot.w, plot.y + plot.h]} stroke={axisColor} strokeWidth={1} />
+      <Line points={[plot.x, plot.y, plot.x, plot.y + plot.h]} stroke={axisColor} strokeWidth={1} />
+      {data.map((datum, index) => {
+        const barH = (datum.value / max) * plot.h * 0.82;
+        const x = plot.x + index * (barW + gap);
+        const y = plot.y + plot.h - barH;
+        return (
+          <Group key={`${datum.label}-${index}`}>
+            <Rect
+              x={x}
+              y={y}
+              width={barW}
+              height={barH}
+              fill={withHash(datum.color ?? color)}
+              cornerRadius={2}
+            />
+            {showValues ? (
+              <Text
+                x={x}
+                y={Math.max(plot.y, y - 12 * (scale / PX_PER_IN))}
+                width={barW}
+                height={10 * (scale / PX_PER_IN)}
+                text={String(datum.value)}
+                fontSize={7 * (scale / PX_PER_IN)}
+                align="center"
+                fill={labelColor}
+              />
+            ) : null}
+          </Group>
+        );
+      })}
+    </>
+  );
+}
+
+function LineChartParts({
+  data,
+  max,
+  plot,
+  color,
+  axisColor,
+  scale,
+}: {
+  data: Array<{ label: string; value: number; color?: string | null }>;
+  max: number;
+  plot: { x: number; y: number; w: number; h: number };
+  color: string;
+  axisColor: string;
+  scale: number;
+}) {
+  const points = data.flatMap((datum, index) => [
+    plot.x + (data.length === 1 ? 0 : (index / (data.length - 1)) * plot.w),
+    plot.y + plot.h - (datum.value / max) * plot.h * 0.82,
+  ]);
+  return (
+    <>
+      <Line points={[plot.x, plot.y + plot.h, plot.x + plot.w, plot.y + plot.h]} stroke={axisColor} strokeWidth={1} />
+      <Line points={[plot.x, plot.y, plot.x, plot.y + plot.h]} stroke={axisColor} strokeWidth={1} />
+      <Line points={points} stroke={color} strokeWidth={2} tension={0.28} />
+      {data.map((datum, index) => {
+        const cx =
+          plot.x + (data.length === 1 ? 0 : (index / (data.length - 1)) * plot.w);
+        const cy = plot.y + plot.h - (datum.value / max) * plot.h * 0.82;
+        return (
+          <Ellipse
+            key={`${datum.label}-${index}`}
+            x={cx}
+            y={cy}
+            radiusX={3.5 * (scale / PX_PER_IN)}
+            radiusY={3.5 * (scale / PX_PER_IN)}
+            fill={withHash(datum.color ?? color)}
+            stroke="#ffffff"
+            strokeWidth={1}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function DonutChartParts({
+  data,
+  plot,
+  color,
+  labelColor,
+  scale,
+  showValues,
+}: {
+  data: Array<{ label: string; value: number; color?: string | null }>;
+  plot: { x: number; y: number; w: number; h: number };
+  color: string;
+  labelColor: string;
+  scale: number;
+  showValues: boolean;
+}) {
+  const total = Math.max(1, data.reduce((sum, datum) => sum + datum.value, 0));
+  const radius = Math.min(plot.w * 0.26, plot.h * 0.42);
+  const cx = plot.x + radius + 4 * (scale / PX_PER_IN);
+  const cy = plot.y + plot.h / 2;
+  const slices = data.reduce<
+    Array<{ datum: { label: string; value: number; color?: string | null }; angle: number; rotation: number; index: number }>
+  >((items, datum, index) => {
+    const rotation =
+      index === 0 ? -90 : items[index - 1].rotation + items[index - 1].angle;
+    items.push({
+      datum,
+      index,
+      rotation,
+      angle: (datum.value / total) * 360,
+    });
+    return items;
+  }, []);
+
+  return (
+    <>
+      {slices.map(({ datum, angle, rotation, index }) => (
+        <Arc
+          key={`${datum.label}-${index}`}
+          x={cx}
+          y={cy}
+          innerRadius={radius * 0.55}
+          outerRadius={radius}
+          angle={angle}
+          rotation={rotation}
+          fill={withHash(datum.color ?? color)}
+        />
+      ))}
+      <Text
+        x={cx - radius * 0.5}
+        y={cy - 6 * (scale / PX_PER_IN)}
+        width={radius}
+        height={12 * (scale / PX_PER_IN)}
+        text={String(total)}
+        fontSize={10 * (scale / PX_PER_IN)}
+        fontStyle="bold"
+        align="center"
+        fill={color}
+      />
+      {data.map((datum, index) => (
+        <Group
+          key={`${datum.label}-legend-${index}`}
+          x={cx + radius + 18 * (scale / PX_PER_IN)}
+          y={plot.y + index * 18 * (scale / PX_PER_IN)}
+        >
+          <Rect
+            width={8 * (scale / PX_PER_IN)}
+            height={8 * (scale / PX_PER_IN)}
+            fill={withHash(datum.color ?? color)}
+          />
+          <Text
+            x={14 * (scale / PX_PER_IN)}
+            y={-1 * (scale / PX_PER_IN)}
+            width={Math.max(20, plot.w - radius * 2 - 24 * (scale / PX_PER_IN))}
+            height={12 * (scale / PX_PER_IN)}
+            text={`${datum.label}${showValues ? ` ${datum.value}` : ""}`}
+            fontSize={7.5 * (scale / PX_PER_IN)}
+            fill={labelColor}
+          />
+        </Group>
+      ))}
+    </>
   );
 }
 
@@ -758,6 +1047,77 @@ function Inspector({
               onChange={(color) => onPatch({ color })}
             />
           </div>
+        </>
+      ) : null}
+
+      {element.kind === "chart" ? (
+        <>
+          <div style={styles.grid2}>
+            <Field label="Chart type">
+              <select
+                value={element.chartType}
+                onChange={(event) =>
+                  onPatch({
+                    chartType: event.target.value as "bar" | "line" | "donut",
+                  })
+                }
+                style={styles.input}
+              >
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="donut">Donut</option>
+              </select>
+            </Field>
+            <ColorField
+              label="Color"
+              value={element.color}
+              onChange={(color) => onPatch({ color })}
+            />
+          </div>
+          <Field label="Title">
+            <input
+              value={element.title ?? ""}
+              onChange={(event) => onPatch({ title: event.target.value })}
+              style={styles.input}
+            />
+          </Field>
+          <Field label="Data">
+            <textarea
+              value={element.data
+                .map(
+                  (datum) =>
+                    `${datum.label}, ${datum.value}${datum.color ? `, ${datum.color}` : ""}`,
+                )
+                .join("\n")}
+              rows={5}
+              onChange={(event) => {
+                const data = event.target.value
+                  .split("\n")
+                  .map((line) => {
+                    const [label, value, color] = line
+                      .split(",")
+                      .map((part) => part.trim());
+                    return {
+                      label,
+                      value: Number(value) || 0,
+                      color: color ? withoutHash(color) : undefined,
+                    };
+                  })
+                  .filter((datum) => datum.label)
+                  .slice(0, 8);
+                if (data.length > 0) onReplace({ ...element, data });
+              }}
+              style={styles.textarea}
+            />
+          </Field>
+          <label style={styles.checkLabel}>
+            <input
+              type="checkbox"
+              checked={element.showValues ?? false}
+              onChange={(event) => onPatch({ showValues: event.target.checked })}
+            />
+            Show values
+          </label>
         </>
       ) : null}
 

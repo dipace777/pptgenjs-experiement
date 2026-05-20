@@ -98,6 +98,145 @@ function renderElement(el: SlideElement, scale: number, idx: number) {
     );
   }
 
+  if (el.kind === "chart") {
+    const max = Math.max(1, ...el.data.map((datum) => datum.value));
+    const color = withHash(el.color);
+    const axisColor = withHash(el.axisColor ?? "9AA7BD");
+    const labelColor = withHash(el.labelColor ?? "6A7894");
+    const w = el.w * PX_PER_IN * scale;
+    const h = el.h * PX_PER_IN * scale;
+    const top = el.title ? 28 * scale : 12 * scale;
+    const pad = 14 * scale;
+    const plot = {
+      x: pad,
+      y: top,
+      w: Math.max(1, w - pad * 2),
+      h: Math.max(1, h - top - pad),
+    };
+
+    const renderChart = () => {
+      if (el.chartType === "donut") {
+        const total = el.data.reduce((sum, datum) => sum + datum.value, 0);
+        let acc = 0;
+        const radius = Math.min(plot.w * 0.28, plot.h * 0.44);
+        const cx = plot.x + radius + 4 * scale;
+        const cy = plot.y + plot.h / 2;
+        const slices = el.data.map((datum, index) => {
+          const start = (acc / total) * Math.PI * 2 - Math.PI / 2;
+          acc += datum.value;
+          const end = (acc / total) * Math.PI * 2 - Math.PI / 2;
+          const large = end - start > Math.PI ? 1 : 0;
+          const x1 = cx + Math.cos(start) * radius;
+          const y1 = cy + Math.sin(start) * radius;
+          const x2 = cx + Math.cos(end) * radius;
+          const y2 = cy + Math.sin(end) * radius;
+          return (
+            <path
+              key={index}
+              d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2} Z`}
+              fill={withHash(datum.color ?? el.color)}
+            />
+          );
+        });
+        return (
+          <>
+            {slices}
+            <circle cx={cx} cy={cy} r={radius * 0.54} fill="white" />
+            <text
+              x={cx}
+              y={cy + 4 * scale}
+              textAnchor="middle"
+              fontSize={12 * scale}
+              fontWeight={700}
+              fill={color}
+            >
+              {total}
+            </text>
+            {el.data.map((datum, index) => (
+              <g key={datum.label} transform={`translate(${cx + radius + 18 * scale} ${plot.y + index * 18 * scale})`}>
+                <rect width={8 * scale} height={8 * scale} fill={withHash(datum.color ?? el.color)} />
+                <text x={14 * scale} y={8 * scale} fontSize={8 * scale} fill={labelColor}>
+                  {datum.label}
+                  {el.showValues ? ` ${datum.value}` : ""}
+                </text>
+              </g>
+            ))}
+          </>
+        );
+      }
+
+      if (el.chartType === "bar") {
+        const gap = 8 * scale;
+        const barW = Math.max(4, (plot.w - gap * (el.data.length - 1)) / el.data.length);
+        return (
+          <>
+            <line x1={plot.x} y1={plot.y + plot.h} x2={plot.x + plot.w} y2={plot.y + plot.h} stroke={axisColor} />
+            <line x1={plot.x} y1={plot.y} x2={plot.x} y2={plot.y + plot.h} stroke={axisColor} />
+            {el.data.map((datum, index) => {
+              const barH = (datum.value / max) * plot.h * 0.82;
+              const x = plot.x + index * (barW + gap);
+              const y = plot.y + plot.h - barH;
+              return (
+                <g key={datum.label}>
+                  <rect x={x} y={y} width={barW} height={barH} fill={withHash(datum.color ?? el.color)} />
+                  {el.showValues ? (
+                    <text x={x + barW / 2} y={y - 4 * scale} textAnchor="middle" fontSize={7 * scale} fill={labelColor}>
+                      {datum.value}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+          </>
+        );
+      }
+
+      const points = el.data.map((datum, index) => ({
+        x: plot.x + (el.data.length === 1 ? 0 : (index / (el.data.length - 1)) * plot.w),
+        y: plot.y + plot.h - (datum.value / max) * plot.h * 0.82,
+        color: withHash(datum.color ?? el.color),
+      }));
+      return (
+        <>
+          <line x1={plot.x} y1={plot.y + plot.h} x2={plot.x + plot.w} y2={plot.y + plot.h} stroke={axisColor} />
+          <line x1={plot.x} y1={plot.y} x2={plot.x} y2={plot.y + plot.h} stroke={axisColor} />
+          <polyline
+            points={points.map((point) => `${point.x},${point.y}`).join(" ")}
+            fill="none"
+            stroke={color}
+            strokeWidth={2 * scale}
+          />
+          {points.map((point, index) => (
+            <circle key={index} cx={point.x} cy={point.y} r={3.5 * scale} fill={point.color} />
+          ))}
+        </>
+      );
+    };
+
+    return (
+      <div
+        key={idx}
+        style={{
+          ...boxStyle(el, scale),
+          opacity: el.opacity ?? 1,
+          border: `1px solid ${axisColor}33`,
+          borderRadius: 6 * scale,
+          background: "rgba(255,255,255,0.92)",
+          overflow: "hidden",
+        }}
+      >
+        <svg width={w} height={h}>
+          {el.title ? (
+            <text x={pad} y={18 * scale} fontSize={9 * scale} fontWeight={700} fill={labelColor}>
+              {el.title}
+            </text>
+          ) : null}
+          {renderChart()}
+        </svg>
+      </div>
+    );
+  }
+
   // bullets
   return (
     <ul

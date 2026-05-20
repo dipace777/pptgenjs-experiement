@@ -74,11 +74,30 @@ export const BulletsElementSchema = z.object({
   lineSpacingMultiple: z.number().min(0.9).max(2).nullish(),
 });
 
+export const ChartDatumSchema = z.object({
+  label: z.string().min(1).max(40),
+  value: z.number().min(0).max(1_000_000),
+  color: HexColorSchema.nullish(),
+});
+
+export const ChartElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("chart"),
+  chartType: z.enum(["bar", "line", "donut"]),
+  title: z.string().min(1).max(80).nullish(),
+  data: z.array(ChartDatumSchema).min(1).max(8),
+  color: HexColorSchema,
+  axisColor: HexColorSchema.nullish(),
+  labelColor: HexColorSchema.nullish(),
+  showValues: z.boolean().nullish(),
+});
+
 export const SlideElementSchema = z.discriminatedUnion("kind", [
   TextElementSchema,
   RectElementSchema,
   EllipseElementSchema,
   BulletsElementSchema,
+  ChartElementSchema,
 ]);
 
 export const SlideSchema = z.object({
@@ -99,6 +118,8 @@ export type TextElement = z.infer<typeof TextElementSchema>;
 export type RectElement = z.infer<typeof RectElementSchema>;
 export type EllipseElement = z.infer<typeof EllipseElementSchema>;
 export type BulletsElement = z.infer<typeof BulletsElementSchema>;
+export type ChartDatum = z.infer<typeof ChartDatumSchema>;
+export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;
@@ -569,10 +590,61 @@ const slide4Stats: Slide = {
       fontFace: SANS,
     },
 
-    ...statCard(0.6, 2.1, 4.3, 1.4, "850+", "CAREER GOALS"),
-    ...statCard(5.1, 2.1, 4.3, 1.4, "380+", "CAREER ASSISTS"),
-    ...statCard(0.6, 3.6, 4.3, 1.4, "46", "MAJOR TROPHIES"),
-    ...statCard(5.1, 3.6, 4.3, 1.4, "8", "BALLON D'OR AWARDS"),
+    ...statCard(0.6, 2.05, 2.05, 1.2, "850+", "GOALS"),
+    ...statCard(2.85, 2.05, 2.05, 1.2, "380+", "ASSISTS"),
+    {
+      kind: "chart",
+      chartType: "bar",
+      x: 5.25,
+      y: 2.0,
+      w: 4.15,
+      h: 1.55,
+      title: "Output mix",
+      color: GOLD,
+      axisColor: BLUE_DK,
+      labelColor: MUTED,
+      showValues: true,
+      data: [
+        { label: "Goals", value: 850, color: GOLD },
+        { label: "Assists", value: 380, color: BLUE_DK },
+        { label: "Trophies", value: 46, color: NAVY },
+      ],
+    },
+    {
+      kind: "chart",
+      chartType: "line",
+      x: 0.85,
+      y: 3.65,
+      w: 4.2,
+      h: 1.25,
+      title: "Era momentum",
+      color: BLUE_DK,
+      axisColor: MUTED_DK,
+      labelColor: MUTED,
+      data: [
+        { label: "04", value: 8 },
+        { label: "09", value: 38 },
+        { label: "14", value: 58 },
+        { label: "19", value: 51 },
+        { label: "24", value: 32 },
+      ],
+    },
+    {
+      kind: "chart",
+      chartType: "donut",
+      x: 5.65,
+      y: 3.62,
+      w: 3.15,
+      h: 1.28,
+      title: "Honors",
+      color: GOLD,
+      labelColor: MUTED,
+      showValues: true,
+      data: [
+        { label: "Club", value: 39, color: BLUE_DK },
+        { label: "Country", value: 7, color: GOLD },
+      ],
+    },
 
     ...footer(4, TOTAL, false),
   ],
