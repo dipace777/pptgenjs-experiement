@@ -9,20 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SvgRouteImport } from './routes/svg'
-import { Route as EditableRouteImport } from './routes/editable'
 import { Route as IndexRouteImport } from './routes/index'
 
-const SvgRoute = SvgRouteImport.update({
-  id: '/svg',
-  path: '/svg',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EditableRoute = EditableRouteImport.update({
-  id: '/editable',
-  path: '/editable',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,50 +19,28 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/editable': typeof EditableRoute
-  '/svg': typeof SvgRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/editable': typeof EditableRoute
-  '/svg': typeof SvgRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/editable': typeof EditableRoute
-  '/svg': typeof SvgRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/editable' | '/svg'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/editable' | '/svg'
-  id: '__root__' | '/' | '/editable' | '/svg'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  EditableRoute: typeof EditableRoute
-  SvgRoute: typeof SvgRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/svg': {
-      id: '/svg'
-      path: '/svg'
-      fullPath: '/svg'
-      preLoaderRoute: typeof SvgRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/editable': {
-      id: '/editable'
-      path: '/editable'
-      fullPath: '/editable'
-      preLoaderRoute: typeof EditableRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -87,8 +53,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  EditableRoute: EditableRoute,
-  SvgRoute: SvgRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -38,6 +38,29 @@ function chartMax(el: ChartElement): number {
   return Math.max(1, ...el.data.map((datum) => datum.value));
 }
 
+function addLineSegment(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  color: string,
+) {
+  const x = Math.min(from.x, to.x);
+  const y = Math.min(from.y, to.y);
+  const w = Math.abs(to.x - from.x);
+  const h = Math.abs(to.y - from.y);
+  const rises = to.y < from.y;
+
+  s.addShape(pptx.ShapeType.line, {
+    x,
+    y,
+    w,
+    h,
+    flipV: rises,
+    line: { color, width: 2 },
+  });
+}
+
 function addChartElement(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
@@ -182,13 +205,7 @@ function addChartElement(
   }));
   points.slice(1).forEach((point, index) => {
     const prev = points[index];
-    s.addShape(pptx.ShapeType.line, {
-      x: prev.x,
-      y: prev.y,
-      w: point.x - prev.x,
-      h: point.y - prev.y,
-      line: { color: el.color, width: 2 },
-    });
+    addLineSegment(pptx, s, prev, point, el.color);
   });
   points.forEach((point) => {
     s.addShape(pptx.ShapeType.ellipse, {

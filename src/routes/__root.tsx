@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // src/routes/__root.tsx
 /// <reference types="vite/client" />
 import type { ReactNode } from "react";

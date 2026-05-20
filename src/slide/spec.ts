@@ -616,11 +616,12 @@ const slide4Stats: Slide = {
       x: 0.85,
       y: 3.65,
       w: 4.2,
-      h: 1.25,
+      h: 1.35,
       title: "Era momentum",
       color: BLUE_DK,
       axisColor: MUTED_DK,
       labelColor: MUTED,
+      showValues: true,
       data: [
         { label: "04", value: 8 },
         { label: "09", value: 38 },
