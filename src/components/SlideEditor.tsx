@@ -99,6 +99,26 @@ export function SlideEditor() {
                   { label: "C", value: 54, color: "0B1F3A" },
                 ],
               }
+          : kind === "table"
+            ? {
+                ...base,
+                w: 5.2,
+                h: 2.1,
+                kind,
+                rows: [
+                  ["Metric", "Apps", "Goals"],
+                  ["La Liga", "520", "474"],
+                  ["Champions League", "163", "129"],
+                  ["Argentina", "190+", "110+"],
+                ],
+                fontFace: "Arial",
+                fontSize: 11,
+                textColor: "1A2B45",
+                headerFill: "0B1F3A",
+                headerTextColor: "FFFFFF",
+                borderColor: "DDE5F0",
+                fill: "FFFFFF",
+              }
           : kind === "bullets"
             ? {
                 ...base,
@@ -376,7 +396,7 @@ export function SlideEditor() {
             ) : null}
 
             <div style={styles.addGrid}>
-              {(["text", "rect", "ellipse", "bullets", "chart"] as const).map((kind) => (
+              {(["text", "rect", "ellipse", "bullets", "chart", "table"] as const).map((kind) => (
                 <button
                   key={kind}
                   type="button"

@@ -174,6 +174,68 @@ export function Inspector({
         </>
       ) : null}
 
+      {element.kind === "table" ? (
+        <>
+          <Field label="Rows">
+            <textarea
+              value={element.rows.map((row) => row.join(", ")).join("\n")}
+              rows={6}
+              onChange={(event) => {
+                const rows = event.target.value
+                  .split("\n")
+                  .map((line) =>
+                    line
+                      .split(",")
+                      .map((cell) => cell.trim())
+                      .slice(0, 6),
+                  )
+                  .filter((row) => row.some(Boolean))
+                  .slice(0, 8);
+                if (rows.length >= 2) onReplace({ ...element, rows });
+              }}
+              style={styles.textarea}
+            />
+          </Field>
+          <div style={styles.grid2}>
+            <NumberField
+              label="Font"
+              value={element.fontSize}
+              step={1}
+              onChange={(fontSize) => onPatch({ fontSize })}
+            />
+            <ColorField
+              label="Text"
+              value={element.textColor}
+              onChange={(textColor) => onPatch({ textColor })}
+            />
+          </div>
+          <div style={styles.grid2}>
+            <ColorField
+              label="Header"
+              value={element.headerFill}
+              onChange={(headerFill) => onPatch({ headerFill })}
+            />
+            <ColorField
+              label="Header text"
+              value={element.headerTextColor}
+              onChange={(headerTextColor) => onPatch({ headerTextColor })}
+            />
+          </div>
+          <div style={styles.grid2}>
+            <ColorField
+              label="Fill"
+              value={element.fill ?? "FFFFFF"}
+              onChange={(fill) => onPatch({ fill })}
+            />
+            <ColorField
+              label="Border"
+              value={element.borderColor}
+              onChange={(borderColor) => onPatch({ borderColor })}
+            />
+          </div>
+        </>
+      ) : null}
+
       {element.kind === "rect" || element.kind === "ellipse" ? (
         <div style={styles.grid2}>
           <ColorField

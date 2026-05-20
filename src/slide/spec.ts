@@ -92,12 +92,26 @@ export const ChartElementSchema = z.object({
   showValues: z.boolean().nullish(),
 });
 
+export const TableElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("table"),
+  rows: z.array(z.array(z.string().max(80)).min(1).max(6)).min(2).max(8),
+  fontFace: z.string().min(1).max(80).nullish(),
+  fontSize: z.number().min(6).max(28),
+  textColor: HexColorSchema,
+  headerFill: HexColorSchema,
+  headerTextColor: HexColorSchema,
+  borderColor: HexColorSchema,
+  fill: HexColorSchema.nullish(),
+});
+
 export const SlideElementSchema = z.discriminatedUnion("kind", [
   TextElementSchema,
   RectElementSchema,
   EllipseElementSchema,
   BulletsElementSchema,
   ChartElementSchema,
+  TableElementSchema,
 ]);
 
 export const SlideSchema = z.object({
@@ -120,6 +134,7 @@ export type EllipseElement = z.infer<typeof EllipseElementSchema>;
 export type BulletsElement = z.infer<typeof BulletsElementSchema>;
 export type ChartDatum = z.infer<typeof ChartDatumSchema>;
 export type ChartElement = z.infer<typeof ChartElementSchema>;
+export type TableElement = z.infer<typeof TableElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;
@@ -173,7 +188,7 @@ function footer(num: number, total: number, onDark: boolean): SlideElement[] {
 }
 
 // ── Slide 1: Title ──────────────────────────────────────────────────────
-const TOTAL = 6;
+const TOTAL = 7;
 
 const slide1Title: Slide = {
   title: "Title",
@@ -234,7 +249,7 @@ const slide1Title: Slide = {
       y: 4.3,
       w: 8,
       h: 0.45,
-      text: "A footballing legend, told in six slides.",
+      text: "A footballing legend, told in seven slides.",
       fontSize: 18,
       color: BLUE,
       fontFace: SANS,
@@ -760,7 +775,119 @@ const slide5WorldCup: Slide = {
   ],
 };
 
-// ── Slide 6: Legacy / closing ───────────────────────────────────────────
+// ── Slide 6: Competition table ──────────────────────────────────────────
+function tableRow(
+  y: number,
+  values: [string, string, string, string],
+  header = false,
+): SlideElement[] {
+  const x = 0.8;
+  const h = header ? 0.46 : 0.52;
+  const widths = [3.0, 1.55, 1.55, 1.55];
+  const starts = [
+    x,
+    x + widths[0],
+    x + widths[0] + widths[1],
+    x + widths[0] + widths[1] + widths[2],
+  ];
+  const fill = header ? NAVY : PAPER;
+  const color = header ? "FFFFFF" : INK;
+
+  return [
+    {
+      kind: "rect",
+      x,
+      y,
+      w: widths.reduce((sum, width) => sum + width, 0),
+      h,
+      fill,
+      line: { color: header ? NAVY : "DDE5F0", width: 0.75 },
+      rx: header ? 0.06 : 0,
+    },
+    ...values.map((value, index) => ({
+      kind: "text" as const,
+      x: starts[index] + 0.14,
+      y: y + 0.13,
+      w: widths[index] - 0.28,
+      h: 0.22,
+      text: value,
+      fontSize: header ? 9 : 11,
+      bold: header || index === 0,
+      color,
+      charSpacing: header ? 160 : undefined,
+      align: index === 0 ? "left" as const : "center" as const,
+      fontFace: SANS,
+    })),
+  ];
+}
+
+const slide6Table: Slide = {
+  title: "Competition Table",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 6,
+      h: 0.3,
+      text: "CAREER TABLE",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.8,
+      h: 0.7,
+      text: "Production across competitions.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 1.55,
+      w: 8.6,
+      h: 0.3,
+      text: "A compact native table assembled from editable text and shape elements.",
+      fontSize: 12,
+      color: MUTED,
+      fontFace: SANS,
+    },
+    { kind: "rect", x: 0.8, y: 2.05, w: 7.65, h: 2.6, fill: PAPER, rx: 0.08 },
+    ...tableRow(2.05, ["Competition", "Apps", "Goals", "Assists"], true),
+    ...tableRow(2.55, ["La Liga", "520", "474", "216"]),
+    ...tableRow(3.07, ["UEFA Champions League", "163", "129", "40"]),
+    ...tableRow(3.59, ["Argentina", "190+", "110+", "60+"]),
+    ...tableRow(4.11, ["FIFA World Cup", "26", "13", "8"]),
+    { kind: "rect", x: 0.8, y: 4.63, w: 7.65, h: 0.04, fill: GOLD },
+    {
+      kind: "text",
+      x: 8.65,
+      y: 2.05,
+      w: 0.55,
+      h: 2.55,
+      text: "10",
+      fontSize: 76,
+      bold: true,
+      color: GOLD,
+      opacity: 0.26,
+      align: "center",
+      valign: "middle",
+      fontFace: SANS,
+    },
+    ...footer(6, TOTAL, false),
+  ],
+};
+
+// ── Slide 7: Legacy / closing ───────────────────────────────────────────
 const slide6Legacy: Slide = {
   title: "Legacy",
   background: OFF_WHITE,
@@ -836,7 +963,7 @@ const slide6Legacy: Slide = {
       fontFace: SANS,
     },
 
-    ...footer(6, TOTAL, false),
+    ...footer(7, TOTAL, false),
   ],
 };
 
@@ -848,6 +975,7 @@ export const messiDeck: Deck = {
     slide3Timeline,
     slide4Stats,
     slide5WorldCup,
+    slide6Table,
     slide6Legacy,
   ],
 };
