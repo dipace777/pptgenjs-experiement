@@ -64,6 +64,7 @@ function RouteComponent() {
   const [deck, setDeck] = useState<Deck>(messiDeck);
   const [active, setActive] = useState(0);
   const [selected, setSelected] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [exportMode, setExportMode] = useState<"native" | "raster">("native");
   const [isExporting, setIsExporting] = useState(false);
   const [stageWidth, setStageWidth] = useState(STAGE_W);
@@ -145,6 +146,7 @@ function RouteComponent() {
               };
     updateActiveSlide((slide) => {
       setSelected(slide.elements.length);
+      setEditorOpen(true);
       return { ...slide, elements: [...slide.elements, next] };
     });
   };
@@ -243,14 +245,19 @@ function RouteComponent() {
                 setSelected(0);
               }}
               style={{
-                ...styles.thumbButton,
+                ...styles.thumbRow,
                 borderColor: index === active ? "#d4a24c" : "#242c3e",
               }}
             >
               <span style={styles.thumbNumber}>
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <KonvaSlide slide={slide} width={160} height={90} interactive={false} />
+              <KonvaSlide
+                slide={slide}
+                width={160}
+                height={90}
+                interactive={false}
+              />
             </button>
           ))}
         </div>
@@ -288,21 +295,49 @@ function RouteComponent() {
 
         <section style={styles.workArea}>
           <div ref={stageWrapRef} style={styles.stagePanel}>
-            <KonvaSlide
-              slide={activeSlide}
-              width={stageWidth}
-              height={stageWidth * (SLIDE_H / SLIDE_W)}
-              interactive
-              selected={selectedIndex}
-              onSelect={setSelected}
-              onChange={updateElement}
-            />
+            <div
+              style={{
+                ...styles.slideFrame,
+                width: stageWidth,
+                height: stageWidth * (SLIDE_H / SLIDE_W),
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setEditorOpen(true)}
+                style={styles.slideEditButton}
+              >
+                Edit
+              </button>
+              <KonvaSlide
+                slide={activeSlide}
+                width={stageWidth}
+                height={stageWidth * (SLIDE_H / SLIDE_W)}
+                interactive
+                selected={selectedIndex}
+                onSelect={setSelected}
+                onChange={updateElement}
+              />
+            </div>
           </div>
+        </section>
+      </main>
 
-          <aside style={styles.inspector}>
+      {editorOpen ? (
+        <div
+          aria-modal="true"
+          role="dialog"
+          style={styles.drawerBackdrop}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setEditorOpen(false);
+          }}
+        >
+          <aside style={styles.drawer}>
             <div style={styles.inspectorHeader}>
               <div>
-                <div style={styles.eyebrow}>SELECTED</div>
+                <div style={styles.eyebrow}>
+                  SLIDE {String(active + 1).padStart(2, "0")}
+                </div>
                 <h2 style={styles.inspectorTitle}>
                   {selectedElement
                     ? kindLabel(selectedElement.kind)
@@ -326,7 +361,19 @@ function RouteComponent() {
                 >
                   ×
                 </button>
+                <button
+                  type="button"
+                  title="Close editor"
+                  onClick={() => setEditorOpen(false)}
+                  style={styles.iconButton}
+                >
+                  ×
+                </button>
               </div>
+            </div>
+
+            <div style={styles.drawerHint}>
+              Select an object on the slide, then adjust it here.
             </div>
 
             {selectedElement ? (
@@ -350,8 +397,8 @@ function RouteComponent() {
               ))}
             </div>
           </aside>
-        </section>
-      </main>
+        </div>
+      ) : null}
 
       <div style={styles.hiddenStages} aria-hidden="true">
         {deck.slides.map((slide, index) => (
@@ -876,11 +923,11 @@ const styles = {
   },
   meta: { marginTop: 4, fontSize: 12, color: "#7d89a3" },
   thumbs: { flex: 1, overflowY: "auto", padding: 14, display: "grid", gap: 12 },
-  thumbButton: {
+  thumbRow: {
     display: "grid",
     gridTemplateColumns: "22px 1fr",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     width: "100%",
     padding: 6,
     border: "1px solid #242c3e",
@@ -921,8 +968,7 @@ const styles = {
   workArea: {
     flex: 1,
     minHeight: 0,
-    display: "grid",
-    gridTemplateColumns: "minmax(520px, 1fr) 320px",
+    display: "flex",
   },
   stagePanel: {
     minWidth: 0,
@@ -932,11 +978,56 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
   },
+  slideFrame: {
+    position: "relative",
+    flexShrink: 0,
+  },
+  slideEditButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 5,
+    height: 34,
+    padding: "0 14px",
+    borderRadius: 7,
+    border: "1px solid rgba(255,255,255,0.22)",
+    background: "rgba(16,20,30,0.88)",
+    color: "#f4f6fa",
+    boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
   inspector: {
     borderLeft: "1px solid #20283a",
     background: "#10141e",
     padding: 18,
     overflowY: "auto",
+  },
+  drawerBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 30,
+    display: "flex",
+    justifyContent: "flex-end",
+    background: "rgba(3, 7, 18, 0.5)",
+  },
+  drawer: {
+    width: 360,
+    maxWidth: "calc(100vw - 28px)",
+    height: "100%",
+    boxSizing: "border-box",
+    borderLeft: "1px solid #273044",
+    background: "#10141e",
+    boxShadow: "-24px 0 70px rgba(0,0,0,0.44)",
+    padding: 18,
+    overflowY: "auto",
+  },
+  drawerHint: {
+    margin: "-6px 0 16px",
+    color: "#7d89a3",
+    fontSize: 12,
+    lineHeight: 1.45,
   },
   inspectorHeader: {
     display: "flex",
