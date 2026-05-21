@@ -1,7 +1,8 @@
 import type Konva from "konva";
 import { useAtomValue, useSetAtom } from "jotai";
+import { jsPDF } from "jspdf";
 import PptxGenJS from "pptxgenjs";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { SLIDE_H, SLIDE_W } from "../../../lib/slide-schema";
 import { generatePptx } from "../../../slide/generatePptx";
 import { filenameFromTitle } from "../editorUtils";
@@ -11,11 +12,18 @@ import {
   isExportingAtom,
 } from "../state";
 
+function waitForPaint() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 export function useDeckExport() {
   const deck = useAtomValue(deckAtom);
   const exportMode = useAtomValue(exportModeAtom);
   const setIsExporting = useSetAtom(isExportingAtom);
   const exportStageRefs = useRef<Array<Konva.Stage | null>>([]);
+  const [exportingType, setExportingType] = useState<"pptx" | "pdf" | null>(null);
 
   const handleNativeExport = async () => {
     await generatePptx(deck, filenameFromTitle(deck.title));
@@ -45,16 +53,50 @@ export function useDeckExport() {
 
   const handleExport = async () => {
     setIsExporting(true);
+    setExportingType("pptx");
     try {
+      await waitForPaint();
       if (exportMode === "native") {
         await handleNativeExport();
       } else {
         await handleRasterExport();
       }
     } finally {
+      setExportingType(null);
       setIsExporting(false);
     }
   };
 
-  return { exportStageRefs, handleExport };
+  const handlePdfExport = async () => {
+    setIsExporting(true);
+    setExportingType("pdf");
+    try {
+      await waitForPaint();
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "in",
+        format: [SLIDE_W, SLIDE_H],
+        compress: true,
+      });
+      let hasSlides = false;
+
+      deck.slides.forEach((_, index) => {
+        const data = exportStageRefs.current[index]?.toDataURL({
+          pixelRatio: 2,
+          mimeType: "image/png",
+        });
+        if (!data) return;
+        if (hasSlides) pdf.addPage([SLIDE_W, SLIDE_H], "landscape");
+        pdf.addImage(data, "PNG", 0, 0, SLIDE_W, SLIDE_H);
+        hasSlides = true;
+      });
+      if (!hasSlides) return;
+      pdf.save(filenameFromTitle(deck.title, "", "pdf"));
+    } finally {
+      setExportingType(null);
+      setIsExporting(false);
+    }
+  };
+
+  return { exportStageRefs, exportingType, handleExport, handlePdfExport };
 }

@@ -73,7 +73,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const deleteSelected = useSetAtom(deleteSelectedAtom);
 
   const { stageWidth, stageWrapRef } = useStageSize();
-  const { exportStageRefs, handleExport } = useDeckExport();
+  const { exportStageRefs, exportingType, handleExport, handlePdfExport } = useDeckExport();
   const stageScale = stageWidth / SLIDE_W;
   const selectedTextElement =
     selectedElement?.kind === "text" ? selectedElement : null;
@@ -177,7 +177,15 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               onClick={handleExport}
               style={styles.primaryButton}
             >
-              {isExporting ? "Exporting..." : "Export PPTX"}
+              {exportingType === "pptx" ? "Exporting PPTX..." : "Export PPTX"}
+            </button>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={handlePdfExport}
+              style={styles.secondaryButton}
+            >
+              {exportingType === "pdf" ? "Exporting PDF..." : "Export PDF"}
             </button>
           </div>
         </div>

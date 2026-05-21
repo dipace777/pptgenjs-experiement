@@ -14,11 +14,11 @@ export function withoutHash(color: string) {
   return color.replace("#", "").toUpperCase();
 }
 
-export function filenameFromTitle(title: string, suffix = "") {
+export function filenameFromTitle(title: string, suffix = "", extension = "pptx") {
   const slug =
     title.toLowerCase().replace(/\W+/g, "-").replace(/^-|-$/g, "") ||
     "editable-deck";
-  return `${slug}${suffix}.pptx`;
+  return `${slug}${suffix}.${extension}`;
 }
 
 export function clamp(n: number, min: number, max: number) {
