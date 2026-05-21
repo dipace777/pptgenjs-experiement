@@ -37,6 +37,7 @@ export function BulletsElement({
       height={height}
       {...events}
     >
+      <Rect width={width} height={height} fill="rgba(0,0,0,0)" />
       {items.map((item, itemIndex) => {
         const yOffset = items
           .slice(0, itemIndex)
