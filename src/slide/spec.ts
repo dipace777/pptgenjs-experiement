@@ -105,6 +105,22 @@ export const TableElementSchema = z.object({
   fill: HexColorSchema.nullish(),
 });
 
+export const GridElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("grid"),
+  items: z.array(z.string().min(1).max(80)).min(1).max(12),
+  columns: z.number().int().min(1).max(4),
+  fontFace: z.string().min(1).max(80).nullish(),
+  numberFontSize: z.number().min(8).max(72),
+  labelFontSize: z.number().min(6).max(24),
+  numberColor: HexColorSchema,
+  labelColor: HexColorSchema,
+  fill: HexColorSchema,
+  borderColor: HexColorSchema,
+  gap: z.number().min(0).max(0.4).nullish(),
+  rx: z.number().min(0).max(0.5).nullish(),
+});
+
 export const SlideElementSchema = z.discriminatedUnion("kind", [
   TextElementSchema,
   RectElementSchema,
@@ -112,6 +128,7 @@ export const SlideElementSchema = z.discriminatedUnion("kind", [
   BulletsElementSchema,
   ChartElementSchema,
   TableElementSchema,
+  GridElementSchema,
 ]);
 
 export const SlideSchema = z.object({
@@ -135,6 +152,7 @@ export type BulletsElement = z.infer<typeof BulletsElementSchema>;
 export type ChartDatum = z.infer<typeof ChartDatumSchema>;
 export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
+export type GridElement = z.infer<typeof GridElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;
@@ -188,7 +206,7 @@ function footer(num: number, total: number, onDark: boolean): SlideElement[] {
 }
 
 // ── Slide 1: Title ──────────────────────────────────────────────────────
-const TOTAL = 7;
+const TOTAL = 8;
 
 const slide1Title: Slide = {
   title: "Title",
@@ -887,7 +905,71 @@ const slide6Table: Slide = {
   ],
 };
 
-// ── Slide 7: Legacy / closing ───────────────────────────────────────────
+const slide7Grid: Slide = {
+  title: "3x3 Grid",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 6,
+      h: 0.3,
+      text: "CONTENT GRID",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.8,
+      h: 0.7,
+      text: "Nine editable placeholders.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 1.5,
+      w: 8.6,
+      h: 0.3,
+      text: "A 3x3 layout for numbered ideas, features, or milestones.",
+      fontSize: 12,
+      color: MUTED,
+      fontFace: SANS,
+    },
+    {
+      kind: "grid",
+      x: 1.25,
+      y: 1.85,
+      w: 7.58,
+      h: 3.0,
+      columns: 3,
+      items: Array.from({ length: 9 }, (_, index) =>
+        String(index + 1).padStart(2, "0"),
+      ),
+      fontFace: SANS,
+      numberFontSize: 24,
+      labelFontSize: 7,
+      numberColor: BLUE_DK,
+      labelColor: MUTED,
+      fill: PAPER,
+      borderColor: "DDE5F0",
+      gap: 0.18,
+      rx: 0.08,
+    },
+    ...footer(7, TOTAL, false),
+  ],
+};
+
+// ── Slide 8: Legacy / closing ───────────────────────────────────────────
 const slide6Legacy: Slide = {
   title: "Legacy",
   background: OFF_WHITE,
@@ -963,7 +1045,7 @@ const slide6Legacy: Slide = {
       fontFace: SANS,
     },
 
-    ...footer(7, TOTAL, false),
+    ...footer(8, TOTAL, false),
   ],
 };
 
@@ -976,6 +1058,7 @@ export const messiDeck: Deck = {
     slide4Stats,
     slide5WorldCup,
     slide6Table,
+    slide7Grid,
     slide6Legacy,
   ],
 };

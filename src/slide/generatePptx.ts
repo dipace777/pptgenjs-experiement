@@ -274,6 +274,65 @@ function addTableElement(
   });
 }
 
+function addGridElement(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: Extract<SlideElement, { kind: "grid" }>,
+): void {
+  const columns = Math.max(1, el.columns);
+  const rows = Math.max(1, Math.ceil(el.items.length / columns));
+  const gap = el.gap ?? 0.12;
+  const cellW = (el.w - gap * (columns - 1)) / columns;
+  const cellH = (el.h - gap * (rows - 1)) / rows;
+
+  el.items.forEach((item, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    const x = el.x + col * (cellW + gap);
+    const y = el.y + row * (cellH + gap);
+    s.addShape(pptx.ShapeType.roundRect, {
+      x,
+      y,
+      w: cellW,
+      h: cellH,
+      rectRadius: Math.min(0.2, (el.rx ?? 0.08) / Math.min(cellW, cellH)),
+      fill: {
+        color: el.fill,
+        transparency: transparencyPct(el.opacity ?? undefined),
+      },
+      line: { color: el.borderColor, width: 0.75 },
+    });
+    s.addText(item, {
+      x,
+      y: y + cellH * 0.16,
+      w: cellW,
+      h: cellH * 0.46,
+      fontFace: el.fontFace ?? "Arial",
+      fontSize: el.numberFontSize,
+      bold: true,
+      color: el.numberColor,
+      align: "center",
+      valign: "middle",
+      margin: 0,
+      fit: "shrink",
+    });
+    s.addText("PLACEHOLDER", {
+      x: x + cellW * 0.1,
+      y: y + cellH * 0.68,
+      w: cellW * 0.8,
+      h: cellH * 0.18,
+      fontFace: el.fontFace ?? "Arial",
+      fontSize: el.labelFontSize,
+      bold: true,
+      color: el.labelColor,
+      align: "center",
+      margin: 0,
+      fit: "shrink",
+      charSpacing: 1.7,
+    });
+  });
+}
+
 function addElement(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
@@ -358,6 +417,11 @@ function addElement(
 
   if (el.kind === "table") {
     addTableElement(pptx, s, el);
+    return;
+  }
+
+  if (el.kind === "grid") {
+    addGridElement(pptx, s, el);
     return;
   }
 

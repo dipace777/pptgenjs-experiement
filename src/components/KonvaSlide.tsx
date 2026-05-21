@@ -343,6 +343,84 @@ function KonvaElement({
     );
   }
 
+  if (element.kind === "grid") {
+    const columns = Math.max(1, element.columns);
+    const rows = Math.max(1, Math.ceil(element.items.length / columns));
+    const gap = (element.gap ?? 0.12) * scale;
+    const cellW = (width - gap * (columns - 1)) / columns;
+    const cellH = (height - gap * (rows - 1)) / rows;
+    const numberFontSize =
+      element.numberFontSize * PT_TO_PX * (scale / PX_PER_IN);
+    const labelFontSize =
+      element.labelFontSize * PT_TO_PX * (scale / PX_PER_IN);
+
+    return (
+      <Group
+        ref={setRef}
+        name={`element-${index}`}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        opacity={element.opacity ?? 1}
+        {...events}
+      >
+        {element.items.map((item, itemIndex) => {
+          const col = itemIndex % columns;
+          const row = Math.floor(itemIndex / columns);
+          const cellX = col * (cellW + gap);
+          const cellY = row * (cellH + gap);
+          return (
+            <Group key={`${item}-${itemIndex}`} x={cellX} y={cellY}>
+              <Rect
+                width={cellW}
+                height={cellH}
+                fill={withHash(element.fill)}
+                stroke={withHash(element.borderColor)}
+                strokeWidth={1}
+                cornerRadius={(element.rx ?? 0.08) * scale}
+              />
+              <Text
+                x={0}
+                y={cellH * 0.16}
+                width={cellW}
+                height={cellH * 0.46}
+                text={item}
+                fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
+                fontSize={numberFontSize}
+                fontStyle="bold"
+                fill={withHash(element.numberColor)}
+                align="center"
+                verticalAlign="middle"
+              />
+              <Text
+                x={cellW * 0.1}
+                y={cellH * 0.68}
+                width={cellW * 0.8}
+                height={cellH * 0.18}
+                text="PLACEHOLDER"
+                fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
+                fontSize={labelFontSize}
+                fontStyle="bold"
+                fill={withHash(element.labelColor)}
+                align="center"
+              />
+            </Group>
+          );
+        })}
+        {selected ? (
+          <Rect
+            width={width}
+            height={height}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            dash={[6, 4]}
+          />
+        ) : null}
+      </Group>
+    );
+  }
+
   const fontSize =
     element.kind === "bullets"
       ? element.fontSize * PT_TO_PX * (scale / PX_PER_IN)

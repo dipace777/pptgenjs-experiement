@@ -236,6 +236,117 @@ export function Inspector({
         </>
       ) : null}
 
+      {element.kind === "grid" ? (
+        <>
+          <Field label="Items">
+            <textarea
+              value={element.items.join("\n")}
+              rows={7}
+              onChange={(event) => {
+                const items = event.target.value
+                  .split("\n")
+                  .map((item) => item.trim())
+                  .filter(Boolean)
+                  .slice(0, 12);
+                if (items.length > 0) onReplace({ ...element, items });
+              }}
+              style={styles.textarea}
+            />
+          </Field>
+          <div style={styles.grid2}>
+            <button
+              type="button"
+              onClick={() =>
+                onReplace({
+                  ...element,
+                  items: [
+                    ...element.items,
+                    String(element.items.length + 1).padStart(2, "0"),
+                  ].slice(0, 12),
+                })
+              }
+              style={styles.secondaryButton}
+            >
+              + Item
+            </button>
+            <button
+              type="button"
+              disabled={element.items.length <= 1}
+              onClick={() =>
+                onReplace({
+                  ...element,
+                  items: element.items.slice(0, -1),
+                })
+              }
+              style={{
+                ...styles.secondaryButton,
+                opacity: element.items.length <= 1 ? 0.45 : 1,
+                cursor: element.items.length <= 1 ? "not-allowed" : "pointer",
+              }}
+            >
+              Remove Last
+            </button>
+          </div>
+          <div style={styles.grid2}>
+            <NumberField
+              label="Columns"
+              value={element.columns}
+              min={1}
+              max={4}
+              step={1}
+              onChange={(columns) =>
+                onPatch({ columns: Math.max(1, Math.min(4, Math.round(columns))) })
+              }
+            />
+            <NumberField
+              label="Gap"
+              value={element.gap ?? 0.12}
+              max={0.4}
+              step={0.02}
+              onChange={(gap) => onPatch({ gap })}
+            />
+          </div>
+          <div style={styles.grid2}>
+            <NumberField
+              label="Number font"
+              value={element.numberFontSize}
+              step={1}
+              onChange={(numberFontSize) => onPatch({ numberFontSize })}
+            />
+            <NumberField
+              label="Label font"
+              value={element.labelFontSize}
+              step={1}
+              onChange={(labelFontSize) => onPatch({ labelFontSize })}
+            />
+          </div>
+          <div style={styles.grid2}>
+            <ColorField
+              label="Number"
+              value={element.numberColor}
+              onChange={(numberColor) => onPatch({ numberColor })}
+            />
+            <ColorField
+              label="Label"
+              value={element.labelColor}
+              onChange={(labelColor) => onPatch({ labelColor })}
+            />
+          </div>
+          <div style={styles.grid2}>
+            <ColorField
+              label="Fill"
+              value={element.fill}
+              onChange={(fill) => onPatch({ fill })}
+            />
+            <ColorField
+              label="Border"
+              value={element.borderColor}
+              onChange={(borderColor) => onPatch({ borderColor })}
+            />
+          </div>
+        </>
+      ) : null}
+
       {element.kind === "rect" || element.kind === "ellipse" ? (
         <div style={styles.grid2}>
           <ColorField

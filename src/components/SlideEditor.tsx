@@ -119,6 +119,26 @@ export function SlideEditor() {
                 borderColor: "DDE5F0",
                 fill: "FFFFFF",
               }
+          : kind === "grid"
+            ? {
+                ...base,
+                w: 5.2,
+                h: 2.2,
+                kind,
+                columns: 3,
+                items: Array.from({ length: 9 }, (_, index) =>
+                  String(index + 1).padStart(2, "0"),
+                ),
+                fontFace: "Arial",
+                numberFontSize: 24,
+                labelFontSize: 7,
+                numberColor: "3E78B2",
+                labelColor: "6A7894",
+                fill: "FFFFFF",
+                borderColor: "DDE5F0",
+                gap: 0.14,
+                rx: 0.08,
+              }
           : kind === "bullets"
             ? {
                 ...base,
@@ -396,7 +416,7 @@ export function SlideEditor() {
             ) : null}
 
             <div style={styles.addGrid}>
-              {(["text", "rect", "ellipse", "bullets", "chart", "table"] as const).map((kind) => (
+              {(["text", "rect", "ellipse", "bullets", "chart", "table", "grid"] as const).map((kind) => (
                 <button
                   key={kind}
                   type="button"
