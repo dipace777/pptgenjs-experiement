@@ -1,10 +1,7 @@
 import type Konva from "konva";
 import { useAtomValue, useSetAtom } from "jotai";
-import { jsPDF } from "jspdf";
-import PptxGenJS from "pptxgenjs";
 import { useRef, useState } from "react";
 import { SLIDE_H, SLIDE_W } from "../../../lib/slide-schema";
-import { generatePptx } from "../../../slide/generatePptx";
 import { filenameFromTitle } from "../editorUtils";
 import {
   deckAtom,
@@ -26,10 +23,12 @@ export function useDeckExport() {
   const [exportingType, setExportingType] = useState<"pptx" | "pdf" | null>(null);
 
   const handleNativeExport = async () => {
+    const { generatePptx } = await import("../../../slide/generatePptx");
     await generatePptx(deck, filenameFromTitle(deck.title));
   };
 
   const handleRasterExport = async () => {
+    const { default: PptxGenJS } = await import("pptxgenjs");
     const pptx = new PptxGenJS();
     pptx.defineLayout({ name: "KONVA_16X9", width: SLIDE_W, height: SLIDE_H });
     pptx.layout = "KONVA_16X9";
@@ -72,6 +71,7 @@ export function useDeckExport() {
     setExportingType("pdf");
     try {
       await waitForPaint();
+      const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "in",
