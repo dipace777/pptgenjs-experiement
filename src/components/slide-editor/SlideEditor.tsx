@@ -19,6 +19,9 @@ import {
   BulletsInlineEditor,
   BulletsToolbar,
   ImageToolbar,
+  ShapeToolbar,
+  TableInlineEditor,
+  TableToolbar,
   TextInlineEditor,
   TextToolbar,
 } from "./inline";
@@ -33,6 +36,9 @@ import {
   duplicateSelectedAtom,
   editingBulletsDraftAtom,
   editingBulletsIndexAtom,
+  editingTableDraftAtom,
+  editingTableElementAtom,
+  editingTableIndexAtom,
   editingTextIndexAtom,
   drawerElementAtom,
   editingBulletsElementAtom,
@@ -48,6 +54,9 @@ import {
   selectedIndexAtom,
   selectedImageElementAtom,
   selectedItemsAtom,
+  selectedShapeElementAtom,
+  selectedTableCellAtom,
+  selectedTableElementAtom,
   selectedTextElementAtom,
   setSelectionAtom,
   undoAtom,
@@ -75,9 +84,13 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const selectedTextElement = useAtomValue(selectedTextElementAtom);
   const selectedBulletsElement = useAtomValue(selectedBulletsElementAtom);
   const selectedImageElement = useAtomValue(selectedImageElementAtom);
+  const selectedShapeElement = useAtomValue(selectedShapeElementAtom);
+  const selectedTableElement = useAtomValue(selectedTableElementAtom);
+  const [selectedTableCell, setSelectedTableCell] = useAtom(selectedTableCellAtom);
   const drawerElement = useAtomValue(drawerElementAtom);
   const editingTextElement = useAtomValue(editingTextElementAtom);
   const editingBulletsElement = useAtomValue(editingBulletsElementAtom);
+  const editingTableElement = useAtomValue(editingTableElementAtom);
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
   const [editingTextIndex, setEditingTextIndex] = useAtom(editingTextIndexAtom);
@@ -87,6 +100,8 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const [editingBulletsDraft, setEditingBulletsDraft] = useAtom(
     editingBulletsDraftAtom,
   );
+  const [editingTableIndex, setEditingTableIndex] = useAtom(editingTableIndexAtom);
+  const [editingTableDraft, setEditingTableDraft] = useAtom(editingTableDraftAtom);
   const isExporting = useAtomValue(isExportingAtom);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const imageUploadTargetRef = useRef<number | null>(null);
@@ -304,6 +319,27 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   onUpload={openImageUpload}
                 />
               ) : null}
+              {selectedShapeElement ? (
+                <ShapeToolbar
+                  element={selectedShapeElement}
+                  index={selectedIndex}
+                  scale={stageScale}
+                  onChange={(index, element) => updateElement({ index, element })}
+                />
+              ) : null}
+              {selectedTableElement ? (
+                <TableToolbar
+                  element={selectedTableElement}
+                  index={selectedIndex}
+                  scale={stageScale}
+                  selectedCell={
+                    selectedTableCell?.elementIndex === selectedIndex
+                      ? selectedTableCell
+                      : null
+                  }
+                  onChange={(index, element) => updateElement({ index, element })}
+                />
+              ) : null}
               {editingTextElement && editingTextIndex != null ? (
                 <TextInlineEditor
                   element={editingTextElement}
@@ -327,6 +363,20 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   }}
                 />
               ) : null}
+              {editingTableElement && editingTableIndex != null ? (
+                <TableInlineEditor
+                  element={editingTableElement}
+                  index={editingTableIndex}
+                  scale={stageScale}
+                  draft={editingTableDraft}
+                  onDraftChange={setEditingTableDraft}
+                  onChange={(index, element) => updateElement({ index, element })}
+                  onClose={() => {
+                    setEditingTableIndex(null);
+                    setEditingTableDraft("");
+                  }}
+                />
+              ) : null}
               <KonvaSlide
                 slide={activeSlide}
                 width={stageWidth}
@@ -338,9 +388,13 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   selectElement({ index, additive })
                 }
                 onSelectMany={selectElements}
+                onSelectTableCell={(index, rowIndex, colIndex) => {
+                  setSelectedTableCell({ elementIndex: index, rowIndex, colIndex });
+                }}
                 onDelete={deleteSelected}
                 onEditText={(index) => {
                   setEditingBulletsIndex(null);
+                  setEditingTableIndex(null);
                   setEditingTextIndex(index);
                 }}
                 onEditBullets={(index) => {
@@ -348,12 +402,25 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   setEditingBulletsDraft(
                     element?.kind === "bullets" ? element.items.join("\n") : "",
                   );
+                  setEditingTableIndex(null);
                   setEditingTextIndex(null);
                   setEditingBulletsIndex(index);
                 }}
                 onEditImage={openImageUpload}
+                onEditTable={(index) => {
+                  const element = activeSlide.elements[index];
+                  setEditingTableDraft(
+                    element?.kind === "table"
+                      ? element.rows.map((row) => row.join(", ")).join("\n")
+                      : "",
+                  );
+                  setEditingTextIndex(null);
+                  setEditingBulletsIndex(null);
+                  setEditingTableIndex(index);
+                }}
                 editingTextIndex={editingTextIndex}
                 editingBulletsIndex={editingBulletsIndex}
+                editingTableIndex={editingTableIndex}
                 onChange={(index, element) => updateElement({ index, element })}
                 onChangeMany={updateElements}
               />

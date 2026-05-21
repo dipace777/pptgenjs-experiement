@@ -8,6 +8,9 @@ export type ExportMode = "native" | "raster";
 export type TextSlideElement = Extract<SlideElement, { kind: "text" }>;
 export type BulletsSlideElement = Extract<SlideElement, { kind: "bullets" }>;
 export type ImageSlideElement = Extract<SlideElement, { kind: "image" }>;
+export type ShapeSlideElement = Extract<SlideElement, { kind: "rect" | "ellipse" }>;
+export type TableSlideElement = Extract<SlideElement, { kind: "table" }>;
+export type TableCellSelection = { elementIndex: number; rowIndex: number; colIndex: number };
 
 // --- Primitive atoms ----------------------------------------------------
 
@@ -23,6 +26,9 @@ export const isExportingAtom = atom(false);
 export const editingTextIndexAtom = atom<number | null>(null);
 export const editingBulletsIndexAtom = atom<number | null>(null);
 export const editingBulletsDraftAtom = atom("");
+export const editingTableIndexAtom = atom<number | null>(null);
+export const editingTableDraftAtom = atom("");
+export const selectedTableCellAtom = atom<TableCellSelection | null>(null);
 
 // --- Derived atoms ------------------------------------------------------
 
@@ -64,12 +70,25 @@ export const selectedImageElementAtom = atom<ImageSlideElement | null>((get) => 
   return element?.kind === "image" ? element : null;
 });
 
+export const selectedShapeElementAtom = atom<ShapeSlideElement | null>((get) => {
+  const element = get(selectedElementAtom);
+  return element?.kind === "rect" || element?.kind === "ellipse" ? element : null;
+});
+
+export const selectedTableElementAtom = atom<TableSlideElement | null>((get) => {
+  const element = get(selectedElementAtom);
+  return element?.kind === "table" ? element : null;
+});
+
 export const drawerElementAtom = atom<SlideElement | null>((get) => {
   const element = get(selectedElementAtom);
   if (
     element?.kind === "text" ||
     element?.kind === "bullets" ||
-    element?.kind === "image"
+    element?.kind === "image" ||
+    element?.kind === "rect" ||
+    element?.kind === "ellipse" ||
+    element?.kind === "table"
   ) {
     return null;
   }
@@ -88,4 +107,11 @@ export const editingBulletsElementAtom = atom<BulletsSlideElement | null>((get) 
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
   return element?.kind === "bullets" ? element : null;
+});
+
+export const editingTableElementAtom = atom<TableSlideElement | null>((get) => {
+  const index = get(editingTableIndexAtom);
+  if (index == null) return null;
+  const element = get(activeSlideAtom).elements[index];
+  return element?.kind === "table" ? element : null;
 });

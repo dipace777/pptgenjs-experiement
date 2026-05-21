@@ -636,52 +636,6 @@ const slide5WorldCup: Slide = {
   ],
 };
 
-// ── Slide 6: Competition table ──────────────────────────────────────────
-function tableRow(
-  y: number,
-  values: [string, string, string, string],
-  header = false,
-): SlideElement[] {
-  const x = 0.8;
-  const h = header ? 0.46 : 0.52;
-  const widths = [3.0, 1.55, 1.55, 1.55];
-  const starts = [
-    x,
-    x + widths[0],
-    x + widths[0] + widths[1],
-    x + widths[0] + widths[1] + widths[2],
-  ];
-  const fill = header ? NAVY : PAPER;
-  const color = header ? "FFFFFF" : INK;
-
-  return [
-    {
-      kind: "rect",
-      x,
-      y,
-      w: widths.reduce((sum, width) => sum + width, 0),
-      h,
-      fill,
-      line: { color: header ? NAVY : "DDE5F0", width: 0.75 },
-      rx: header ? 0.06 : 0,
-    },
-    ...values.map((value, index) => ({
-      kind: "text" as const,
-      x: starts[index] + 0.14,
-      y: y + 0.13,
-      w: widths[index] - 0.28,
-      h: 0.22,
-      text: value,
-      fontSize: header ? 9 : 11,
-      bold: header || index === 0,
-      color,
-      charSpacing: header ? 160 : undefined,
-      align: index === 0 ? "left" as const : "center" as const,
-      fontFace: SANS,
-    })),
-  ];
-}
-
 const slide6Table: Slide = {
   title: "Competition Table",
   background: OFF_WHITE,
@@ -722,13 +676,28 @@ const slide6Table: Slide = {
       color: MUTED,
       fontFace: SANS,
     },
-    { kind: "rect", x: 0.8, y: 2.05, w: 7.65, h: 2.6, fill: PAPER, rx: 0.08 },
-    ...tableRow(2.05, ["Competition", "Apps", "Goals", "Assists"], true),
-    ...tableRow(2.55, ["La Liga", "520", "474", "216"]),
-    ...tableRow(3.07, ["UEFA Champions League", "163", "129", "40"]),
-    ...tableRow(3.59, ["Argentina", "190+", "110+", "60+"]),
-    ...tableRow(4.11, ["FIFA World Cup", "26", "13", "8"]),
-    { kind: "rect", x: 0.8, y: 4.63, w: 7.65, h: 0.04, fill: GOLD },
+    {
+      kind: "table",
+      x: 0.8,
+      y: 2.05,
+      w: 7.65,
+      h: 2.6,
+      rows: [
+        ["Competition", "Apps", "Goals", "Assists"],
+        ["La Liga", "520", "474", "216"],
+        ["UEFA Champions League", "163", "129", "40"],
+        ["Argentina", "190+", "110+", "60+"],
+        ["FIFA World Cup", "26", "13", "8"],
+      ],
+      fontFace: SANS,
+      fontSize: 11,
+      textColor: INK,
+      headerFill: NAVY,
+      headerTextColor: "FFFFFF",
+      borderColor: "DDE5F0",
+      fill: PAPER,
+      opacity: 1,
+    },
     {
       kind: "text",
       x: 8.65,

@@ -8,6 +8,7 @@ export function TableElement({
   index,
   scale,
   selected,
+  editing,
   setRef,
   events,
 }: ElementCommonProps & { element: TableEl }) {
@@ -40,7 +41,7 @@ export function TableElement({
         strokeWidth={selected ? strokeWidth : 1}
         cornerRadius={4}
       />
-      {rows.map((row, rowIndex) =>
+      {editing ? null : rows.map((row, rowIndex) =>
         Array.from({ length: cols }).map((_, colIndex) => {
           const isHeader = rowIndex === 0;
           return (
@@ -53,6 +54,15 @@ export function TableElement({
                 fill={isHeader ? headerFill : fill}
                 stroke={borderColor}
                 strokeWidth={1}
+                onClick={(event) => {
+                  event.cancelBubble = true;
+                  events.onClick(event);
+                  events.onTableCellClick?.(rowIndex, colIndex);
+                }}
+                onTap={() => {
+                  events.onTap();
+                  events.onTableCellClick?.(rowIndex, colIndex);
+                }}
               />
               <Text
                 x={colIndex * colW + 8 * (scale / PX_PER_IN)}
@@ -66,6 +76,7 @@ export function TableElement({
                 fontStyle={isHeader ? "bold" : "normal"}
                 align={colIndex === 0 ? "left" : "center"}
                 verticalAlign="middle"
+                listening={false}
               />
             </Group>
           );

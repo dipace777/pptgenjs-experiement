@@ -6,6 +6,7 @@ export type ElementEvents = {
   draggable: boolean;
   onClick: (event: Konva.KonvaEventObject<MouseEvent>) => void;
   onDblClick?: (event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onTableCellClick?: (rowIndex: number, colIndex: number) => void;
   onTap: () => void;
   onDragStart: () => void;
   onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;

@@ -19,11 +19,14 @@ export function KonvaSlide({
   onEditText,
   onEditBullets,
   onEditImage,
+  onEditTable,
+  onSelectTableCell,
   onChange,
   onChangeMany,
   stageRef,
   editingTextIndex,
   editingBulletsIndex,
+  editingTableIndex,
 }: {
   slide: Slide;
   width: number;
@@ -37,11 +40,14 @@ export function KonvaSlide({
   onEditText?: (index: number) => void;
   onEditBullets?: (index: number) => void;
   onEditImage?: (index: number) => void;
+  onEditTable?: (index: number) => void;
+  onSelectTableCell?: (index: number, rowIndex: number, colIndex: number) => void;
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
   editingTextIndex?: number | null;
   editingBulletsIndex?: number | null;
+  editingTableIndex?: number | null;
 }) {
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const nodeRefs = useRef<Array<Konva.Node | null>>([]);
@@ -104,12 +110,22 @@ export function KonvaSlide({
     onClick: (event: Konva.KonvaEventObject<MouseEvent>) =>
       onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey),
     onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
-      if (el.kind !== "text" && el.kind !== "bullets" && el.kind !== "image") return;
+      if (
+        el.kind !== "text" &&
+        el.kind !== "bullets" &&
+        el.kind !== "image" &&
+        el.kind !== "table"
+      ) return;
       event.cancelBubble = true;
       onSelect?.(index);
       if (el.kind === "text") onEditText?.(index);
       if (el.kind === "bullets") onEditBullets?.(index);
       if (el.kind === "image") onEditImage?.(index);
+      if (el.kind === "table") onEditTable?.(index);
+    },
+    onTableCellClick: (rowIndex: number, colIndex: number) => {
+      if (el.kind !== "table") return;
+      onSelectTableCell?.(index, rowIndex, colIndex);
     },
     onTap: () => onSelect?.(index),
     onDragStart: () => {
@@ -334,7 +350,11 @@ export function KonvaSlide({
             index={index}
             scale={scale}
             selected={selectedIndexes.includes(index)}
-            editing={editingTextIndex === index || editingBulletsIndex === index}
+            editing={
+              editingTextIndex === index ||
+              editingBulletsIndex === index ||
+              editingTableIndex === index
+            }
             setRef={(node) => {
               nodeRefs.current[index] = node;
             }}
