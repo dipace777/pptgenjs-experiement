@@ -1,5 +1,5 @@
 import Konva from "konva";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Arc, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from "../slide/spec";
 import { PT_TO_PX, PX_PER_IN, clamp, withHash } from "./editorUtils";
@@ -10,8 +10,10 @@ export function KonvaSlide({
   height,
   interactive,
   selected,
+  selectedItems,
   onSelect,
   onChange,
+  onChangeMany,
   stageRef,
 }: {
   slide: Slide;
@@ -19,28 +21,97 @@ export function KonvaSlide({
   height: number;
   interactive: boolean;
   selected?: number;
-  onSelect?: (index: number) => void;
+  selectedItems?: number[];
+  onSelect?: (index: number, additive?: boolean) => void;
   onChange?: (index: number, element: SlideElement) => void;
+  onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
 }) {
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const nodeRefs = useRef<Array<Konva.Node | null>>([]);
+  const groupDragRef = useRef<{
+    index: number;
+    nodePositions: Array<{ index: number; x: number; y: number }>;
+    elements: Array<{ index: number; element: SlideElement }>;
+  } | null>(null);
   const scale = width / SLIDE_W;
+  const selectedIndexes = useMemo(
+    () =>
+      selectedItems && selectedItems.length > 0
+        ? selectedItems
+        : selected != null && selected >= 0
+          ? [selected]
+          : [],
+    [selected, selectedItems],
+  );
 
   useEffect(() => {
-    if (!interactive || selected == null) return;
+    if (!interactive) return;
     const transformer = transformerRef.current;
-    const node = nodeRefs.current[selected];
-    if (!transformer || !node) return;
-    transformer.nodes([node]);
+    if (!transformer) return;
+    const nodes = selectedIndexes
+      .map((index) => nodeRefs.current[index])
+      .filter((node): node is Konva.Node => Boolean(node));
+    transformer.nodes(nodes);
     transformer.getLayer()?.batchDraw();
-  }, [interactive, selected, slide]);
+  }, [interactive, selectedIndexes, slide]);
 
   const commonEvents = (index: number, el: SlideElement) => ({
     draggable: interactive,
-    onClick: () => onSelect?.(index),
+    onClick: (event: Konva.KonvaEventObject<MouseEvent>) =>
+      onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey),
     onTap: () => onSelect?.(index),
+    onDragStart: () => {
+      if (!selectedIndexes.includes(index) || selectedIndexes.length <= 1) {
+        groupDragRef.current = null;
+        return;
+      }
+      groupDragRef.current = {
+        index,
+        nodePositions: selectedIndexes.flatMap((selectedIndex) => {
+          const node = nodeRefs.current[selectedIndex];
+          return node ? [{ index: selectedIndex, x: node.x(), y: node.y() }] : [];
+        }),
+        elements: selectedIndexes.map((selectedIndex) => ({
+          index: selectedIndex,
+          element: slide.elements[selectedIndex],
+        })),
+      };
+    },
+    onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => {
+      const groupDrag = groupDragRef.current;
+      if (!groupDrag || groupDrag.index !== index) return;
+      const origin = groupDrag.nodePositions.find((item) => item.index === index);
+      if (!origin) return;
+      const dx = event.target.x() - origin.x;
+      const dy = event.target.y() - origin.y;
+      groupDrag.nodePositions.forEach((item) => {
+        if (item.index === index) return;
+        const node = nodeRefs.current[item.index];
+        node?.position({ x: item.x + dx, y: item.y + dy });
+      });
+      transformerRef.current?.getLayer()?.batchDraw();
+    },
     onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
+      const groupDrag = groupDragRef.current;
+      if (groupDrag && groupDrag.index === index) {
+        const origin = groupDrag.nodePositions.find((item) => item.index === index);
+        if (!origin) return;
+        const dx = (event.target.x() - origin.x) / scale;
+        const dy = (event.target.y() - origin.y) / scale;
+        onChangeMany?.(
+          groupDrag.elements.map(({ index: selectedIndex, element }) => ({
+            index: selectedIndex,
+            element: {
+              ...element,
+              x: clamp(element.x + dx, 0, SLIDE_W - element.w),
+              y: clamp(element.y + dy, 0, SLIDE_H - element.h),
+            } as SlideElement,
+          })),
+        );
+        groupDragRef.current = null;
+        return;
+      }
       const rawX = event.target.x() / scale;
       const rawY = event.target.y() / scale;
       const nextX = el.kind === "ellipse" ? rawX - el.w / 2 : rawX;
@@ -103,15 +174,15 @@ export function KonvaSlide({
             key={index}
             element={el}
             index={index}
-            scale={scale}
-            selected={selected === index}
+          scale={scale}
+            selected={selectedIndexes.includes(index)}
             setRef={(node) => {
               nodeRefs.current[index] = node;
             }}
             events={commonEvents(index, el)}
           />
         ))}
-        {interactive && selected != null && selected >= 0 ? (
+        {interactive && selectedIndexes.length > 0 ? (
           <Transformer
             ref={transformerRef}
             rotateEnabled={false}
@@ -142,8 +213,10 @@ function KonvaElement({
   setRef: (node: Konva.Node | null) => void;
   events: {
     draggable: boolean;
-    onClick: () => void;
+    onClick: (event: Konva.KonvaEventObject<MouseEvent>) => void;
     onTap: () => void;
+    onDragStart: () => void;
+    onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;
     onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
     onTransformEnd: (event: Konva.KonvaEventObject<Event>) => void;
   };

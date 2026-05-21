@@ -22,6 +22,7 @@ export function SlideEditor() {
   const [deck, setDeck] = useState<Deck>(messiDeck);
   const [active, setActive] = useState(0);
   const [selected, setSelected] = useState(0);
+  const [selectedItems, setSelectedItems] = useState<number[]>([0]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [exportMode, setExportMode] = useState<"native" | "raster">("native");
   const [isExporting, setIsExporting] = useState(false);
@@ -69,9 +70,41 @@ export function SlideEditor() {
     }));
   };
 
+  const updateElements = (updates: Array<{ index: number; element: SlideElement }>) => {
+    updateActiveSlide((slide) => ({
+      ...slide,
+      elements: slide.elements.map((el, i) => {
+        const update = updates.find((item) => item.index === i);
+        return update ? update.element : el;
+      }),
+    }));
+  };
+
   const patchSelected = (patch: Partial<SlideElement>) => {
     if (!selectedElement) return;
     updateElement(selectedIndex, { ...selectedElement, ...patch } as SlideElement);
+  };
+
+  const selectElement = (index: number, additive = false) => {
+    if (index < 0) {
+      setSelected(-1);
+      setSelectedItems([]);
+      return;
+    }
+
+    if (!additive) {
+      setSelected(index);
+      setSelectedItems([index]);
+      return;
+    }
+
+    setSelectedItems((current) => {
+      const next = current.includes(index)
+        ? current.filter((item) => item !== index)
+        : [...current, index];
+      setSelected(next.at(-1) ?? -1);
+      return next;
+    });
   };
 
   const addElement = (kind: SlideElement["kind"]) => {
@@ -164,6 +197,7 @@ export function SlideEditor() {
               };
     updateActiveSlide((slide) => {
       setSelected(slide.elements.length);
+      setSelectedItems([slide.elements.length]);
       setEditorOpen(true);
       return { ...slide, elements: [...slide.elements, next] };
     });
@@ -178,6 +212,7 @@ export function SlideEditor() {
     } as SlideElement;
     updateActiveSlide((slide) => {
       setSelected(selectedIndex + 1);
+      setSelectedItems([selectedIndex + 1]);
       return {
         ...slide,
         elements: [
@@ -195,7 +230,11 @@ export function SlideEditor() {
       ...slide,
       elements: slide.elements.filter((_, index) => index !== selectedIndex),
     }));
-    setSelected((index) => Math.max(0, index - 1));
+    setSelected((index) => {
+      const next = Math.max(0, index - 1);
+      setSelectedItems([next]);
+      return next;
+    });
   };
 
   const handleNativeExport = async () => {
@@ -261,6 +300,7 @@ export function SlideEditor() {
               onClick={() => {
                 setActive(index);
                 setSelected(0);
+                setSelectedItems([0]);
               }}
               style={{
                 ...styles.thumbRow,
@@ -333,8 +373,10 @@ export function SlideEditor() {
                 height={stageWidth * (SLIDE_H / SLIDE_W)}
                 interactive
                 selected={selectedIndex}
-                onSelect={setSelected}
+                selectedItems={selectedItems}
+                onSelect={selectElement}
                 onChange={updateElement}
+                onChangeMany={updateElements}
               />
             </div>
           </div>
