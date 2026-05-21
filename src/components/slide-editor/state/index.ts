@@ -24,3 +24,4 @@ export {
   deleteSelectedAtom,
 } from "./actions";
 export { createDefaultElement } from "./createDefaultElement";
+export { undoAtom, redoAtom, canUndoAtom, canRedoAtom } from "./history";

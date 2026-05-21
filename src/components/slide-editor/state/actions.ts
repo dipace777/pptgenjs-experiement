@@ -16,6 +16,7 @@ import {
   selectedItemsAtom,
 } from "./atoms";
 import { createDefaultElement } from "./createDefaultElement";
+import { pushHistoryAtom } from "./history";
 
 // --- Selection actions --------------------------------------------------
 
@@ -60,6 +61,7 @@ export const updateActiveSlideAtom = atom(
   null,
   (get, set, mutate: (slide: Slide) => void) => {
     const activeIdx = get(activeSlideIndexAtom);
+    set(pushHistoryAtom, { tag: `updateActiveSlide:${activeIdx}` });
     set(deckAtom, (draft) => {
       mutate(draft.slides[activeIdx]);
     });
@@ -70,6 +72,7 @@ export const updateElementAtom = atom(
   null,
   (get, set, payload: { index: number; element: SlideElement }) => {
     const activeIdx = get(activeSlideIndexAtom);
+    set(pushHistoryAtom, { tag: `updateElement:${activeIdx}:${payload.index}` });
     set(deckAtom, (draft) => {
       draft.slides[activeIdx].elements[payload.index] = payload.element;
     });
@@ -80,6 +83,7 @@ export const updateElementsAtom = atom(
   null,
   (get, set, updates: Array<{ index: number; element: SlideElement }>) => {
     const activeIdx = get(activeSlideIndexAtom);
+    set(pushHistoryAtom, { tag: `updateElements:${activeIdx}` });
     set(deckAtom, (draft) => {
       const elements = draft.slides[activeIdx].elements;
       for (const { index, element } of updates) {
@@ -97,6 +101,7 @@ export const patchSelectedAtom = atom(
     const idx = get(selectedIndexAtom);
     const activeIdx = get(activeSlideIndexAtom);
     if (idx < 0) return;
+    set(pushHistoryAtom, { tag: `patchSelected:${activeIdx}:${idx}` });
     set(deckAtom, (draft) => {
       const target = draft.slides[activeIdx].elements[idx];
       if (!target) return;
@@ -113,6 +118,7 @@ export const addElementAtom = atom(
     if (!slide) return;
     const newIndex = slide.elements.length;
     const activeIdx = get(activeSlideIndexAtom);
+    set(pushHistoryAtom);
     set(deckAtom, (draft) => {
       draft.slides[activeIdx].elements.push(next);
     });
@@ -132,6 +138,7 @@ export const duplicateSelectedAtom = atom(null, (get, set) => {
     y: clamp(selected.y + 0.2, 0, SLIDE_H - selected.h),
   } as SlideElement;
   const activeIdx = get(activeSlideIndexAtom);
+  set(pushHistoryAtom);
   set(deckAtom, (draft) => {
     draft.slides[activeIdx].elements.splice(idx + 1, 0, copy);
   });
@@ -148,6 +155,7 @@ export const deleteSelectedAtom = atom(null, (get, set) => {
     .sort((a, b) => b - a);
   if (!slide || indexes.length === 0) return;
   const activeIdx = get(activeSlideIndexAtom);
+  set(pushHistoryAtom);
   set(deckAtom, (draft) => {
     for (const index of indexes) {
       draft.slides[activeIdx].elements.splice(index, 1);

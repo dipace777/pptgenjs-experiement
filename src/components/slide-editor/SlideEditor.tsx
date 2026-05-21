@@ -1,3 +1,4 @@
+import { useHotkey } from "@tanstack/react-hotkeys";
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -29,12 +30,14 @@ import {
   exportModeAtom,
   isExportingAtom,
   patchSelectedAtom,
+  redoAtom,
   selectElementAtom,
   selectElementsAtom,
   selectedElementAtom,
   selectedIndexAtom,
   selectedItemsAtom,
   setSelectionAtom,
+  undoAtom,
   updateActiveSlideAtom,
   updateElementAtom,
   updateElementsAtom,
@@ -76,6 +79,21 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const addElement = useSetAtom(addElementAtom);
   const duplicateSelected = useSetAtom(duplicateSelectedAtom);
   const deleteSelected = useSetAtom(deleteSelectedAtom);
+  const undo = useSetAtom(undoAtom);
+  const redo = useSetAtom(redoAtom);
+
+  useHotkey("Mod+Z", (event) => {
+    event.preventDefault();
+    undo();
+  });
+  useHotkey("Mod+Shift+Z", (event) => {
+    event.preventDefault();
+    redo();
+  });
+  useHotkey("Mod+Y", (event) => {
+    event.preventDefault();
+    redo();
+  });
 
   const { stageWidth, stageWrapRef } = useStageSize();
   const { exportStageRefs, exportingType, handleExport, handlePdfExport } = useDeckExport();
