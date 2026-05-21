@@ -1,15 +1,20 @@
 import type Konva from "konva";
+import { useAtomValue, useSetAtom } from "jotai";
 import PptxGenJS from "pptxgenjs";
-import { useRef, useState } from "react";
-import { SLIDE_H, SLIDE_W, type Deck } from "../../../lib/slide-schema";
+import { useRef } from "react";
+import { SLIDE_H, SLIDE_W } from "../../../lib/slide-schema";
 import { generatePptx } from "../../../slide/generatePptx";
 import { filenameFromTitle } from "../editorUtils";
+import {
+  deckAtom,
+  exportModeAtom,
+  isExportingAtom,
+} from "../state";
 
-export type ExportMode = "native" | "raster";
-
-export function useDeckExport(deck: Deck) {
-  const [exportMode, setExportMode] = useState<ExportMode>("native");
-  const [isExporting, setIsExporting] = useState(false);
+export function useDeckExport() {
+  const deck = useAtomValue(deckAtom);
+  const exportMode = useAtomValue(exportModeAtom);
+  const setIsExporting = useSetAtom(isExportingAtom);
   const exportStageRefs = useRef<Array<Konva.Stage | null>>([]);
 
   const handleNativeExport = async () => {
@@ -51,11 +56,5 @@ export function useDeckExport(deck: Deck) {
     }
   };
 
-  return {
-    exportMode,
-    setExportMode,
-    isExporting,
-    exportStageRefs,
-    handleExport,
-  };
+  return { exportStageRefs, handleExport };
 }

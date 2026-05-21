@@ -1,44 +1,67 @@
-import { useState } from "react";
+import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useHydrateAtoms } from "jotai/utils";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
 import { KonvaSlide } from "./canvas/KonvaSlide";
 import { styles } from "./editorStyles";
 import { EXPORT_H, EXPORT_W, kindLabel, withHash, withoutHash } from "./editorUtils";
-import {
-  useDeckExport,
-  useDeckState,
-  useElementOps,
-  useSelection,
-  useStageSize,
-} from "./hooks";
+import { useDeckExport, useStageSize } from "./hooks";
 import { Inspector } from "./inspector/Inspector";
 import { Segmented } from "./shared/Segmented";
+import {
+  activeSlideAtom,
+  activeSlideIndexAtom,
+  addElementAtom,
+  deckAtom,
+  deleteSelectedAtom,
+  duplicateSelectedAtom,
+  editorOpenAtom,
+  exportModeAtom,
+  isExportingAtom,
+  patchSelectedAtom,
+  selectElementAtom,
+  selectedElementAtom,
+  selectedIndexAtom,
+  selectedItemsAtom,
+  setSelectionAtom,
+  updateActiveSlideAtom,
+  updateElementAtom,
+  updateElementsAtom,
+} from "./state";
 
 export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck }) {
-  const [editorOpen, setEditorOpen] = useState(false);
+  return (
+    <Provider>
+      <SlideEditorBody initialDeck={initialDeck} />
+    </Provider>
+  );
+}
 
-  const deckState = useDeckState(initialDeck);
-  const selection = useSelection(deckState.activeSlide);
-  const ops = useElementOps({
-    deckState,
-    selection,
-    onAdded: () => setEditorOpen(true),
-  });
-  const exporter = useDeckExport(deckState.deck);
+function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
+  useHydrateAtoms([[deckAtom, initialDeck]]);
+
+  const [deck, setDeck] = useAtom(deckAtom);
+  const [active, setActive] = useAtom(activeSlideIndexAtom);
+  const activeSlide = useAtomValue(activeSlideAtom);
+  const selectedIndex = useAtomValue(selectedIndexAtom);
+  const selectedItems = useAtomValue(selectedItemsAtom);
+  const selectedElement = useAtomValue(selectedElementAtom);
+  const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
+  const [exportMode, setExportMode] = useAtom(exportModeAtom);
+  const isExporting = useAtomValue(isExportingAtom);
+
+  const selectElement = useSetAtom(selectElementAtom);
+  const setSelection = useSetAtom(setSelectionAtom);
+  const updateActiveSlide = useSetAtom(updateActiveSlideAtom);
+  const updateElement = useSetAtom(updateElementAtom);
+  const updateElements = useSetAtom(updateElementsAtom);
+  const patchSelected = useSetAtom(patchSelectedAtom);
+  const addElement = useSetAtom(addElementAtom);
+  const duplicateSelected = useSetAtom(duplicateSelectedAtom);
+  const deleteSelected = useSetAtom(deleteSelectedAtom);
+
   const { stageWidth, stageWrapRef } = useStageSize();
-
-  const {
-    deck,
-    setDeck,
-    active,
-    setActive,
-    activeSlide,
-    updateActiveSlide,
-    updateElement,
-    updateElements,
-  } = deckState;
-  const { selectedIndex, selectedItems, selectedElement, selectElement, setSelection } =
-    selection;
+  const { exportStageRefs, handleExport } = useDeckExport();
 
   return (
     <div style={styles.shell}>
@@ -96,20 +119,20 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
           </div>
           <div style={styles.toolbar}>
             <Segmented
-              value={exporter.exportMode}
+              value={exportMode}
               options={[
                 ["native", "Native"],
                 ["raster", "Raster"],
               ]}
-              onChange={(value) => exporter.setExportMode(value)}
+              onChange={(value) => setExportMode(value)}
             />
             <button
               type="button"
-              disabled={exporter.isExporting}
-              onClick={exporter.handleExport}
+              disabled={isExporting}
+              onClick={handleExport}
               style={styles.primaryButton}
             >
-              {exporter.isExporting ? "Exporting..." : "Export PPTX"}
+              {isExporting ? "Exporting..." : "Export PPTX"}
             </button>
           </div>
         </div>
@@ -137,8 +160,10 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
                 interactive
                 selected={selectedIndex}
                 selectedItems={selectedItems}
-                onSelect={selectElement}
-                onChange={updateElement}
+                onSelect={(index, additive) =>
+                  selectElement({ index, additive })
+                }
+                onChange={(index, element) => updateElement({ index, element })}
                 onChangeMany={updateElements}
               />
             </div>
@@ -171,7 +196,7 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
                 <button
                   type="button"
                   title="Duplicate"
-                  onClick={ops.duplicateSelected}
+                  onClick={() => duplicateSelected()}
                   style={styles.iconButton}
                 >
                   ⧉
@@ -179,7 +204,7 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
                 <button
                   type="button"
                   title="Delete"
-                  onClick={ops.deleteSelected}
+                  onClick={() => deleteSelected()}
                   style={styles.iconButton}
                 >
                   ×
@@ -217,8 +242,10 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
             {selectedElement ? (
               <Inspector
                 element={selectedElement}
-                onPatch={ops.patchSelected}
-                onReplace={(next) => updateElement(selectedIndex, next)}
+                onPatch={patchSelected}
+                onReplace={(next) =>
+                  updateElement({ index: selectedIndex, element: next })
+                }
               />
             ) : null}
 
@@ -227,7 +254,7 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
                 <button
                   key={kind}
                   type="button"
-                  onClick={() => ops.addElement(kind)}
+                  onClick={() => addElement(kind)}
                   style={styles.secondaryButton}
                 >
                   + {kindLabel(kind)}
@@ -247,7 +274,7 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
             height={EXPORT_H}
             interactive={false}
             stageRef={(node) => {
-              exporter.exportStageRefs.current[index] = node;
+              exportStageRefs.current[index] = node;
             }}
           />
         ))}
