@@ -1,12 +1,12 @@
 import Konva from "konva";
-import { useRef, type MutableRefObject } from "react";
+import { useRef, type RefObject } from "react";
 import {
   SLIDE_H,
   SLIDE_W,
   type Slide,
   type SlideElement,
-} from "../../../../lib/slide-schema";
-import { clamp } from "../../editorUtils";
+} from "../../../../../lib/slide-schema";
+import { clamp } from "../../../editorUtils";
 
 type GroupDragState = {
   index: number;
@@ -22,12 +22,12 @@ export function useGroupDrag({
   slide,
   transformerRef,
 }: {
-  nodeRefs: MutableRefObject<Array<Konva.Node | null>>;
+  nodeRefs: RefObject<Array<Konva.Node | null>>;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   scale: number;
   selectedIndexes: number[];
   slide: Slide;
-  transformerRef: MutableRefObject<Konva.Transformer | null>;
+  transformerRef: RefObject<Konva.Transformer | null>;
 }) {
   const groupDragRef = useRef<GroupDragState | null>(null);
 

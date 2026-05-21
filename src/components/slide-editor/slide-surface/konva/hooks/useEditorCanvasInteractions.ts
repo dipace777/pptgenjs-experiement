@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import type { Slide, SlideElement } from "../../../../lib/slide-schema";
+import type { Slide, SlideElement } from "../../../../../lib/slide-schema";
 import {
   deleteSelectedAtom,
   editingBulletsDraftAtom,
@@ -15,7 +15,7 @@ import {
   selectedTableCellAtom,
   updateElementAtom,
   updateElementsAtom,
-} from "../../state";
+} from "../../../state";
 
 export function useEditorCanvasInteractions({
   onEditImage,

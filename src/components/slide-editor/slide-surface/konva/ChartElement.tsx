@@ -1,6 +1,6 @@
 import { Arc, Ellipse, Group, Line, Rect, Text } from "react-konva";
-import type { ChartElement as ChartEl } from "../../../lib/slide-schema";
-import { PX_PER_IN, withHash } from "../editorUtils";
+import type { ChartElement as ChartEl } from "../../../../lib/slide-schema";
+import { PX_PER_IN, withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps } from "./types";
 
 type ChartDatum = {

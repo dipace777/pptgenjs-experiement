@@ -1,30 +1,33 @@
-import { Rect } from "react-konva";
-import type { RectElement as RectEl } from "../../../lib/slide-schema";
-import { withHash } from "../editorUtils";
+import { Ellipse } from "react-konva";
+import type { EllipseElement as EllipseEl } from "../../../../lib/slide-schema";
+import { withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps } from "./types";
 
-export function RectElement({
+export function EllipseElement({
   element,
   index,
   scale,
   selected,
   setRef,
   events,
-}: ElementCommonProps & { element: RectEl }) {
+}: ElementCommonProps & { element: EllipseEl }) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   return (
-    <Rect
+    <Ellipse
       ref={setRef}
       name={`element-${index}`}
-      x={x}
-      y={y}
+      x={x + width / 2}
+      y={y + height / 2}
       width={width}
       height={height}
+      radiusX={width / 2}
+      radiusY={height / 2}
       fill={withHash(element.fill)}
       opacity={element.opacity ?? 1}
-      cornerRadius={(element.rx ?? 0) * scale}
       stroke={element.line ? withHash(element.line.color) : stroke}
       strokeWidth={element.line ? element.line.width : strokeWidth}
+      offsetX={0}
+      offsetY={0}
       {...events}
     />
   );

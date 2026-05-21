@@ -1,6 +1,6 @@
 import { Group, Rect, Text } from "react-konva";
-import type { BulletsElement as BulletsEl } from "../../../lib/slide-schema";
-import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
+import type { BulletsElement as BulletsEl } from "../../../../lib/slide-schema";
+import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function BulletsElement({
@@ -11,7 +11,11 @@ export function BulletsElement({
   editing,
   setRef,
   events,
-}: ElementCommonProps & { element: BulletsEl }) {
+  renderMode = "canvas",
+}: ElementCommonProps & {
+  element: BulletsEl;
+  renderMode?: "canvas" | "proxy";
+}) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   const bulletFontSize = element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
   const lineHeight = element.lineSpacingMultiple ?? 1.3;
@@ -39,7 +43,7 @@ export function BulletsElement({
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />
-      {editing ? null : items.map((item, itemIndex) => {
+      {editing || renderMode === "proxy" ? null : items.map((item, itemIndex) => {
         const yOffset = items
           .slice(0, itemIndex)
           .reduce((sum, previous) => sum + previous.height + itemGap, 0);
