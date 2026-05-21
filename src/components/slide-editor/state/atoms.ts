@@ -12,8 +12,8 @@ export type ExportMode = "native" | "raster";
 // directly. SlideEditor seeds the real deck via `useHydrateAtoms`.
 export const deckAtom = atomWithImmer(messiDeck);
 export const activeSlideIndexAtom = atom(0);
-export const selectedAtom = atom(0);
-export const selectedItemsAtom = atom<number[]>([0]);
+export const selectedAtom = atom(-1);
+export const selectedItemsAtom = atom<number[]>([]);
 export const editorOpenAtom = atom(false);
 export const exportModeAtom = atom<ExportMode>("native");
 export const isExportingAtom = atom(false);

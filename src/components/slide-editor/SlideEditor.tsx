@@ -154,7 +154,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               type="button"
               onClick={() => {
                 setActive(index);
-                setSelection(0);
+                setSelection(-1);
               }}
               style={{
                 ...styles.thumbRow,
