@@ -17,10 +17,12 @@ export function KonvaSlide({
   onSelectMany,
   onDelete,
   onEditText,
+  onEditBullets,
   onChange,
   onChangeMany,
   stageRef,
   editingTextIndex,
+  editingBulletsIndex,
 }: {
   slide: Slide;
   width: number;
@@ -32,10 +34,12 @@ export function KonvaSlide({
   onSelectMany?: (indexes: number[]) => void;
   onDelete?: () => void;
   onEditText?: (index: number) => void;
+  onEditBullets?: (index: number) => void;
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
   editingTextIndex?: number | null;
+  editingBulletsIndex?: number | null;
 }) {
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const nodeRefs = useRef<Array<Konva.Node | null>>([]);
@@ -98,10 +102,11 @@ export function KonvaSlide({
     onClick: (event: Konva.KonvaEventObject<MouseEvent>) =>
       onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey),
     onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
-      if (el.kind !== "text") return;
+      if (el.kind !== "text" && el.kind !== "bullets") return;
       event.cancelBubble = true;
       onSelect?.(index);
-      onEditText?.(index);
+      if (el.kind === "text") onEditText?.(index);
+      if (el.kind === "bullets") onEditBullets?.(index);
     },
     onTap: () => onSelect?.(index),
     onDragStart: () => {
@@ -326,7 +331,7 @@ export function KonvaSlide({
             index={index}
             scale={scale}
             selected={selectedIndexes.includes(index)}
-            editing={editingTextIndex === index}
+            editing={editingTextIndex === index || editingBulletsIndex === index}
             setRef={(node) => {
               nodeRefs.current[index] = node;
             }}

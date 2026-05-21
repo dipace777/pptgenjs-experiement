@@ -61,6 +61,8 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
   const isExporting = useAtomValue(isExportingAtom);
   const [editingTextIndex, setEditingTextIndex] = useState<number | null>(null);
+  const [editingBulletsIndex, setEditingBulletsIndex] = useState<number | null>(null);
+  const [editingBulletsDraft, setEditingBulletsDraft] = useState("");
 
   const selectElement = useSetAtom(selectElementAtom);
   const selectElements = useSetAtom(selectElementsAtom);
@@ -78,13 +80,22 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const stageScale = stageWidth / SLIDE_W;
   const selectedTextElement =
     selectedElement?.kind === "text" ? selectedElement : null;
+  const selectedBulletsElement =
+    selectedElement?.kind === "bullets" ? selectedElement : null;
   const drawerElement =
-    selectedElement?.kind === "text" ? null : selectedElement;
+    selectedElement?.kind === "text" || selectedElement?.kind === "bullets"
+      ? null
+      : selectedElement;
   const editingTextElement = useMemo(() => {
     if (editingTextIndex == null) return null;
     const element = activeSlide.elements[editingTextIndex];
     return element?.kind === "text" ? element : null;
   }, [activeSlide.elements, editingTextIndex]);
+  const editingBulletsElement = useMemo(() => {
+    if (editingBulletsIndex == null) return null;
+    const element = activeSlide.elements[editingBulletsIndex];
+    return element?.kind === "bullets" ? element : null;
+  }, [activeSlide.elements, editingBulletsIndex]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -314,6 +325,96 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   />
                 </div>
               ) : null}
+              {selectedBulletsElement ? (
+                <div
+                  style={{
+                    ...styles.inlineTextToolbar,
+                    left: Math.max(8, selectedBulletsElement.x * stageScale),
+                    top: Math.max(8, selectedBulletsElement.y * stageScale - 48),
+                  }}
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <input
+                    aria-label="Bullet font size"
+                    title="Font size"
+                    type="number"
+                    min={8}
+                    max={36}
+                    value={selectedBulletsElement.fontSize}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedBulletsElement,
+                          fontSize:
+                            Number(event.target.value) || selectedBulletsElement.fontSize,
+                        },
+                      })
+                    }
+                    style={styles.inlineFontSize}
+                  />
+                  <input
+                    aria-label="Bullet color"
+                    title="Color"
+                    type="color"
+                    value={withHash(selectedBulletsElement.color)}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedBulletsElement,
+                          color: withoutHash(event.target.value),
+                        },
+                      })
+                    }
+                    style={styles.inlineColor}
+                  />
+                  <input
+                    aria-label="Bullet line height"
+                    title="Line height"
+                    type="number"
+                    min={0.9}
+                    max={2}
+                    step={0.05}
+                    value={selectedBulletsElement.lineSpacingMultiple ?? 1.3}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedBulletsElement,
+                          lineSpacingMultiple:
+                            Number(event.target.value) ||
+                            selectedBulletsElement.lineSpacingMultiple ||
+                            1.3,
+                        },
+                      })
+                    }
+                    style={styles.inlineFontSize}
+                  />
+                  <input
+                    aria-label="Bullet item gap"
+                    title="Item gap"
+                    type="number"
+                    min={0}
+                    max={0.4}
+                    step={0.02}
+                    value={selectedBulletsElement.itemGap ?? 0.05}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedBulletsElement,
+                          itemGap:
+                            Number(event.target.value) ||
+                            selectedBulletsElement.itemGap ||
+                            0,
+                        },
+                      })
+                    }
+                    style={styles.inlineFontSize}
+                  />
+                </div>
+              ) : null}
               {editingTextElement && editingTextIndex != null ? (
                 <textarea
                   autoFocus
@@ -351,6 +452,49 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   }}
                 />
               ) : null}
+              {editingBulletsElement && editingBulletsIndex != null ? (
+                <textarea
+                  autoFocus
+                  value={editingBulletsDraft}
+                  onChange={(event) => {
+                    const draft = event.target.value;
+                    setEditingBulletsDraft(draft);
+                    const items = draft
+                      .split("\n")
+                      .map((item) => item.replace(/^\s*[•*-]\s?/, "").trimEnd())
+                      .filter((item) => item.trim())
+                      .slice(0, 8);
+                    updateElement({
+                      index: editingBulletsIndex,
+                      element: {
+                        ...editingBulletsElement,
+                        items: items.length > 0 ? items : [" "],
+                      },
+                    });
+                  }}
+                  onBlur={() => {
+                    setEditingBulletsIndex(null);
+                    setEditingBulletsDraft("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  style={{
+                    ...styles.inlineTextEditor,
+                    left: editingBulletsElement.x * stageScale,
+                    top: editingBulletsElement.y * stageScale,
+                    width: editingBulletsElement.w * stageScale,
+                    height: editingBulletsElement.h * stageScale,
+                    color: withHash(editingBulletsElement.color),
+                    fontFamily: `${editingBulletsElement.fontFace ?? "Arial"}, Helvetica, sans-serif`,
+                    fontSize:
+                      editingBulletsElement.fontSize * PT_TO_PX * (stageScale / PX_PER_IN),
+                    lineHeight: editingBulletsElement.lineSpacingMultiple ?? 1.3,
+                  }}
+                />
+              ) : null}
               <KonvaSlide
                 slide={activeSlide}
                 width={stageWidth}
@@ -363,8 +507,20 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                 }
                 onSelectMany={selectElements}
                 onDelete={deleteSelected}
-                onEditText={setEditingTextIndex}
+                onEditText={(index) => {
+                  setEditingBulletsIndex(null);
+                  setEditingTextIndex(index);
+                }}
+                onEditBullets={(index) => {
+                  const element = activeSlide.elements[index];
+                  setEditingBulletsDraft(
+                    element?.kind === "bullets" ? element.items.join("\n") : "",
+                  );
+                  setEditingTextIndex(null);
+                  setEditingBulletsIndex(index);
+                }}
                 editingTextIndex={editingTextIndex}
+                editingBulletsIndex={editingBulletsIndex}
                 onChange={(index, element) => updateElement({ index, element })}
                 onChangeMany={updateElements}
               />

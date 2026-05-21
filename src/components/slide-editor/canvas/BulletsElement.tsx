@@ -8,6 +8,7 @@ export function BulletsElement({
   index,
   scale,
   selected,
+  editing,
   setRef,
   events,
 }: ElementCommonProps & { element: BulletsEl }) {
@@ -38,7 +39,7 @@ export function BulletsElement({
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />
-      {items.map((item, itemIndex) => {
+      {editing ? null : items.map((item, itemIndex) => {
         const yOffset = items
           .slice(0, itemIndex)
           .reduce((sum, previous) => sum + previous.height + itemGap, 0);

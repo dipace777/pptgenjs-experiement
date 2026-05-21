@@ -17,65 +17,13 @@ export function Inspector({
       onSubmit={(event) => event.preventDefault()}
       style={styles.form}
     >
-      {element.kind !== "text" ? (
+      {element.kind !== "text" && element.kind !== "bullets" ? (
         <div style={styles.grid2}>
           <NumberField label="X" value={element.x} onChange={(x) => onPatch({ x })} />
           <NumberField label="Y" value={element.y} onChange={(y) => onPatch({ y })} />
           <NumberField label="W" value={element.w} onChange={(w) => onPatch({ w })} />
           <NumberField label="H" value={element.h} onChange={(h) => onPatch({ h })} />
         </div>
-      ) : null}
-
-      {element.kind === "bullets" ? (
-        <>
-          <Field label="Bullet items">
-            <textarea
-              value={element.items.join("\n")}
-              rows={5}
-              onChange={(event) =>
-                onReplace({
-                  ...element,
-                  items: event.target.value
-                    .split("\n")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
-                    .slice(0, 8),
-                })
-              }
-              style={styles.textarea}
-            />
-          </Field>
-          <div style={styles.grid2}>
-            <NumberField
-              label="Font"
-              value={element.fontSize}
-              step={1}
-              onChange={(fontSize) => onPatch({ fontSize })}
-            />
-            <NumberField
-              label="Item gap"
-              value={element.itemGap ?? 0.05}
-              max={0.4}
-              step={0.02}
-              onChange={(itemGap) => onPatch({ itemGap })}
-            />
-          </div>
-          <div style={styles.grid2}>
-            <NumberField
-              label="Line height"
-              value={element.lineSpacingMultiple ?? 1.3}
-              min={0.9}
-              max={2}
-              step={0.05}
-              onChange={(lineSpacingMultiple) => onPatch({ lineSpacingMultiple })}
-            />
-            <ColorField
-              label="Color"
-              value={element.color}
-              onChange={(color) => onPatch({ color })}
-            />
-          </div>
-        </>
       ) : null}
 
       {element.kind === "chart" ? (
