@@ -19,8 +19,8 @@ import {
 import { Inspector } from "./inspector/Inspector";
 import { Segmented } from "./shared/Segmented";
 
-export function SlideEditor() {
-  const [deck, setDeck] = useState<Deck>(messiDeck);
+export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck }) {
+  const [deck, setDeck] = useState<Deck>(initialDeck);
   const [active, setActive] = useState(0);
   const [selected, setSelected] = useState(0);
   const [selectedItems, setSelectedItems] = useState<number[]>([0]);
