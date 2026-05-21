@@ -212,6 +212,7 @@ const pageStyle = {
   color: "#f4f6fa",
   fontFamily,
   padding: 24,
+  boxSizing: "border-box",
 } as const;
 
 const panelStyle = {

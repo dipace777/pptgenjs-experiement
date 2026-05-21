@@ -7,8 +7,8 @@ const baseFont =
 export const styles = {
   shell: {
     display: "flex",
-    width: "100vw",
-    height: "100vh",
+    width: "100%",
+    height: "100dvh",
     overflow: "hidden",
     background: "#0a0d14",
     color: "#e6ebf5",
