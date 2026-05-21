@@ -94,6 +94,23 @@ export function Inspector({
               step={1}
               onChange={(fontSize) => onPatch({ fontSize })}
             />
+            <NumberField
+              label="Item gap"
+              value={element.itemGap ?? 0.05}
+              max={0.4}
+              step={0.02}
+              onChange={(itemGap) => onPatch({ itemGap })}
+            />
+          </div>
+          <div style={styles.grid2}>
+            <NumberField
+              label="Line height"
+              value={element.lineSpacingMultiple ?? 1.3}
+              min={0.9}
+              max={2}
+              step={0.05}
+              onChange={(lineSpacingMultiple) => onPatch({ lineSpacingMultiple })}
+            />
             <ColorField
               label="Color"
               value={element.color}

@@ -73,6 +73,7 @@ export const BulletsElementSchema = z.object({
   color: HexColorSchema,
   bulletColor: HexColorSchema.nullish(),
   lineSpacingMultiple: z.number().min(0.9).max(2).nullish(),
+  itemGap: z.number().min(0).max(0.4).nullish(),
 });
 
 export const ChartDatumSchema = z.object({

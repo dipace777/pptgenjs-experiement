@@ -184,6 +184,8 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
                 fontFace: "Arial",
                 fontSize: 18,
                 color: "1A2B45",
+                lineSpacingMultiple: 1.25,
+                itemGap: 0.08,
               }
             : {
                 ...base,

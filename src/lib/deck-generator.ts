@@ -327,6 +327,7 @@ function sectionSlide(
               color: colors.text,
               bulletColor: colors.accent,
               lineSpacingMultiple: 1.35,
+              itemGap: 0.08,
             };
 
   return {
@@ -346,6 +347,7 @@ function sectionSlide(
         color: colors.text,
         bulletColor: colors.accent,
         lineSpacingMultiple: 1.25,
+        itemGap: 0.07,
       },
       visual,
       ...footer(index, total, colors.muted),

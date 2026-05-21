@@ -531,7 +531,7 @@ function addElement(
     fontSize: el.fontSize,
     color: el.color,
     valign: "top",
-    paraSpaceAfter: 4,
+    paraSpaceAfter: (el.itemGap ?? 0.05) * 72,
     paraSpaceBefore: 0,
     lineSpacing: (el.lineSpacingMultiple ?? 1.3) * el.fontSize,
     margin: 0,

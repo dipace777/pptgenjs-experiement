@@ -539,14 +539,52 @@ function KonvaElement({
     );
   }
 
+  if (element.kind === "bullets") {
+    const bulletFontSize = element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
+    const lineHeight = element.lineSpacingMultiple ?? 1.3;
+    const itemGap = (element.itemGap ?? 0.05) * scale;
+    const itemHeight = bulletFontSize * lineHeight;
+
+    return (
+      <Group
+        ref={setRef}
+        name={`element-${index}`}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        {...events}
+      >
+        {element.items.map((item, itemIndex) => (
+          <Text
+            key={`${item}-${itemIndex}`}
+            x={0}
+            y={itemIndex * (itemHeight + itemGap)}
+            width={width}
+            height={itemHeight}
+            text={`• ${item}`}
+            fill={withHash(element.color)}
+            fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
+            fontSize={bulletFontSize}
+            lineHeight={lineHeight}
+            wrap="word"
+          />
+        ))}
+        {selected ? (
+          <Rect
+            width={width}
+            height={height}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            listening={false}
+          />
+        ) : null}
+      </Group>
+    );
+  }
+
   const fontSize =
-    element.kind === "bullets"
-      ? element.fontSize * PT_TO_PX * (scale / PX_PER_IN)
-      : element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
-  const text =
-    element.kind === "bullets"
-      ? element.items.map((item) => `• ${item}`).join("\n")
-      : element.text;
+    element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
 
   return (
     <Text
@@ -556,7 +594,7 @@ function KonvaElement({
       y={y}
       width={width}
       height={height}
-      text={text}
+      text={element.text}
       fill={withHash(element.color)}
       opacity={element.kind === "text" ? (element.opacity ?? 1) : 1}
       fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
@@ -570,11 +608,7 @@ function KonvaElement({
       }
       align={element.kind === "text" ? (element.align ?? "left") : "left"}
       verticalAlign={element.kind === "text" ? (element.valign ?? "top") : "top"}
-      lineHeight={
-        element.kind === "bullets"
-          ? (element.lineSpacingMultiple ?? 1.3)
-          : (element.lineHeight ?? 1.15)
-      }
+      lineHeight={element.lineHeight ?? 1.15}
       letterSpacing={
         element.kind === "text"
           ? ((element.charSpacing ?? 0) / 100) *
