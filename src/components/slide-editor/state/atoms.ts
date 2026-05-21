@@ -22,6 +22,7 @@ export const activeSlideIndexAtom = atom(0);
 export const selectedAtom = atom(-1);
 export const selectedItemsAtom = atom<number[]>([]);
 export const editorOpenAtom = atom(false);
+export const presentingAtom = atom(false);
 export const exportModeAtom = atom<ExportMode>("native");
 export const isExportingAtom = atom(false);
 export const editingTextIndexAtom = atom<number | null>(null);

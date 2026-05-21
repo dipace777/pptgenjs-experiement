@@ -7,6 +7,7 @@ import {
   deckAtom,
   exportModeAtom,
   isExportingAtom,
+  type ExportMode,
 } from "../state";
 
 function waitForPaint() {
@@ -50,12 +51,13 @@ export function useDeckExport() {
     await pptx.writeFile({ fileName: filenameFromTitle(deck.title, "-raster") });
   };
 
-  const handleExport = async () => {
+  const handleExport = async (modeOverride?: ExportMode) => {
+    const mode = modeOverride ?? exportMode;
     setIsExporting(true);
     setExportingType("pptx");
     try {
       await waitForPaint();
-      if (exportMode === "native") {
+      if (mode === "native") {
         await handleNativeExport();
       } else {
         await handleRasterExport();

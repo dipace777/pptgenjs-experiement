@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
 import { KonvaSlide } from "./canvas/KonvaSlide";
+import { PresentationMode } from "./PresentationMode";
 import { styles } from "./editorStyles";
 import {
   EXPORT_H,
@@ -26,7 +27,7 @@ import {
   TextToolbar,
 } from "./inline";
 import { ChartGridInspector } from "./inspector/ChartGridInspector";
-import { Segmented } from "./shared/Segmented";
+import { ExportPptxButton } from "./shared/ExportPptxButton";
 import {
   activeSlideAtom,
   activeSlideIndexAtom,
@@ -44,6 +45,7 @@ import {
   editingBulletsElementAtom,
   editingTextElementAtom,
   editorOpenAtom,
+  presentingAtom,
   exportModeAtom,
   isExportingAtom,
   patchSelectedAtom,
@@ -62,7 +64,11 @@ import {
   updateElementAtom,
 } from "./state";
 
-export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck }) {
+export function SlideEditor({
+  initialDeck = messiDeck,
+}: {
+  initialDeck?: Deck;
+}) {
   return (
     <Provider>
       <SlideEditorBody initialDeck={initialDeck} />
@@ -97,9 +103,14 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const [editingBulletsDraft, setEditingBulletsDraft] = useAtom(
     editingBulletsDraftAtom,
   );
-  const [editingTableIndex, setEditingTableIndex] = useAtom(editingTableIndexAtom);
-  const [editingTableDraft, setEditingTableDraft] = useAtom(editingTableDraftAtom);
+  const [editingTableIndex, setEditingTableIndex] = useAtom(
+    editingTableIndexAtom,
+  );
+  const [editingTableDraft, setEditingTableDraft] = useAtom(
+    editingTableDraftAtom,
+  );
   const isExporting = useAtomValue(isExportingAtom);
+  const [presenting, setPresenting] = useAtom(presentingAtom);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const imageUploadTargetRef = useRef<number | null>(null);
 
@@ -127,7 +138,8 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   });
 
   const { stageWidth, stageWrapRef } = useStageSize();
-  const { exportStageRefs, exportingType, handleExport, handlePdfExport } = useDeckExport();
+  const { exportStageRefs, exportingType, handleExport, handlePdfExport } =
+    useDeckExport();
   const stageScale = stageWidth / SLIDE_W;
 
   const openImageUpload = useCallback((index: number) => {
@@ -160,7 +172,6 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
     <div style={styles.shell}>
       <aside style={styles.sidebar}>
         <div style={styles.header}>
-          <div style={styles.eyebrow}>INTERNAL JSON</div>
           <input
             aria-label="Deck title"
             value={deck.title}
@@ -215,21 +226,14 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             </div>
           </div>
           <div style={styles.toolbar}>
-            <Segmented
-              value={exportMode}
-              options={[
-                ["native", "Native"],
-                ["raster", "Raster"],
-              ]}
-              onChange={(value) => setExportMode(value)}
-            />
             <button
               type="button"
-              disabled={isExporting}
-              onClick={handleExport}
-              style={styles.primaryButton}
+              onClick={() => setPresenting(true)}
+              style={styles.ghostButton}
+              title="Start presentation (fullscreen)"
             >
-              {exportingType === "pptx" ? "Exporting PPTX..." : "Export PPTX"}
+              <span aria-hidden="true">▶</span>
+              Presentation Mode
             </button>
             <button
               type="button"
@@ -239,6 +243,15 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             >
               {exportingType === "pdf" ? "Exporting PDF..." : "Export PDF"}
             </button>
+            <ExportPptxButton
+              mode={exportMode}
+              onModeChange={setExportMode}
+              onExport={handleExport}
+              isExporting={isExporting}
+              exportingLabel={
+                exportingType === "pptx" ? "Exporting PPTX..." : null
+              }
+            />
           </div>
         </div>
 
@@ -281,7 +294,11 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                     if (typeof reader.result !== "string") return;
                     updateElement({
                       index: targetIndex,
-                      element: { ...target, data: reader.result, name: file.name },
+                      element: {
+                        ...target,
+                        data: reader.result,
+                        name: file.name,
+                      },
                     });
                   });
                   reader.readAsDataURL(file);
@@ -293,7 +310,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   element={selectedTextElement}
                   index={selectedIndex}
                   scale={stageScale}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                 />
               ) : null}
               {selectedBulletsElement ? (
@@ -301,7 +320,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   element={selectedBulletsElement}
                   index={selectedIndex}
                   scale={stageScale}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                 />
               ) : null}
               {selectedImageElement ? (
@@ -309,7 +330,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   element={selectedImageElement}
                   index={selectedIndex}
                   scale={stageScale}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                   onUpload={openImageUpload}
                 />
               ) : null}
@@ -318,7 +341,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   element={selectedShapeElement}
                   index={selectedIndex}
                   scale={stageScale}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                 />
               ) : null}
               {selectedTableElement ? (
@@ -331,7 +356,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                       ? selectedTableCell
                       : null
                   }
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                 />
               ) : null}
               {editingTextElement && editingTextIndex != null ? (
@@ -339,7 +366,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   element={editingTextElement}
                   index={editingTextIndex}
                   scale={stageScale}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                   onClose={() => setEditingTextIndex(null)}
                 />
               ) : null}
@@ -350,7 +379,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   scale={stageScale}
                   draft={editingBulletsDraft}
                   onDraftChange={setEditingBulletsDraft}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                   onClose={() => {
                     setEditingBulletsIndex(null);
                     setEditingBulletsDraft("");
@@ -364,7 +395,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   scale={stageScale}
                   draft={editingTableDraft}
                   onDraftChange={setEditingTableDraft}
-                  onChange={(index, element) => updateElement({ index, element })}
+                  onChange={(index, element) =>
+                    updateElement({ index, element })
+                  }
                   onClose={() => {
                     setEditingTableIndex(null);
                     setEditingTableDraft("");
@@ -455,7 +488,18 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             ) : null}
 
             <div style={styles.addGrid}>
-              {(["text", "rect", "ellipse", "bullets", "chart", "table", "grid", "image"] as const).map((kind) => (
+              {(
+                [
+                  "text",
+                  "rect",
+                  "ellipse",
+                  "bullets",
+                  "chart",
+                  "table",
+                  "grid",
+                  "image",
+                ] as const
+              ).map((kind) => (
                 <button
                   key={kind}
                   type="button"
@@ -468,6 +512,14 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             </div>
           </aside>
         </div>
+      ) : null}
+
+      {presenting ? (
+        <PresentationMode
+          deck={deck}
+          startIndex={active}
+          onClose={() => setPresenting(false)}
+        />
       ) : null}
 
       <div style={styles.hiddenStages} aria-hidden="true">

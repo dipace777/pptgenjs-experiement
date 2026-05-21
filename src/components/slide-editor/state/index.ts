@@ -4,6 +4,7 @@ export {
   selectedAtom,
   selectedItemsAtom,
   editorOpenAtom,
+  presentingAtom,
   exportModeAtom,
   isExportingAtom,
   editingTextIndexAtom,
