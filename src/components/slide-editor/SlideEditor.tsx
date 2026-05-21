@@ -72,7 +72,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             aria-label="Deck title"
             value={deck.title}
             onChange={(event) =>
-              setDeck((current) => ({ ...current, title: event.target.value }))
+              setDeck((draft) => {
+                draft.title = event.target.value;
+              })
             }
             style={styles.titleInput}
           />
@@ -230,10 +232,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                 type="color"
                 value={withHash(activeSlide.background)}
                 onChange={(event) =>
-                  updateActiveSlide((slide) => ({
-                    ...slide,
-                    background: withoutHash(event.target.value),
-                  }))
+                  updateActiveSlide((slide) => {
+                    slide.background = withoutHash(event.target.value);
+                  })
                 }
                 style={styles.colorInput}
               />

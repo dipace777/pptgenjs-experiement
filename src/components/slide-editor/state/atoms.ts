@@ -1,15 +1,16 @@
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
-import type { Deck, Slide, SlideElement } from "../../../lib/slide-schema";
+import { atomWithImmer } from "jotai-immer";
+import type { Slide, SlideElement } from "../../../lib/slide-schema";
 import { messiDeck } from "../../../slide/spec";
 
 export type ExportMode = "native" | "raster";
 
 // --- Primitive atoms ----------------------------------------------------
 
-// Initial value is a placeholder; SlideEditor uses `useHydrateAtoms` to
-// seed the real deck on mount so each editor instance starts fresh.
-export const deckAtom = atom<Deck>(messiDeck);
+// Immer-backed: writers receive a draft of the Deck they can mutate
+// directly. SlideEditor seeds the real deck via `useHydrateAtoms`.
+export const deckAtom = atomWithImmer(messiDeck);
 export const activeSlideIndexAtom = atom(0);
 export const selectedAtom = atom(0);
 export const selectedItemsAtom = atom<number[]>([0]);
