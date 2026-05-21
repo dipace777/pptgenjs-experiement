@@ -1,6 +1,6 @@
 import Konva from "konva";
 import { useEffect, useMemo, useRef } from "react";
-import type { Slide, SlideElement } from "../../../../lib/slide-schema";
+import type { Slide, SlideElement } from "../../../../../lib/slide-schema";
 
 export function useKonvaSelection({
   interactive,

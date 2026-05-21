@@ -1,13 +1,13 @@
 import Konva from "konva";
-import type { MutableRefObject } from "react";
+import type { RefObject } from "react";
 import { Group, Line, Rect, Transformer } from "react-konva";
 import {
   SLIDE_H,
   SLIDE_W,
   type Slide,
   type SlideElement,
-} from "../../../lib/slide-schema";
-import { clamp } from "../editorUtils";
+} from "../../../../lib/slide-schema";
+import { clamp } from "../../editorUtils";
 import { useGroupDrag } from "./hooks/useGroupDrag";
 import { KonvaElement } from "./KonvaElement";
 import { SELECTION_STROKE } from "./types";
@@ -21,6 +21,7 @@ export function ElementLayer({
   interactive,
   nodeRefs,
   normalizedSelectionBox,
+  bulletsRenderMode = "canvas",
   onChange,
   onChangeMany,
   onDelete,
@@ -34,6 +35,8 @@ export function ElementLayer({
   selectedBounds,
   selectedIndexes,
   slide,
+  tableRenderMode = "canvas",
+  textRenderMode = "canvas",
   transformerRef,
   width,
   height,
@@ -42,8 +45,9 @@ export function ElementLayer({
   editingTableIndex?: number | null;
   editingTextIndex?: number | null;
   interactive: boolean;
-  nodeRefs: MutableRefObject<Array<Konva.Node | null>>;
+  nodeRefs: RefObject<Array<Konva.Node | null>>;
   normalizedSelectionBox: Bounds | null;
+  bulletsRenderMode?: "canvas" | "proxy";
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   onDelete?: () => void;
@@ -57,7 +61,9 @@ export function ElementLayer({
   selectedBounds: Bounds | null;
   selectedIndexes: number[];
   slide: Slide;
-  transformerRef: MutableRefObject<Konva.Transformer | null>;
+  tableRenderMode?: "canvas" | "proxy";
+  textRenderMode?: "canvas" | "proxy";
+  transformerRef: RefObject<Konva.Transformer | null>;
   width: number;
   height: number;
 }) {
@@ -135,8 +141,11 @@ export function ElementLayer({
         <KonvaElement
           key={index}
           element={el}
+          bulletsRenderMode={bulletsRenderMode}
           index={index}
           scale={scale}
+          tableRenderMode={tableRenderMode}
+          textRenderMode={textRenderMode}
           selected={selectedIndexes.includes(index)}
           editing={
             editingTextIndex === index ||

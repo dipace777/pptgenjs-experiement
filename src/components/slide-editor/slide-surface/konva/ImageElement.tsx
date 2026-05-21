@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Ellipse, Group, Image as KonvaImage, Line, Rect } from "react-konva";
-import type { ImageElement as ImageEl } from "../../../lib/slide-schema";
+import type { ImageElement as ImageEl } from "../../../../lib/slide-schema";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function ImageElement({
@@ -55,10 +55,7 @@ function SlideImagePicture({
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    if (!element.data) {
-      setImage(null);
-      return;
-    }
+    if (!element.data) return;
     const next = new window.Image();
     next.onload = () => setImage(next);
     next.src = element.data;

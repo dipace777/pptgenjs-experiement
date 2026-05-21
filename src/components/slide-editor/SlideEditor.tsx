@@ -4,7 +4,6 @@ import { useHydrateAtoms } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
-import { KonvaSlide } from "./canvas/KonvaSlide";
 import { PresentationMode } from "./PresentationMode";
 import { styles } from "./editorStyles";
 import {
@@ -28,6 +27,7 @@ import {
 } from "./inline";
 import { ChartGridInspector } from "./inspector/ChartGridInspector";
 import { ExportPptxButton } from "./shared/ExportPptxButton";
+import { KonvaSlide, SlideSurface } from "./slide-surface";
 import {
   activeSlideAtom,
   activeSlideIndexAtom,
@@ -404,7 +404,11 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   }}
                 />
               ) : null}
-              <KonvaSlide
+              <SlideSurface
+                editingBulletsIndex={editingBulletsIndex}
+                editingTableIndex={editingTableIndex}
+                editingTextIndex={editingTextIndex}
+                selectedTableCell={selectedTableCell}
                 slide={activeSlide}
                 width={stageWidth}
                 height={stageWidth * (SLIDE_H / SLIDE_W)}

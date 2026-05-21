@@ -1,6 +1,6 @@
 import Konva from "konva";
 import { useMemo, useState } from "react";
-import type { Slide, SlideElement } from "../../../../lib/slide-schema";
+import type { Slide, SlideElement } from "../../../../../lib/slide-schema";
 
 type SelectionBox = {
   active: boolean;

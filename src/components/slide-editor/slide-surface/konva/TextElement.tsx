@@ -1,6 +1,6 @@
 import { Group, Rect, Text } from "react-konva";
-import type { TextElement as TextEl } from "../../../lib/slide-schema";
-import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
+import type { TextElement as TextEl } from "../../../../lib/slide-schema";
+import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function TextElement({
@@ -11,7 +11,11 @@ export function TextElement({
   editing,
   setRef,
   events,
-}: ElementCommonProps & { element: TextEl }) {
+  renderMode = "canvas",
+}: ElementCommonProps & {
+  element: TextEl;
+  renderMode?: "canvas" | "proxy";
+}) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   const fontSize = element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
   const isTopAligned = (element.valign ?? "top") === "top";
@@ -28,7 +32,7 @@ export function TextElement({
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />
-      {editing ? null : (
+      {editing || renderMode === "proxy" ? null : (
         <Text
           width={width}
           height={isTopAligned ? undefined : height}

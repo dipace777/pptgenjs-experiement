@@ -1,8 +1,8 @@
 import type Konva from "konva";
 import type { ReactNode } from "react";
 import { Layer, Rect, Stage } from "react-konva";
-import type { Slide } from "../../../lib/slide-schema";
-import { withHash } from "../editorUtils";
+import type { Slide } from "../../../../lib/slide-schema";
+import { withHash } from "../../editorUtils";
 
 export function SlideStage({
   children,

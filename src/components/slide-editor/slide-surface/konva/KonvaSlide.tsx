@@ -1,5 +1,5 @@
 import Konva from "konva";
-import { SLIDE_W, type Slide, type SlideElement } from "../../../lib/slide-schema";
+import { SLIDE_W, type Slide, type SlideElement } from "../../../../lib/slide-schema";
 import { ElementLayer } from "./ElementLayer";
 import { useEditorCanvasInteractions } from "./hooks/useEditorCanvasInteractions";
 import { useKonvaSelection } from "./hooks/useKonvaSelection";
@@ -24,6 +24,9 @@ export function KonvaSlide({
   onChange,
   onChangeMany,
   stageRef,
+  bulletsRenderMode,
+  tableRenderMode,
+  textRenderMode,
   editingTextIndex,
   editingBulletsIndex,
   editingTableIndex,
@@ -45,6 +48,9 @@ export function KonvaSlide({
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
+  bulletsRenderMode?: "canvas" | "proxy";
+  tableRenderMode?: "canvas" | "proxy";
+  textRenderMode?: "canvas" | "proxy";
   editingTextIndex?: number | null;
   editingBulletsIndex?: number | null;
   editingTableIndex?: number | null;
@@ -114,6 +120,7 @@ export function KonvaSlide({
         interactive={interactive}
         nodeRefs={nodeRefs}
         normalizedSelectionBox={normalizedSelectionBox}
+        bulletsRenderMode={bulletsRenderMode}
         onChange={resolvedOnChange}
         onChangeMany={resolvedOnChangeMany}
         onDelete={resolvedOnDelete}
@@ -127,6 +134,8 @@ export function KonvaSlide({
         selectedBounds={selectedBounds}
         selectedIndexes={selectedIndexes}
         slide={slide}
+        tableRenderMode={tableRenderMode}
+        textRenderMode={textRenderMode}
         transformerRef={transformerRef}
         width={width}
         height={height}

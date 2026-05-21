@@ -1,8 +1,8 @@
 import screenfull from "screenfull";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
-import { KonvaSlide } from "./canvas/KonvaSlide";
 import { presentStyles } from "./editorStyles";
+import { KonvaSlide } from "./slide-surface";
 
 const SLIDE_ASPECT = SLIDE_W / SLIDE_H;
 

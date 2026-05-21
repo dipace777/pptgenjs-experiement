@@ -1,4 +1,4 @@
-import type { SlideElement } from "../../../lib/slide-schema";
+import type { SlideElement } from "../../../../lib/slide-schema";
 import { BulletsElement } from "./BulletsElement";
 import { ChartElement } from "./ChartElement";
 import { EllipseElement } from "./EllipseElement";
@@ -11,9 +11,18 @@ import type { ElementCommonProps, TableInteractionProps } from "./types";
 
 export function KonvaElement({
   element,
+  bulletsRenderMode,
   onTableCellClick,
+  tableRenderMode,
+  textRenderMode,
   ...rest
-}: ElementCommonProps & TableInteractionProps & { element: SlideElement }) {
+}: ElementCommonProps &
+  TableInteractionProps & {
+    element: SlideElement;
+    bulletsRenderMode?: "canvas" | "proxy";
+    tableRenderMode?: "canvas" | "proxy";
+    textRenderMode?: "canvas" | "proxy";
+  }) {
   switch (element.kind) {
     case "rect":
       return <RectElement element={element} {...rest} />;
@@ -26,6 +35,7 @@ export function KonvaElement({
         <TableElement
           element={element}
           onTableCellClick={onTableCellClick}
+          renderMode={tableRenderMode}
           {...rest}
         />
       );
@@ -34,8 +44,14 @@ export function KonvaElement({
     case "image":
       return <ImageElement element={element} {...rest} />;
     case "bullets":
-      return <BulletsElement element={element} {...rest} />;
+      return (
+        <BulletsElement
+          element={element}
+          renderMode={bulletsRenderMode}
+          {...rest}
+        />
+      );
     case "text":
-      return <TextElement element={element} {...rest} />;
+      return <TextElement element={element} renderMode={textRenderMode} {...rest} />;
   }
 }

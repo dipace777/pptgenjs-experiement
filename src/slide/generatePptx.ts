@@ -220,7 +220,6 @@ function addChartElement(
 }
 
 function addTableElement(
-  pptx: PptxGenJS,
   s: PptxGenJS.Slide,
   el: Extract<SlideElement, { kind: "table" }>,
 ): void {
@@ -229,48 +228,42 @@ function addTableElement(
   const rowH = el.h / rows.length;
   const colW = el.w / cols;
   const fill = el.fill ?? "FFFFFF";
+  const tableRows: PptxGenJS.TableRow[] = rows.map((row, rowIndex) =>
+    Array.from({ length: cols }).map((_, colIndex) => {
+      const isHeader = rowIndex === 0;
+      return {
+        text: row[colIndex] ?? "",
+        options: {
+          bold: isHeader,
+          border: { color: el.borderColor, pt: 0.5 },
+          color: isHeader ? el.headerTextColor : el.textColor,
+          fill: {
+            color: isHeader ? el.headerFill : fill,
+            transparency: transparencyPct(el.opacity ?? undefined),
+          },
+          fontFace: el.fontFace ?? "Arial",
+          fontSize: el.fontSize,
+          fit: "shrink",
+          margin: [0.05, 0.08, 0.05, 0.08],
+          valign: "middle",
+          align: colIndex === 0 ? "left" : "center",
+        },
+      };
+    }),
+  );
 
-  s.addShape(pptx.ShapeType.roundRect, {
+  s.addTable(tableRows, {
     x: el.x,
     y: el.y,
     w: el.w,
     h: el.h,
-    rectRadius: 0.025,
+    border: { color: el.borderColor, pt: 0.5 },
+    colW: Array.from({ length: cols }, () => colW),
     fill: { color: fill, transparency: transparencyPct(el.opacity ?? undefined) },
-    line: { color: el.borderColor, width: 0.75 },
-  });
-
-  rows.forEach((row, rowIndex) => {
-    Array.from({ length: cols }).forEach((_, colIndex) => {
-      const isHeader = rowIndex === 0;
-      const x = el.x + colIndex * colW;
-      const y = el.y + rowIndex * rowH;
-      s.addShape(pptx.ShapeType.rect, {
-        x,
-        y,
-        w: colW,
-        h: rowH,
-        fill: {
-          color: isHeader ? el.headerFill : fill,
-          transparency: transparencyPct(el.opacity ?? undefined),
-        },
-        line: { color: el.borderColor, width: 0.5 },
-      });
-      s.addText(row[colIndex] ?? "", {
-        x: x + 0.08,
-        y: y + 0.05,
-        w: Math.max(0.1, colW - 0.16),
-        h: Math.max(0.1, rowH - 0.1),
-        fontFace: el.fontFace ?? "Arial",
-        fontSize: el.fontSize,
-        bold: isHeader,
-        color: isHeader ? el.headerTextColor : el.textColor,
-        align: colIndex === 0 ? "left" : "center",
-        valign: "middle",
-        fit: "shrink",
-        margin: 0,
-      });
-    });
+    fontFace: el.fontFace ?? "Arial",
+    fontSize: el.fontSize,
+    margin: [0.05, 0.08, 0.05, 0.08],
+    rowH: Array.from({ length: rows.length }, () => rowH),
   });
 }
 
@@ -512,7 +505,7 @@ function addElement(
   }
 
   if (el.kind === "table") {
-    addTableElement(pptx, s, el);
+    addTableElement(s, el);
     return;
   }
 

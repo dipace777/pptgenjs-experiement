@@ -1,6 +1,6 @@
 import { Group, Rect, Text } from "react-konva";
-import type { TableElement as TableEl } from "../../../lib/slide-schema";
-import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
+import type { TableElement as TableEl } from "../../../../lib/slide-schema";
+import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps, type TableInteractionProps } from "./types";
 
 export function TableElement({
@@ -12,7 +12,11 @@ export function TableElement({
   onTableCellClick,
   setRef,
   events,
-}: ElementCommonProps & TableInteractionProps & { element: TableEl }) {
+  renderMode = "canvas",
+}: ElementCommonProps & TableInteractionProps & {
+  element: TableEl;
+  renderMode?: "canvas" | "proxy";
+}) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   const rows = element.rows;
   const cols = Math.max(1, ...rows.map((row) => row.length));
@@ -37,9 +41,9 @@ export function TableElement({
       <Rect
         width={width}
         height={height}
-        fill={fill}
-        stroke={selected ? stroke : borderColor}
-        strokeWidth={selected ? strokeWidth : 1}
+        fill={renderMode === "proxy" ? "rgba(255,255,255,0.01)" : fill}
+        stroke={selected ? stroke : renderMode === "proxy" ? "rgba(255,255,255,0)" : borderColor}
+        strokeWidth={selected ? strokeWidth : renderMode === "proxy" ? 0 : 1}
         cornerRadius={4}
       />
       {editing ? null : rows.map((row, rowIndex) =>
@@ -52,9 +56,9 @@ export function TableElement({
                 y={rowIndex * rowH}
                 width={colW}
                 height={rowH}
-                fill={isHeader ? headerFill : fill}
-                stroke={borderColor}
-                strokeWidth={1}
+                fill={renderMode === "proxy" ? "rgba(255,255,255,0.01)" : isHeader ? headerFill : fill}
+                stroke={renderMode === "proxy" ? "rgba(255,255,255,0)" : borderColor}
+                strokeWidth={renderMode === "proxy" ? 0 : 1}
                 onClick={(event) => {
                   event.cancelBubble = true;
                   events.onClick(event);
@@ -65,20 +69,22 @@ export function TableElement({
                   onTableCellClick?.(rowIndex, colIndex);
                 }}
               />
-              <Text
-                x={colIndex * colW + 8 * (scale / PX_PER_IN)}
-                y={rowIndex * rowH + 6 * (scale / PX_PER_IN)}
-                width={Math.max(1, colW - 16 * (scale / PX_PER_IN))}
-                height={Math.max(1, rowH - 10 * (scale / PX_PER_IN))}
-                text={row[colIndex] ?? ""}
-                fill={withHash(isHeader ? element.headerTextColor : element.textColor)}
-                fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
-                fontSize={fontSize}
-                fontStyle={isHeader ? "bold" : "normal"}
-                align={colIndex === 0 ? "left" : "center"}
-                verticalAlign="middle"
-                listening={false}
-              />
+              {renderMode === "canvas" ? (
+                <Text
+                  x={colIndex * colW + 8 * (scale / PX_PER_IN)}
+                  y={rowIndex * rowH + 6 * (scale / PX_PER_IN)}
+                  width={Math.max(1, colW - 16 * (scale / PX_PER_IN))}
+                  height={Math.max(1, rowH - 10 * (scale / PX_PER_IN))}
+                  text={row[colIndex] ?? ""}
+                  fill={withHash(isHeader ? element.headerTextColor : element.textColor)}
+                  fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
+                  fontSize={fontSize}
+                  fontStyle={isHeader ? "bold" : "normal"}
+                  align={colIndex === 0 ? "left" : "center"}
+                  verticalAlign="middle"
+                  listening={false}
+                />
+              ) : null}
             </Group>
           );
         }),

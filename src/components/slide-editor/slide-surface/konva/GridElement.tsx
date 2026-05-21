@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Arc, Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from "react-konva";
-import type { GridElement as GridEl, GridItem } from "../../../lib/slide-schema";
-import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
+import type { GridElement as GridEl, GridItem } from "../../../../lib/slide-schema";
+import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function GridElement({
