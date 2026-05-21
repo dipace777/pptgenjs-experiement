@@ -6,7 +6,6 @@ export type ElementEvents = {
   draggable: boolean;
   onClick: (event: Konva.KonvaEventObject<MouseEvent>) => void;
   onDblClick?: (event: Konva.KonvaEventObject<MouseEvent>) => void;
-  onTableCellClick?: (rowIndex: number, colIndex: number) => void;
   onTap: () => void;
   onDragStart: () => void;
   onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;
@@ -21,6 +20,10 @@ export type ElementCommonProps = {
   editing?: boolean;
   setRef: (node: Konva.Node | null) => void;
   events: ElementEvents;
+};
+
+export type TableInteractionProps = {
+  onTableCellClick?: (rowIndex: number, colIndex: number) => void;
 };
 
 export function geometry(

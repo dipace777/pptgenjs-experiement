@@ -7,12 +7,13 @@ import { ImageElement } from "./ImageElement";
 import { RectElement } from "./RectElement";
 import { TableElement } from "./TableElement";
 import { TextElement } from "./TextElement";
-import type { ElementCommonProps } from "./types";
+import type { ElementCommonProps, TableInteractionProps } from "./types";
 
 export function KonvaElement({
   element,
+  onTableCellClick,
   ...rest
-}: ElementCommonProps & { element: SlideElement }) {
+}: ElementCommonProps & TableInteractionProps & { element: SlideElement }) {
   switch (element.kind) {
     case "rect":
       return <RectElement element={element} {...rest} />;
@@ -21,7 +22,13 @@ export function KonvaElement({
     case "chart":
       return <ChartElement element={element} {...rest} />;
     case "table":
-      return <TableElement element={element} {...rest} />;
+      return (
+        <TableElement
+          element={element}
+          onTableCellClick={onTableCellClick}
+          {...rest}
+        />
+      );
     case "grid":
       return <GridElement element={element} {...rest} />;
     case "image":

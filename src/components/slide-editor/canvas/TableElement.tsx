@@ -1,7 +1,7 @@
 import { Group, Rect, Text } from "react-konva";
 import type { TableElement as TableEl } from "../../../lib/slide-schema";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
-import { geometry, type ElementCommonProps } from "./types";
+import { geometry, type ElementCommonProps, type TableInteractionProps } from "./types";
 
 export function TableElement({
   element,
@@ -9,9 +9,10 @@ export function TableElement({
   scale,
   selected,
   editing,
+  onTableCellClick,
   setRef,
   events,
-}: ElementCommonProps & { element: TableEl }) {
+}: ElementCommonProps & TableInteractionProps & { element: TableEl }) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   const rows = element.rows;
   const cols = Math.max(1, ...rows.map((row) => row.length));
@@ -57,11 +58,11 @@ export function TableElement({
                 onClick={(event) => {
                   event.cancelBubble = true;
                   events.onClick(event);
-                  events.onTableCellClick?.(rowIndex, colIndex);
+                  onTableCellClick?.(rowIndex, colIndex);
                 }}
                 onTap={() => {
                   events.onTap();
-                  events.onTableCellClick?.(rowIndex, colIndex);
+                  onTableCellClick?.(rowIndex, colIndex);
                 }}
               />
               <Text

@@ -25,7 +25,7 @@ import {
   TextInlineEditor,
   TextToolbar,
 } from "./inline";
-import { Inspector } from "./inspector/Inspector";
+import { ChartGridInspector } from "./inspector/ChartGridInspector";
 import { Segmented } from "./shared/Segmented";
 import {
   activeSlideAtom,
@@ -491,7 +491,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             </label>
 
             {drawerElement ? (
-              <Inspector
+              <ChartGridInspector
                 element={drawerElement}
                 onPatch={patchSelected}
                 onReplace={(next) =>

@@ -14,6 +14,7 @@ import {
   selectedAtom,
   selectedIndexAtom,
   selectedItemsAtom,
+  selectedTableCellAtom,
 } from "./atoms";
 import { createDefaultElement } from "./createDefaultElement";
 import { pushHistoryAtom } from "./history";
@@ -27,11 +28,14 @@ export const selectElementAtom = atom(
     if (index < 0) {
       set(selectedAtom, -1);
       set(selectedItemsAtom, []);
+      set(selectedTableCellAtom, null);
       return;
     }
     if (!additive) {
       set(selectedAtom, index);
       set(selectedItemsAtom, [index]);
+      const cell = get(selectedTableCellAtom);
+      if (cell?.elementIndex !== index) set(selectedTableCellAtom, null);
       return;
     }
     const current = get(selectedItemsAtom);
@@ -40,17 +44,23 @@ export const selectElementAtom = atom(
       : [...current, index];
     set(selectedItemsAtom, next);
     set(selectedAtom, next.at(-1) ?? -1);
+    const cell = get(selectedTableCellAtom);
+    if (cell && !next.includes(cell.elementIndex)) set(selectedTableCellAtom, null);
   },
 );
 
-export const setSelectionAtom = atom(null, (_get, set, next: number) => {
+export const setSelectionAtom = atom(null, (get, set, next: number) => {
   set(selectedAtom, next);
   set(selectedItemsAtom, next < 0 ? [] : [next]);
+  const cell = get(selectedTableCellAtom);
+  if (cell?.elementIndex !== next) set(selectedTableCellAtom, null);
 });
 
-export const selectElementsAtom = atom(null, (_get, set, indexes: number[]) => {
+export const selectElementsAtom = atom(null, (get, set, indexes: number[]) => {
   set(selectedItemsAtom, indexes);
   set(selectedAtom, indexes.at(-1) ?? -1);
+  const cell = get(selectedTableCellAtom);
+  if (cell && !indexes.includes(cell.elementIndex)) set(selectedTableCellAtom, null);
 });
 
 // --- Deck mutation actions ---------------------------------------------
@@ -124,6 +134,7 @@ export const addElementAtom = atom(
     });
     set(selectedAtom, newIndex);
     set(selectedItemsAtom, [newIndex]);
+    set(selectedTableCellAtom, null);
     set(editorOpenAtom, true);
   },
 );
@@ -144,6 +155,7 @@ export const duplicateSelectedAtom = atom(null, (get, set) => {
   });
   set(selectedAtom, idx + 1);
   set(selectedItemsAtom, [idx + 1]);
+  set(selectedTableCellAtom, null);
 });
 
 export const deleteSelectedAtom = atom(null, (get, set) => {
@@ -165,9 +177,11 @@ export const deleteSelectedAtom = atom(null, (get, set) => {
   if (remainingCount <= 0) {
     set(selectedAtom, -1);
     set(selectedItemsAtom, []);
+    set(selectedTableCellAtom, null);
     return;
   }
   const nextSelected = Math.min(Math.max(0, indexes.at(-1) ?? 0), remainingCount - 1);
   set(selectedAtom, nextSelected);
   set(selectedItemsAtom, [nextSelected]);
+  set(selectedTableCellAtom, null);
 });

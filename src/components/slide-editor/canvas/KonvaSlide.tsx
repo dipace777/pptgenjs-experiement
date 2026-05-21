@@ -123,10 +123,6 @@ export function KonvaSlide({
       if (el.kind === "image") onEditImage?.(index);
       if (el.kind === "table") onEditTable?.(index);
     },
-    onTableCellClick: (rowIndex: number, colIndex: number) => {
-      if (el.kind !== "table") return;
-      onSelectTableCell?.(index, rowIndex, colIndex);
-    },
     onTap: () => onSelect?.(index),
     onDragStart: () => {
       if (!selectedIndexes.includes(index) || selectedIndexes.length <= 1) {
@@ -354,6 +350,11 @@ export function KonvaSlide({
               editingTextIndex === index ||
               editingBulletsIndex === index ||
               editingTableIndex === index
+            }
+            onTableCellClick={
+              el.kind === "table"
+                ? (rowIndex, colIndex) => onSelectTableCell?.(index, rowIndex, colIndex)
+                : undefined
             }
             setRef={(node) => {
               nodeRefs.current[index] = node;

@@ -1,34 +1,30 @@
 import type { ReactNode } from "react";
-import type { SlideElement } from "../../../lib/slide-schema";
+import type { ChartElement, GridElement, SlideElement } from "../../../lib/slide-schema";
 import { styles } from "../editorStyles";
 import { withHash, withoutHash } from "../editorUtils";
 
-export function Inspector({
+type ChartGridElement = ChartElement | GridElement;
+
+export function ChartGridInspector({
   element,
   onPatch,
   onReplace,
 }: {
-  element: SlideElement;
+  element: ChartGridElement;
   onPatch: (patch: Partial<SlideElement>) => void;
-  onReplace: (next: SlideElement) => void;
+  onReplace: (next: ChartGridElement) => void;
 }) {
   return (
     <form
       onSubmit={(event) => event.preventDefault()}
       style={styles.form}
     >
-      {element.kind !== "text" &&
-      element.kind !== "bullets" &&
-      element.kind !== "rect" &&
-      element.kind !== "ellipse" &&
-      element.kind !== "table" ? (
-        <div style={styles.grid2}>
-          <NumberField label="X" value={element.x} onChange={(x) => onPatch({ x })} />
-          <NumberField label="Y" value={element.y} onChange={(y) => onPatch({ y })} />
-          <NumberField label="W" value={element.w} onChange={(w) => onPatch({ w })} />
-          <NumberField label="H" value={element.h} onChange={(h) => onPatch({ h })} />
-        </div>
-      ) : null}
+      <div style={styles.grid2}>
+        <NumberField label="X" value={element.x} onChange={(x) => onPatch({ x })} />
+        <NumberField label="Y" value={element.y} onChange={(y) => onPatch({ y })} />
+        <NumberField label="W" value={element.w} onChange={(w) => onPatch({ w })} />
+        <NumberField label="H" value={element.h} onChange={(h) => onPatch({ h })} />
+      </div>
 
       {element.kind === "chart" ? (
         <>
@@ -334,19 +330,14 @@ export function Inspector({
         </>
       ) : null}
 
-      {"opacity" in element &&
-      element.kind !== "rect" &&
-      element.kind !== "ellipse" &&
-      element.kind !== "table" ? (
-        <NumberField
-          label="Opacity"
-          value={element.opacity ?? 1}
-          min={0}
-          max={1}
-          step={0.05}
-          onChange={(opacity) => onPatch({ opacity })}
-        />
-      ) : null}
+      <NumberField
+        label="Opacity"
+        value={element.opacity ?? 1}
+        min={0}
+        max={1}
+        step={0.05}
+        onChange={(opacity) => onPatch({ opacity })}
+      />
     </form>
   );
 }
