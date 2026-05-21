@@ -1,0 +1,98 @@
+import type { SlideElement } from "../../../lib/slide-schema";
+
+const base = { x: 0.8, y: 0.8, w: 2.6, h: 0.7 } as const;
+
+export function createDefaultElement(kind: SlideElement["kind"]): SlideElement {
+  switch (kind) {
+    case "rect":
+      return { ...base, kind, fill: "D4A24C", rx: 0.08 };
+    case "ellipse":
+      return { ...base, kind, fill: "75AADB" };
+    case "chart":
+      return {
+        ...base,
+        w: 4.2,
+        h: 1.8,
+        kind,
+        chartType: "bar",
+        title: "Chart title",
+        color: "D4A24C",
+        axisColor: "9AA7BD",
+        labelColor: "6A7894",
+        showValues: true,
+        data: [
+          { label: "A", value: 42, color: "D4A24C" },
+          { label: "B", value: 68, color: "3E78B2" },
+          { label: "C", value: 54, color: "0B1F3A" },
+        ],
+      };
+    case "table":
+      return {
+        ...base,
+        w: 5.2,
+        h: 2.1,
+        kind,
+        rows: [
+          ["Metric", "Apps", "Goals"],
+          ["La Liga", "520", "474"],
+          ["Champions League", "163", "129"],
+          ["Argentina", "190+", "110+"],
+        ],
+        fontFace: "Arial",
+        fontSize: 11,
+        textColor: "1A2B45",
+        headerFill: "0B1F3A",
+        headerTextColor: "FFFFFF",
+        borderColor: "DDE5F0",
+        fill: "FFFFFF",
+      };
+    case "grid":
+      return {
+        ...base,
+        w: 5.2,
+        h: 2.2,
+        kind,
+        columns: 3,
+        items: Array.from({ length: 9 }, (_, index) => ({
+          type: "text" as const,
+          title: String(index + 1).padStart(2, "0"),
+          subtitle: "Placeholder",
+        })),
+        fontFace: "Arial",
+        numberFontSize: 24,
+        labelFontSize: 7,
+        numberColor: "3E78B2",
+        labelColor: "6A7894",
+        fill: "FFFFFF",
+        borderColor: "DDE5F0",
+        gap: 0.14,
+        rx: 0.08,
+      };
+    case "image":
+      return { ...base, w: 3.6, h: 2.4, kind, fit: "contain" };
+    case "bullets":
+      return {
+        ...base,
+        h: 1.35,
+        kind,
+        items: ["First point", "Second point"],
+        fontFace: "Arial",
+        fontSize: 18,
+        color: "1A2B45",
+        lineSpacingMultiple: 1.25,
+        itemGap: 0.08,
+      };
+    case "text":
+      return {
+        ...base,
+        w: 4.2,
+        h: 0.7,
+        kind,
+        text: "New text",
+        fontFace: "Arial",
+        fontSize: 28,
+        bold: true,
+        color: "1A2B45",
+      };
+  }
+}
