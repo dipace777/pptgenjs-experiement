@@ -290,6 +290,9 @@ function addGridElement(
     const row = Math.floor(index / columns);
     const x = el.x + col * (cellW + gap);
     const y = el.y + row * (cellH + gap);
+    const isChart = item.type === "chart";
+    const isImage = item.type === "image";
+    const chartType = item.chartType ?? "bar";
     s.addShape(pptx.ShapeType.roundRect, {
       x,
       y,
@@ -302,13 +305,37 @@ function addGridElement(
       },
       line: { color: el.borderColor, width: 0.75 },
     });
-    s.addText(item, {
+
+    if (isChart) {
+      addGridChartIcon(pptx, s, chartType, x, y, cellW, cellH, el.numberColor);
+    }
+
+    if (isImage) {
+      s.addShape(pptx.ShapeType.rect, {
+        x: x + cellW * 0.18,
+        y: y + cellH * 0.27,
+        w: cellW * 0.64,
+        h: cellH * 0.32,
+        fill: { transparency: 100 },
+        line: { color: el.numberColor, width: 0.9 },
+      });
+      s.addShape(pptx.ShapeType.line, {
+        x: x + cellW * 0.22,
+        y: y + cellH * 0.54,
+        w: cellW * 0.54,
+        h: -cellH * 0.2,
+        flipV: true,
+        line: { color: el.numberColor, width: 0.9 },
+      });
+    }
+
+    s.addText(item.title, {
       x,
-      y: y + cellH * 0.16,
+      y: y + (isChart || isImage ? cellH * 0.08 : cellH * 0.16),
       w: cellW,
-      h: cellH * 0.46,
+      h: isChart || isImage ? cellH * 0.22 : cellH * 0.46,
       fontFace: el.fontFace ?? "Arial",
-      fontSize: el.numberFontSize,
+      fontSize: isChart || isImage ? el.numberFontSize * 0.72 : el.numberFontSize,
       bold: true,
       color: el.numberColor,
       align: "center",
@@ -316,7 +343,7 @@ function addGridElement(
       margin: 0,
       fit: "shrink",
     });
-    s.addText("PLACEHOLDER", {
+    s.addText(item.subtitle || item.type.toUpperCase(), {
       x: x + cellW * 0.1,
       y: y + cellH * 0.68,
       w: cellW * 0.8,
@@ -329,6 +356,65 @@ function addGridElement(
       margin: 0,
       fit: "shrink",
       charSpacing: 1.7,
+    });
+  });
+}
+
+function addGridChartIcon(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  chartType: "bar" | "line" | "pie" | "donut",
+  x: number,
+  y: number,
+  cellW: number,
+  cellH: number,
+  color: string,
+) {
+  if (chartType === "bar") {
+    [0.18, 0.26, 0.34].forEach((height, index) => {
+      s.addShape(pptx.ShapeType.rect, {
+        x: x + cellW * (0.22 + index * 0.2),
+        y: y + cellH * (0.76 - height),
+        w: cellW * 0.12,
+        h: cellH * height,
+        fill: { color, transparency: index * 16 },
+        line: { type: "none" },
+      });
+    });
+    return;
+  }
+
+  if (chartType === "pie" || chartType === "donut") {
+    const size = Math.min(cellW, cellH) * 0.34;
+    s.addShape(
+      chartType === "donut" ? pptx.ShapeType.donut : pptx.ShapeType.pie,
+      {
+        x: x + cellW * 0.5 - size / 2,
+        y: y + cellH * 0.46 - size / 2,
+        w: size,
+        h: size,
+        fill: { color },
+        line: { type: "none" },
+      },
+    );
+    return;
+  }
+
+  const points = [
+    [x + cellW * 0.18, y + cellH * 0.62],
+    [x + cellW * 0.4, y + cellH * 0.46],
+    [x + cellW * 0.62, y + cellH * 0.54],
+    [x + cellW * 0.82, y + cellH * 0.32],
+  ];
+  points.slice(1).forEach((point, pointIndex) => {
+    const prev = points[pointIndex];
+    s.addShape(pptx.ShapeType.line, {
+      x: Math.min(prev[0], point[0]),
+      y: Math.min(prev[1], point[1]),
+      w: Math.abs(point[0] - prev[0]),
+      h: Math.abs(point[1] - prev[1]),
+      flipV: point[1] < prev[1],
+      line: { color, width: 1.2 },
     });
   });
 }

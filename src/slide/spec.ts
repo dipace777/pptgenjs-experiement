@@ -105,10 +105,17 @@ export const TableElementSchema = z.object({
   fill: HexColorSchema.nullish(),
 });
 
+export const GridItemSchema = z.object({
+  type: z.enum(["text", "chart", "image"]),
+  chartType: z.enum(["bar", "line", "pie", "donut"]).nullish(),
+  title: z.string().min(1).max(80),
+  subtitle: z.string().max(120).nullish(),
+});
+
 export const GridElementSchema = z.object({
   ...baseElement,
   kind: z.literal("grid"),
-  items: z.array(z.string().min(1).max(80)).min(1).max(12),
+  items: z.array(GridItemSchema).min(1).max(12),
   columns: z.number().int().min(1).max(4),
   fontFace: z.string().min(1).max(80).nullish(),
   numberFontSize: z.number().min(8).max(72),
@@ -152,6 +159,7 @@ export type BulletsElement = z.infer<typeof BulletsElementSchema>;
 export type ChartDatum = z.infer<typeof ChartDatumSchema>;
 export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
+export type GridItem = z.infer<typeof GridItemSchema>;
 export type GridElement = z.infer<typeof GridElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
@@ -952,9 +960,17 @@ const slide7Grid: Slide = {
       w: 7.58,
       h: 3.0,
       columns: 3,
-      items: Array.from({ length: 9 }, (_, index) =>
-        String(index + 1).padStart(2, "0"),
-      ),
+      items: [
+        { type: "text", title: "01", subtitle: "Opening idea" },
+        { type: "chart", chartType: "bar", title: "02", subtitle: "Metric placeholder" },
+        { type: "image", title: "03", subtitle: "Visual placeholder" },
+        { type: "text", title: "04", subtitle: "Key point" },
+        { type: "chart", chartType: "line", title: "05", subtitle: "Trend slot" },
+        { type: "image", title: "06", subtitle: "Photo slot" },
+        { type: "text", title: "07", subtitle: "Proof point" },
+        { type: "chart", chartType: "pie", title: "08", subtitle: "Comparison" },
+        { type: "image", title: "09", subtitle: "Final visual" },
+      ],
       fontFace: SANS,
       numberFontSize: 24,
       labelFontSize: 7,

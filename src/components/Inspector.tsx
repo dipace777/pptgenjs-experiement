@@ -238,21 +238,95 @@ export function Inspector({
 
       {element.kind === "grid" ? (
         <>
-          <Field label="Items">
-            <textarea
-              value={element.items.join("\n")}
-              rows={7}
-              onChange={(event) => {
-                const items = event.target.value
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean)
-                  .slice(0, 12);
-                if (items.length > 0) onReplace({ ...element, items });
-              }}
-              style={styles.textarea}
-            />
-          </Field>
+          <div style={styles.field}>
+            <span>Items</span>
+            <div style={styles.itemList}>
+              {element.items.map((item, itemIndex) => (
+                <div key={itemIndex} style={styles.gridItemEditor}>
+                  <div style={styles.itemRow}>
+                    <select
+                      aria-label={`Grid item ${itemIndex + 1} type`}
+                      value={item.type}
+                      onChange={(event) => {
+                        const type = event.target.value as "text" | "chart" | "image";
+                        const items = [...element.items];
+                        items[itemIndex] = {
+                          ...item,
+                          type,
+                          chartType: type === "chart" ? (item.chartType ?? "bar") : undefined,
+                        };
+                        onReplace({ ...element, items });
+                      }}
+                      style={styles.input}
+                    >
+                      <option value="text">Text</option>
+                      <option value="chart">Chart</option>
+                      <option value="image">Image</option>
+                    </select>
+                    <button
+                      type="button"
+                      aria-label={`Delete grid item ${itemIndex + 1}`}
+                      disabled={element.items.length <= 1}
+                      onClick={() =>
+                        onReplace({
+                          ...element,
+                          items: element.items.filter((_, index) => index !== itemIndex),
+                        })
+                      }
+                      style={{
+                        ...styles.smallButton,
+                        opacity: element.items.length <= 1 ? 0.45 : 1,
+                        cursor: element.items.length <= 1 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {item.type === "chart" ? (
+                    <select
+                      aria-label={`Grid item ${itemIndex + 1} chart type`}
+                      value={item.chartType ?? "bar"}
+                      onChange={(event) => {
+                        const items = [...element.items];
+                        items[itemIndex] = {
+                          ...item,
+                          chartType: event.target.value as "bar" | "line" | "pie" | "donut",
+                        };
+                        onReplace({ ...element, items });
+                      }}
+                      style={styles.input}
+                    >
+                      <option value="bar">Bar</option>
+                      <option value="line">Line</option>
+                      <option value="pie">Pie</option>
+                      <option value="donut">Donut</option>
+                    </select>
+                  ) : null}
+                  <input
+                    aria-label={`Grid item ${itemIndex + 1} title`}
+                    value={item.title}
+                    onChange={(event) => {
+                      const items = [...element.items];
+                      items[itemIndex] = { ...item, title: event.target.value };
+                      onReplace({ ...element, items });
+                    }}
+                    style={styles.input}
+                  />
+                  <input
+                    aria-label={`Grid item ${itemIndex + 1} subtitle`}
+                    value={item.subtitle ?? ""}
+                    placeholder="Subtitle"
+                    onChange={(event) => {
+                      const items = [...element.items];
+                      items[itemIndex] = { ...item, subtitle: event.target.value };
+                      onReplace({ ...element, items });
+                    }}
+                    style={styles.input}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
           <div style={styles.grid2}>
             <button
               type="button"
@@ -261,7 +335,11 @@ export function Inspector({
                   ...element,
                   items: [
                     ...element.items,
-                    String(element.items.length + 1).padStart(2, "0"),
+                    {
+                      type: "text" as const,
+                      title: String(element.items.length + 1).padStart(2, "0"),
+                      subtitle: "Placeholder",
+                    },
                   ].slice(0, 12),
                 })
               }

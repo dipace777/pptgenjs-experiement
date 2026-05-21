@@ -126,9 +126,11 @@ export function SlideEditor() {
                 h: 2.2,
                 kind,
                 columns: 3,
-                items: Array.from({ length: 9 }, (_, index) =>
-                  String(index + 1).padStart(2, "0"),
-                ),
+                items: Array.from({ length: 9 }, (_, index) => ({
+                  type: "text" as const,
+                  title: String(index + 1).padStart(2, "0"),
+                  subtitle: "Placeholder",
+                })),
                 fontFace: "Arial",
                 numberFontSize: 24,
                 labelFontSize: 7,

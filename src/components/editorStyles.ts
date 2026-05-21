@@ -213,6 +213,24 @@ export const styles = {
     padding: 4,
   },
   toggleRow: { display: "flex", gap: 14 },
+  itemList: {
+    display: "grid",
+    gap: 8,
+  },
+  itemRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 34px",
+    gap: 8,
+    alignItems: "center",
+  },
+  gridItemEditor: {
+    display: "grid",
+    gap: 8,
+    padding: 8,
+    borderRadius: 7,
+    border: "1px solid #20283a",
+    background: "#0c1019",
+  },
   checkLabel: {
     display: "inline-flex",
     alignItems: "center",
@@ -236,6 +254,16 @@ export const styles = {
     background: "#161b27",
     color: "#d8dfed",
     fontWeight: 700,
+    cursor: "pointer",
+  },
+  smallButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 7,
+    border: "1px solid #2b3448",
+    background: "#161b27",
+    color: "#d8dfed",
+    fontWeight: 800,
     cursor: "pointer",
   },
   segmented: {
