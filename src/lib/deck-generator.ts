@@ -220,17 +220,21 @@ function sectionSlide(
   total: number,
   colors: ReturnType<typeof palette>,
 ): Slide {
-  const titleLineCount = Math.min(3, Math.max(1, Math.ceil(section.title.length / 34)));
+  const titleWidth = 4.15;
+  const leftColumnWidth = 4.1;
+  const titleLineCount = Math.min(3, Math.max(1, Math.ceil(section.title.length / 24)));
   const titleHeight = titleLineCount * 0.38;
   const summaryY = 0.82 + titleHeight + 0.16;
   const bulletsY = Math.max(2.35, summaryY + 1);
+  const visualY = Math.max(1.05, 0.82 + titleHeight + 0.18);
+  const visualH = Math.max(2.2, 4.35 - visualY);
   const base: SlideElement[] = [
     { kind: "rect", x: 0.65, y: 0.62, w: 0.55, h: 0.06, fill: colors.accent },
     {
       kind: "text",
       x: 0.65,
       y: 0.82,
-      w: 5.8,
+      w: titleWidth,
       h: titleHeight,
       text: section.title,
       fontFace: SANS,
@@ -243,7 +247,7 @@ function sectionSlide(
       kind: "text",
       x: 0.68,
       y: summaryY,
-      w: 4.1,
+      w: leftColumnWidth,
       h: 0.78,
       text: section.summary,
       fontFace: SANS,
@@ -258,9 +262,9 @@ function sectionSlide(
       ? {
           kind: "chart",
           x: 5.25,
-          y: 1.05,
+          y: visualY,
           w: 3.9,
-          h: 2.8,
+          h: visualH,
           chartType: "bar",
           title: "Signal strength",
           data: section.bullets.slice(0, 4).map((label, itemIndex) => ({
@@ -277,9 +281,9 @@ function sectionSlide(
         ? {
             kind: "grid",
             x: 5.05,
-            y: 0.95,
+            y: visualY,
             w: 4.1,
-            h: 3.2,
+            h: visualH,
             columns: 2,
             items: section.bullets.slice(0, 6).map((item, itemIndex) => ({
               type: itemIndex % 3 === 1 ? ("chart" as const) : ("text" as const),
@@ -300,10 +304,10 @@ function sectionSlide(
         : section.visual === "table"
           ? {
               kind: "table",
-              x: 4.9,
-              y: 1.05,
-              w: 4.3,
-              h: 2.75,
+              x: 5.05,
+              y: visualY,
+              w: 4.1,
+              h: visualH,
               rows: [
                 ["Phase", "Focus", "Output"],
                 ...section.bullets.slice(0, 4).map((item, itemIndex) => [
@@ -323,9 +327,9 @@ function sectionSlide(
           : {
               kind: "bullets",
               x: 5.05,
-              y: 1.1,
+              y: visualY,
               w: 3.95,
-              h: 2.65,
+              h: visualH,
               items: section.bullets,
               fontFace: SANS,
               fontSize: 17,
@@ -340,20 +344,24 @@ function sectionSlide(
     background: colors.background,
     elements: [
       ...base,
-      {
-        kind: "bullets",
-        x: 0.8,
-        y: bulletsY,
-        w: 3.7,
-        h: Math.max(1.2, 4.82 - bulletsY),
-        items: section.bullets.slice(0, 4),
-        fontFace: SANS,
-        fontSize: 14,
-        color: colors.text,
-        bulletColor: colors.accent,
-        lineSpacingMultiple: 1.25,
-        itemGap: 0.07,
-      },
+      ...(section.visual === "bullets"
+        ? []
+        : [
+            {
+              kind: "bullets" as const,
+              x: 0.8,
+              y: bulletsY,
+              w: 3.7,
+              h: Math.max(1.2, 4.82 - bulletsY),
+              items: section.bullets.slice(0, 4),
+              fontFace: SANS,
+              fontSize: 14,
+              color: colors.text,
+              bulletColor: colors.accent,
+              lineSpacingMultiple: 1.25,
+              itemGap: 0.07,
+            },
+          ]),
       visual,
       ...footer(index, total, colors.muted),
     ],

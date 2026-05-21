@@ -502,7 +502,6 @@ function addElement(
       // Zero the text-frame inset so coordinates match the React preview
       // (which has no padding inside its boxes).
       margin: 0,
-      fit: "shrink",
     });
     return;
   }
