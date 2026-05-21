@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import type { SlideElement } from "../lib/slide-schema";
-import { styles } from "./editorStyles";
-import { withHash, withoutHash } from "./editorUtils";
+import type { SlideElement } from "../../../lib/slide-schema";
+import { styles } from "../editorStyles";
+import { withHash, withoutHash } from "../editorUtils";
 
 export function Inspector({
   element,

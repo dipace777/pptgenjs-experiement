@@ -1,4 +1,4 @@
-import { styles } from "./editorStyles";
+import { styles } from "../editorStyles";
 
 export function Segmented<T extends string>({
   value,

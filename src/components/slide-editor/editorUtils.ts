@@ -1,4 +1,4 @@
-import { SLIDE_H } from "../lib/slide-schema";
+import { SLIDE_H } from "../../lib/slide-schema";
 
 export const PX_PER_IN = 96;
 export const PT_TO_PX = 96 / 72;

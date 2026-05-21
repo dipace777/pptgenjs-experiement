@@ -1,12 +1,10 @@
 import Konva from "konva";
 import PptxGenJS from "pptxgenjs";
 import { useEffect, useRef, useState } from "react";
-import { SLIDE_H, SLIDE_W, type Deck, type Slide, type SlideElement } from "../lib/slide-schema";
-import { generatePptx } from "../slide/generatePptx";
-import { messiDeck } from "../slide/spec";
-import { Inspector } from "./Inspector";
-import { KonvaSlide } from "./KonvaSlide";
-import { Segmented } from "./Segmented";
+import { SLIDE_H, SLIDE_W, type Deck, type Slide, type SlideElement } from "../../lib/slide-schema";
+import { generatePptx } from "../../slide/generatePptx";
+import { messiDeck } from "../../slide/spec";
+import { KonvaSlide } from "./canvas/KonvaSlide";
 import { styles } from "./editorStyles";
 import {
   EXPORT_H,
@@ -18,6 +16,8 @@ import {
   withHash,
   withoutHash,
 } from "./editorUtils";
+import { Inspector } from "./inspector/Inspector";
+import { Segmented } from "./shared/Segmented";
 
 export function SlideEditor() {
   const [deck, setDeck] = useState<Deck>(messiDeck);
