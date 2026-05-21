@@ -1,7 +1,7 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
 import { KonvaSlide } from "./canvas/KonvaSlide";
@@ -9,14 +9,19 @@ import { styles } from "./editorStyles";
 import {
   EXPORT_H,
   EXPORT_W,
-  PT_TO_PX,
-  PX_PER_IN,
   kindLabel,
   truncateWords,
   withHash,
   withoutHash,
 } from "./editorUtils";
 import { useDeckExport, useStageSize } from "./hooks";
+import {
+  BulletsInlineEditor,
+  BulletsToolbar,
+  ImageToolbar,
+  TextInlineEditor,
+  TextToolbar,
+} from "./inline";
 import { Inspector } from "./inspector/Inspector";
 import { Segmented } from "./shared/Segmented";
 import {
@@ -26,6 +31,12 @@ import {
   deckAtom,
   deleteSelectedAtom,
   duplicateSelectedAtom,
+  editingBulletsDraftAtom,
+  editingBulletsIndexAtom,
+  editingTextIndexAtom,
+  drawerElementAtom,
+  editingBulletsElementAtom,
+  editingTextElementAtom,
   editorOpenAtom,
   exportModeAtom,
   isExportingAtom,
@@ -33,9 +44,11 @@ import {
   redoAtom,
   selectElementAtom,
   selectElementsAtom,
-  selectedElementAtom,
+  selectedBulletsElementAtom,
   selectedIndexAtom,
+  selectedImageElementAtom,
   selectedItemsAtom,
+  selectedTextElementAtom,
   setSelectionAtom,
   undoAtom,
   updateActiveSlideAtom,
@@ -59,13 +72,22 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const activeSlide = useAtomValue(activeSlideAtom);
   const selectedIndex = useAtomValue(selectedIndexAtom);
   const selectedItems = useAtomValue(selectedItemsAtom);
-  const selectedElement = useAtomValue(selectedElementAtom);
+  const selectedTextElement = useAtomValue(selectedTextElementAtom);
+  const selectedBulletsElement = useAtomValue(selectedBulletsElementAtom);
+  const selectedImageElement = useAtomValue(selectedImageElementAtom);
+  const drawerElement = useAtomValue(drawerElementAtom);
+  const editingTextElement = useAtomValue(editingTextElementAtom);
+  const editingBulletsElement = useAtomValue(editingBulletsElementAtom);
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
+  const [editingTextIndex, setEditingTextIndex] = useAtom(editingTextIndexAtom);
+  const [editingBulletsIndex, setEditingBulletsIndex] = useAtom(
+    editingBulletsIndexAtom,
+  );
+  const [editingBulletsDraft, setEditingBulletsDraft] = useAtom(
+    editingBulletsDraftAtom,
+  );
   const isExporting = useAtomValue(isExportingAtom);
-  const [editingTextIndex, setEditingTextIndex] = useState<number | null>(null);
-  const [editingBulletsIndex, setEditingBulletsIndex] = useState<number | null>(null);
-  const [editingBulletsDraft, setEditingBulletsDraft] = useState("");
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const imageUploadTargetRef = useRef<number | null>(null);
 
@@ -98,28 +120,6 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const { stageWidth, stageWrapRef } = useStageSize();
   const { exportStageRefs, exportingType, handleExport, handlePdfExport } = useDeckExport();
   const stageScale = stageWidth / SLIDE_W;
-  const selectedTextElement =
-    selectedElement?.kind === "text" ? selectedElement : null;
-  const selectedBulletsElement =
-    selectedElement?.kind === "bullets" ? selectedElement : null;
-  const selectedImageElement =
-    selectedElement?.kind === "image" ? selectedElement : null;
-  const drawerElement =
-    selectedElement?.kind === "text" ||
-    selectedElement?.kind === "bullets" ||
-    selectedElement?.kind === "image"
-      ? null
-      : selectedElement;
-  const editingTextElement = useMemo(() => {
-    if (editingTextIndex == null) return null;
-    const element = activeSlide.elements[editingTextIndex];
-    return element?.kind === "text" ? element : null;
-  }, [activeSlide.elements, editingTextIndex]);
-  const editingBulletsElement = useMemo(() => {
-    if (editingBulletsIndex == null) return null;
-    const element = activeSlide.elements[editingBulletsIndex];
-    return element?.kind === "bullets" ? element : null;
-  }, [activeSlide.elements, editingBulletsIndex]);
 
   const openImageUpload = useCallback((index: number) => {
     imageUploadTargetRef.current = index;
@@ -280,374 +280,50 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                 }}
               />
               {selectedTextElement ? (
-                <div
-                  style={{
-                    ...styles.inlineTextToolbar,
-                    left: Math.max(8, selectedTextElement.x * stageScale),
-                    top: Math.max(8, selectedTextElement.y * stageScale - 48),
-                  }}
-                  onMouseDown={(event) => event.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    title="Bold"
-                    aria-pressed={selectedTextElement.bold ?? false}
-                    onClick={() =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedTextElement,
-                          bold: !(selectedTextElement.bold ?? false),
-                        },
-                      })
-                    }
-                    style={{
-                      ...styles.inlineTextButton,
-                      ...(selectedTextElement.bold ? styles.inlineTextButtonActive : {}),
-                    }}
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    title="Italic"
-                    aria-pressed={selectedTextElement.italic ?? false}
-                    onClick={() =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedTextElement,
-                          italic: !(selectedTextElement.italic ?? false),
-                        },
-                      })
-                    }
-                    style={{
-                      ...styles.inlineTextButton,
-                      fontStyle: "italic",
-                      ...(selectedTextElement.italic ? styles.inlineTextButtonActive : {}),
-                    }}
-                  >
-                    I
-                  </button>
-                  <input
-                    aria-label="Font size"
-                    title="Font size"
-                    type="number"
-                    min={6}
-                    max={360}
-                    value={selectedTextElement.fontSize}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedTextElement,
-                          fontSize: Number(event.target.value) || selectedTextElement.fontSize,
-                        },
-                      })
-                    }
-                    style={styles.inlineFontSize}
-                  />
-                  <input
-                    aria-label="Text color"
-                    title="Text color"
-                    type="color"
-                    value={withHash(selectedTextElement.color)}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedTextElement,
-                          color: withoutHash(event.target.value),
-                        },
-                      })
-                    }
-                    style={styles.inlineColor}
-                  />
-                  <input
-                    aria-label="Text opacity"
-                    title="Text opacity"
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={selectedTextElement.opacity ?? 1}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedTextElement,
-                          opacity: Number(event.target.value),
-                        },
-                      })
-                    }
-                    style={styles.inlineOpacity}
-                  />
-                </div>
+                <TextToolbar
+                  element={selectedTextElement}
+                  index={selectedIndex}
+                  scale={stageScale}
+                  onChange={(index, element) => updateElement({ index, element })}
+                />
               ) : null}
               {selectedBulletsElement ? (
-                <div
-                  style={{
-                    ...styles.inlineTextToolbar,
-                    left: Math.max(8, selectedBulletsElement.x * stageScale),
-                    top: Math.max(8, selectedBulletsElement.y * stageScale - 48),
-                  }}
-                  onMouseDown={(event) => event.stopPropagation()}
-                >
-                  <input
-                    aria-label="Bullet font size"
-                    title="Font size"
-                    type="number"
-                    min={8}
-                    max={36}
-                    value={selectedBulletsElement.fontSize}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedBulletsElement,
-                          fontSize:
-                            Number(event.target.value) || selectedBulletsElement.fontSize,
-                        },
-                      })
-                    }
-                    style={styles.inlineFontSize}
-                  />
-                  <input
-                    aria-label="Bullet color"
-                    title="Color"
-                    type="color"
-                    value={withHash(selectedBulletsElement.color)}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedBulletsElement,
-                          color: withoutHash(event.target.value),
-                        },
-                      })
-                    }
-                    style={styles.inlineColor}
-                  />
-                  <input
-                    aria-label="Bullet line height"
-                    title="Line height"
-                    type="number"
-                    min={0.9}
-                    max={2}
-                    step={0.05}
-                    value={selectedBulletsElement.lineSpacingMultiple ?? 1.3}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedBulletsElement,
-                          lineSpacingMultiple:
-                            Number(event.target.value) ||
-                            selectedBulletsElement.lineSpacingMultiple ||
-                            1.3,
-                        },
-                      })
-                    }
-                    style={styles.inlineFontSize}
-                  />
-                  <input
-                    aria-label="Bullet item gap"
-                    title="Item gap"
-                    type="number"
-                    min={0}
-                    max={0.4}
-                    step={0.02}
-                    value={selectedBulletsElement.itemGap ?? 0.05}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedBulletsElement,
-                          itemGap:
-                            Number(event.target.value) ||
-                            selectedBulletsElement.itemGap ||
-                            0,
-                        },
-                      })
-                    }
-                    style={styles.inlineFontSize}
-                  />
-                </div>
+                <BulletsToolbar
+                  element={selectedBulletsElement}
+                  index={selectedIndex}
+                  scale={stageScale}
+                  onChange={(index, element) => updateElement({ index, element })}
+                />
               ) : null}
               {selectedImageElement ? (
-                <div
-                  style={{
-                    ...styles.inlineTextToolbar,
-                    left: Math.max(8, selectedImageElement.x * stageScale),
-                    top: Math.max(8, selectedImageElement.y * stageScale - 48),
-                  }}
-                  onMouseDown={(event) => event.stopPropagation()}
-                >
-                  <label style={styles.inlineFileLabel} title="Upload image">
-                    Image
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/gif"
-                      style={styles.inlineHiddenInput}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.addEventListener("load", () => {
-                          if (typeof reader.result !== "string") return;
-                          updateElement({
-                            index: selectedIndex,
-                            element: {
-                              ...selectedImageElement,
-                              data: reader.result,
-                              name: file.name,
-                            },
-                          });
-                        });
-                        reader.readAsDataURL(file);
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>
-                  <select
-                    aria-label="Image fit"
-                    title="Fit"
-                    value={selectedImageElement.fit ?? "contain"}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedImageElement,
-                          fit: event.target.value as "contain" | "cover" | "fill",
-                        },
-                      })
-                    }
-                    style={styles.inlineSelect}
-                  >
-                    <option value="contain">Contain</option>
-                    <option value="cover">Cover</option>
-                    <option value="fill">Fill</option>
-                  </select>
-                  <input
-                    aria-label="Image opacity"
-                    title="Opacity"
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={selectedImageElement.opacity ?? 1}
-                    onChange={(event) =>
-                      updateElement({
-                        index: selectedIndex,
-                        element: {
-                          ...selectedImageElement,
-                          opacity: Number(event.target.value),
-                        },
-                      })
-                    }
-                    style={styles.inlineOpacity}
-                  />
-                  {selectedImageElement.data ? (
-                    <button
-                      type="button"
-                      title="Remove image"
-                      onClick={() =>
-                        updateElement({
-                          index: selectedIndex,
-                          element: {
-                            ...selectedImageElement,
-                            data: undefined,
-                            name: undefined,
-                          },
-                        })
-                      }
-                      style={{
-                        ...styles.inlineTextButton,
-                        ...styles.inlineDangerButton,
-                      }}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </div>
+                <ImageToolbar
+                  element={selectedImageElement}
+                  index={selectedIndex}
+                  scale={stageScale}
+                  onChange={(index, element) => updateElement({ index, element })}
+                  onUpload={openImageUpload}
+                />
               ) : null}
               {editingTextElement && editingTextIndex != null ? (
-                <textarea
-                  autoFocus
-                  value={editingTextElement.text}
-                  onChange={(event) =>
-                    updateElement({
-                      index: editingTextIndex,
-                      element: { ...editingTextElement, text: event.target.value || " " },
-                    })
-                  }
-                  onBlur={() => setEditingTextIndex(null)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      event.currentTarget.blur();
-                    }
-                  }}
-                  style={{
-                    ...styles.inlineTextEditor,
-                    left: editingTextElement.x * stageScale,
-                    top: editingTextElement.y * stageScale,
-                    width: editingTextElement.w * stageScale,
-                    height: editingTextElement.h * stageScale,
-                    color: withHash(editingTextElement.color),
-                    fontFamily: `${editingTextElement.fontFace ?? "Arial"}, Helvetica, sans-serif`,
-                    fontSize:
-                      editingTextElement.fontSize * PT_TO_PX * (stageScale / PX_PER_IN),
-                    fontWeight: editingTextElement.bold ? 700 : 400,
-                    fontStyle: editingTextElement.italic ? "italic" : "normal",
-                    textAlign: editingTextElement.align ?? "left",
-                    lineHeight: editingTextElement.lineHeight ?? 1.15,
-                    letterSpacing:
-                      ((editingTextElement.charSpacing ?? 0) / 100) *
-                      PT_TO_PX *
-                      (stageScale / PX_PER_IN),
-                  }}
+                <TextInlineEditor
+                  element={editingTextElement}
+                  index={editingTextIndex}
+                  scale={stageScale}
+                  onChange={(index, element) => updateElement({ index, element })}
+                  onClose={() => setEditingTextIndex(null)}
                 />
               ) : null}
               {editingBulletsElement && editingBulletsIndex != null ? (
-                <textarea
-                  autoFocus
-                  value={editingBulletsDraft}
-                  onChange={(event) => {
-                    const draft = event.target.value;
-                    setEditingBulletsDraft(draft);
-                    const items = draft
-                      .split("\n")
-                      .map((item) => item.replace(/^\s*[•*-]\s?/, "").trimEnd())
-                      .filter((item) => item.trim())
-                      .slice(0, 8);
-                    updateElement({
-                      index: editingBulletsIndex,
-                      element: {
-                        ...editingBulletsElement,
-                        items: items.length > 0 ? items : [" "],
-                      },
-                    });
-                  }}
-                  onBlur={() => {
+                <BulletsInlineEditor
+                  element={editingBulletsElement}
+                  index={editingBulletsIndex}
+                  scale={stageScale}
+                  draft={editingBulletsDraft}
+                  onDraftChange={setEditingBulletsDraft}
+                  onChange={(index, element) => updateElement({ index, element })}
+                  onClose={() => {
                     setEditingBulletsIndex(null);
                     setEditingBulletsDraft("");
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      event.currentTarget.blur();
-                    }
-                  }}
-                  style={{
-                    ...styles.inlineTextEditor,
-                    left: editingBulletsElement.x * stageScale,
-                    top: editingBulletsElement.y * stageScale,
-                    width: editingBulletsElement.w * stageScale,
-                    height: editingBulletsElement.h * stageScale,
-                    color: withHash(editingBulletsElement.color),
-                    fontFamily: `${editingBulletsElement.fontFace ?? "Arial"}, Helvetica, sans-serif`,
-                    fontSize:
-                      editingBulletsElement.fontSize * PT_TO_PX * (stageScale / PX_PER_IN),
-                    lineHeight: editingBulletsElement.lineSpacingMultiple ?? 1.3,
                   }}
                 />
               ) : null}
