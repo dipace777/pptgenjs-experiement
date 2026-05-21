@@ -110,9 +110,9 @@ export function GridElement({
             />
             <Text
               x={cellW * 0.1}
-              y={cellH * 0.68}
+              y={(isChart || isImage ? 0.78 : 0.68) * cellH}
               width={cellW * 0.8}
-              height={cellH * 0.18}
+              height={(isChart || isImage ? 0.14 : 0.18) * cellH}
               text={item.subtitle || item.type.toUpperCase()}
               fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
               fontSize={labelFontSize}
@@ -152,17 +152,20 @@ function GridChartIcon({
   if (chartType === "bar") {
     return (
       <Group>
-        {[0.22, 0.42, 0.62].map((x, index) => (
+        {[0.22, 0.42, 0.62].map((x, index) => {
+          const barHeight = height * (0.13 + index * 0.06);
+          return (
           <Rect
             key={x}
             x={width * x}
-            y={height * (0.58 - index * 0.08)}
+            y={height * 0.62 - barHeight}
             width={width * 0.12}
-            height={height * (0.18 + index * 0.08)}
+            height={barHeight}
             fill={color}
             opacity={0.9}
           />
-        ))}
+          );
+        })}
       </Group>
     );
   }

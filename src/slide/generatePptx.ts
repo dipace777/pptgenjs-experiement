@@ -355,9 +355,9 @@ function addGridElement(
     });
     s.addText(item.subtitle || item.type.toUpperCase(), {
       x: x + cellW * 0.1,
-      y: y + cellH * 0.68,
+      y: y + cellH * (isChart || isImage ? 0.78 : 0.68),
       w: cellW * 0.8,
-      h: cellH * 0.18,
+      h: cellH * (isChart || isImage ? 0.14 : 0.18),
       fontFace: el.fontFace ?? "Arial",
       fontSize: el.labelFontSize,
       bold: true,
@@ -381,10 +381,10 @@ function addGridChartIcon(
   color: string,
 ) {
   if (chartType === "bar") {
-    [0.18, 0.26, 0.34].forEach((height, index) => {
+    [0.13, 0.19, 0.25].forEach((height, index) => {
       s.addShape(pptx.ShapeType.rect, {
         x: x + cellW * (0.22 + index * 0.2),
-        y: y + cellH * (0.76 - height),
+        y: y + cellH * (0.62 - height),
         w: cellW * 0.12,
         h: cellH * height,
         fill: { color, transparency: index * 16 },
