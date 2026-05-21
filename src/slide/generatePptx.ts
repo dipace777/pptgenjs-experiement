@@ -6,7 +6,7 @@ import {
   type Deck,
   type Slide,
   type SlideElement,
-} from "./spec";
+} from "../lib/slide-schema";
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
 

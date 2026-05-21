@@ -1,7 +1,7 @@
 import Konva from "konva";
 import { useEffect, useMemo, useRef } from "react";
 import { Arc, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
-import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from "../slide/spec";
+import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from "../lib/slide-schema";
 import { PT_TO_PX, PX_PER_IN, clamp, withHash } from "./editorUtils";
 
 export function KonvaSlide({

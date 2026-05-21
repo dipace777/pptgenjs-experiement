@@ -1,8 +1,9 @@
 import Konva from "konva";
 import PptxGenJS from "pptxgenjs";
 import { useEffect, useRef, useState } from "react";
+import { SLIDE_H, SLIDE_W, type Deck, type Slide, type SlideElement } from "../lib/slide-schema";
 import { generatePptx } from "../slide/generatePptx";
-import { SLIDE_H, SLIDE_W, messiDeck, type Deck, type Slide, type SlideElement } from "../slide/spec";
+import { messiDeck } from "../slide/spec";
 import { Inspector } from "./Inspector";
 import { KonvaSlide } from "./KonvaSlide";
 import { Segmented } from "./Segmented";

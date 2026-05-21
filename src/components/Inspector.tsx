@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { SlideElement } from "../slide/spec";
+import type { SlideElement } from "../lib/slide-schema";
 import { styles } from "./editorStyles";
 import { withHash, withoutHash } from "./editorUtils";
 
