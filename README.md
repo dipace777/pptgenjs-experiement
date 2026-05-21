@@ -57,10 +57,16 @@ Vite will print a local URL (typically `http://localhost:5173`). Open it in your
 - [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) — app framework & routing
 - [Vite](https://vitejs.dev/) — dev server & bundler
 - [React 19](https://react.dev/)
-- [react-konva](https://konvajs.org/docs/react/) — canvas-based slide rendering
+- [Konva](https://konvajs.org/) + [react-konva](https://konvajs.org/docs/react/) — canvas-based slide rendering
 - [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) — PPTX export
-- [@tanstack/ai](https://github.com/TanStack/ai) + OpenAI — LLM integration
+- [jsPDF](https://github.com/parallax/jsPDF) — PDF export
+- [@tanstack/ai](https://github.com/TanStack/ai) + [@tanstack/ai-openai](https://github.com/TanStack/ai) + [@tanstack/ai-react](https://github.com/TanStack/ai) — LLM integration with OpenAI
+- [Jotai](https://jotai.org/) + [jotai-immer](https://github.com/jotaijs/jotai-immer) — atomic state management
+- [Immer](https://immerjs.github.io/immer/) — immutable state updates
+- [@tanstack/react-hotkeys](https://github.com/TanStack/react-hotkeys) — keyboard shortcuts (undo/redo, etc.)
 - [Zod](https://zod.dev/) — schema validation
+- [TypeScript](https://www.typescriptlang.org/) — type safety
+- [ESLint](https://eslint.org/) — linting
 
 ## Project layout
 
