@@ -1,6 +1,18 @@
 import Konva from "konva";
-import { useEffect, useMemo, useRef } from "react";
-import { Arc, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Arc,
+  Ellipse,
+  Group,
+  Image as KonvaImage,
+  Layer,
+  Line,
+  Rect,
+  Stage,
+  Text,
+  Transformer,
+} from "react-konva";
+import type { GridItem } from "../../../lib/slide-schema";
 import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from "../../../lib/slide-schema";
 import { PT_TO_PX, PX_PER_IN, clamp, withHash } from "../editorUtils";
 
@@ -465,7 +477,14 @@ function KonvaElement({
                   scale={scale}
                 />
               ) : null}
-              {isImage ? (
+              {isImage && item.imageData ? (
+                <GridUploadedImage
+                  item={item}
+                  width={cellW}
+                  height={cellH}
+                />
+              ) : null}
+              {isImage && !item.imageData ? (
                 <>
                   <Rect
                     x={cellW * 0.18}
@@ -697,6 +716,37 @@ function GridChartIcon({
       stroke={color}
       strokeWidth={2 * Math.max(0.7, scale / 96)}
       tension={0.25}
+    />
+  );
+}
+
+function GridUploadedImage({
+  item,
+  width,
+  height,
+}: {
+  item: GridItem;
+  width: number;
+  height: number;
+}) {
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    const nextImage = new window.Image();
+    nextImage.onload = () => setImage(nextImage);
+    nextImage.src = item.imageData ?? "";
+  }, [item.imageData]);
+
+  if (!image) return null;
+
+  return (
+    <KonvaImage
+      x={width * 0.08}
+      y={height * 0.18}
+      width={width * 0.84}
+      height={height * 0.42}
+      image={image}
+      cornerRadius={6}
     />
   );
 }

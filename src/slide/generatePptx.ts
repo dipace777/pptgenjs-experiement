@@ -310,7 +310,17 @@ function addGridElement(
       addGridChartIcon(pptx, s, chartType, x, y, cellW, cellH, el.numberColor);
     }
 
-    if (isImage) {
+    if (isImage && item.imageData) {
+      s.addImage({
+        data: item.imageData,
+        x: x + cellW * 0.08,
+        y: y + cellH * 0.18,
+        w: cellW * 0.84,
+        h: cellH * 0.42,
+      });
+    }
+
+    if (isImage && !item.imageData) {
       s.addShape(pptx.ShapeType.rect, {
         x: x + cellW * 0.18,
         y: y + cellH * 0.27,

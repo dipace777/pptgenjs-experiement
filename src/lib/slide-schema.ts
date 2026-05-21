@@ -110,6 +110,8 @@ export const TableElementSchema = z.object({
 export const GridItemSchema = z.object({
   type: z.enum(["text", "chart", "image"]),
   chartType: z.enum(["bar", "line", "pie", "donut"]).nullish(),
+  imageData: z.string().nullish(),
+  imageName: z.string().max(120).nullish(),
   title: z.string().min(1).max(80),
   subtitle: z.string().max(120).nullish(),
 });

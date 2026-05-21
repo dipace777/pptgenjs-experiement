@@ -319,6 +319,50 @@ export function Inspector({
                       <option value="donut">Donut</option>
                     </select>
                   ) : null}
+                  {item.type === "image" ? (
+                    <div style={styles.field}>
+                      <input
+                        aria-label={`Upload image for grid item ${itemIndex + 1}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.addEventListener("load", () => {
+                            if (typeof reader.result !== "string") return;
+                            const items = [...element.items];
+                            items[itemIndex] = {
+                              ...item,
+                              imageData: reader.result,
+                              imageName: file.name,
+                              subtitle: item.subtitle || file.name,
+                            };
+                            onReplace({ ...element, items });
+                          });
+                          reader.readAsDataURL(file);
+                        }}
+                        style={styles.input}
+                      />
+                      {item.imageData ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const items = [...element.items];
+                            items[itemIndex] = {
+                              ...item,
+                              imageData: undefined,
+                              imageName: undefined,
+                            };
+                            onReplace({ ...element, items });
+                          }}
+                          style={styles.secondaryButton}
+                        >
+                          Remove image
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <input
                     aria-label={`Grid item ${itemIndex + 1} title`}
                     value={item.title}
