@@ -5,6 +5,7 @@ export const SELECTION_STROKE = "#d4a24c";
 export type ElementEvents = {
   draggable: boolean;
   onClick: (event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDblClick?: (event: Konva.KonvaEventObject<MouseEvent>) => void;
   onTap: () => void;
   onDragStart: () => void;
   onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;
@@ -16,6 +17,7 @@ export type ElementCommonProps = {
   index: number;
   scale: number;
   selected: boolean;
+  editing?: boolean;
   setRef: (node: Konva.Node | null) => void;
   events: ElementEvents;
 };

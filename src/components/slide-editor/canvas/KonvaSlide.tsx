@@ -16,9 +16,11 @@ export function KonvaSlide({
   onSelect,
   onSelectMany,
   onDelete,
+  onEditText,
   onChange,
   onChangeMany,
   stageRef,
+  editingTextIndex,
 }: {
   slide: Slide;
   width: number;
@@ -29,9 +31,11 @@ export function KonvaSlide({
   onSelect?: (index: number, additive?: boolean) => void;
   onSelectMany?: (indexes: number[]) => void;
   onDelete?: () => void;
+  onEditText?: (index: number) => void;
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
+  editingTextIndex?: number | null;
 }) {
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const nodeRefs = useRef<Array<Konva.Node | null>>([]);
@@ -93,6 +97,12 @@ export function KonvaSlide({
     draggable: interactive,
     onClick: (event: Konva.KonvaEventObject<MouseEvent>) =>
       onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey),
+    onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
+      if (el.kind !== "text") return;
+      event.cancelBubble = true;
+      onSelect?.(index);
+      onEditText?.(index);
+    },
     onTap: () => onSelect?.(index),
     onDragStart: () => {
       if (!selectedIndexes.includes(index) || selectedIndexes.length <= 1) {
@@ -316,6 +326,7 @@ export function KonvaSlide({
             index={index}
             scale={scale}
             selected={selectedIndexes.includes(index)}
+            editing={editingTextIndex === index}
             setRef={(node) => {
               nodeRefs.current[index] = node;
             }}
@@ -335,8 +346,8 @@ export function KonvaSlide({
         ) : null}
         {interactive && selectedBounds && onDelete ? (
           <Group
-            x={clamp(selectedBounds.x + selectedBounds.width - 34, 4, width - 34)}
-            y={clamp(selectedBounds.y - 42, 4, height - 34)}
+            x={clamp(selectedBounds.x, 4, width - 34)}
+            y={clamp(selectedBounds.y + selectedBounds.height + 12, 4, height - 34)}
             onMouseDown={(event) => {
               event.cancelBubble = true;
             }}
@@ -358,11 +369,11 @@ export function KonvaSlide({
             <Rect
               width={30}
               height={30}
-              fill="#1f2430"
-              stroke="#3a4050"
+              fill="#b4232a"
+              stroke="#ff8a8f"
               strokeWidth={1}
               cornerRadius={6}
-              shadowColor="rgba(0,0,0,0.25)"
+              shadowColor="rgba(180,35,42,0.35)"
               shadowBlur={10}
               shadowOffsetY={5}
             />

@@ -17,55 +17,13 @@ export function Inspector({
       onSubmit={(event) => event.preventDefault()}
       style={styles.form}
     >
-      <div style={styles.grid2}>
-        <NumberField label="X" value={element.x} onChange={(x) => onPatch({ x })} />
-        <NumberField label="Y" value={element.y} onChange={(y) => onPatch({ y })} />
-        <NumberField label="W" value={element.w} onChange={(w) => onPatch({ w })} />
-        <NumberField label="H" value={element.h} onChange={(h) => onPatch({ h })} />
-      </div>
-
-      {element.kind === "text" ? (
-        <>
-          <Field label="Text">
-            <textarea
-              value={element.text}
-              rows={4}
-              onChange={(event) => onPatch({ text: event.target.value })}
-              style={styles.textarea}
-            />
-          </Field>
-          <div style={styles.grid2}>
-            <NumberField
-              label="Font"
-              value={element.fontSize}
-              step={1}
-              onChange={(fontSize) => onPatch({ fontSize })}
-            />
-            <ColorField
-              label="Color"
-              value={element.color}
-              onChange={(color) => onPatch({ color })}
-            />
-          </div>
-          <div style={styles.toggleRow}>
-            <label style={styles.checkLabel}>
-              <input
-                type="checkbox"
-                checked={element.bold ?? false}
-                onChange={(event) => onPatch({ bold: event.target.checked })}
-              />
-              Bold
-            </label>
-            <label style={styles.checkLabel}>
-              <input
-                type="checkbox"
-                checked={element.italic ?? false}
-                onChange={(event) => onPatch({ italic: event.target.checked })}
-              />
-              Italic
-            </label>
-          </div>
-        </>
+      {element.kind !== "text" ? (
+        <div style={styles.grid2}>
+          <NumberField label="X" value={element.x} onChange={(x) => onPatch({ x })} />
+          <NumberField label="Y" value={element.y} onChange={(y) => onPatch({ y })} />
+          <NumberField label="W" value={element.w} onChange={(w) => onPatch({ w })} />
+          <NumberField label="H" value={element.h} onChange={(h) => onPatch({ h })} />
+        </div>
       ) : null}
 
       {element.kind === "bullets" ? (

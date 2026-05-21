@@ -8,6 +8,7 @@ export function TextElement({
   index,
   scale,
   selected,
+  editing,
   setRef,
   events,
 }: ElementCommonProps & { element: TextEl }) {
@@ -27,21 +28,23 @@ export function TextElement({
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />
-      <Text
-        width={width}
-        height={isTopAligned ? undefined : height}
-        text={element.text}
-        fill={withHash(element.color)}
-        fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
-        fontSize={fontSize}
-        fontStyle={`${element.bold ? "bold" : "normal"} ${element.italic ? "italic" : ""}`}
-        align={element.align ?? "left"}
-        verticalAlign={element.valign ?? "top"}
-        lineHeight={element.lineHeight ?? 1.15}
-        letterSpacing={((element.charSpacing ?? 0) / 100) * PT_TO_PX * (scale / PX_PER_IN)}
-        wrap="word"
-        listening={false}
-      />
+      {editing ? null : (
+        <Text
+          width={width}
+          height={isTopAligned ? undefined : height}
+          text={element.text}
+          fill={withHash(element.color)}
+          fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
+          fontSize={fontSize}
+          fontStyle={`${element.bold ? "bold" : "normal"} ${element.italic ? "italic" : ""}`}
+          align={element.align ?? "left"}
+          verticalAlign={element.valign ?? "top"}
+          lineHeight={element.lineHeight ?? 1.15}
+          letterSpacing={((element.charSpacing ?? 0) / 100) * PT_TO_PX * (scale / PX_PER_IN)}
+          wrap="word"
+          listening={false}
+        />
+      )}
       {selected ? (
         <Rect
           width={width}

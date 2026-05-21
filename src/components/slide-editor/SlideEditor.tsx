@@ -1,11 +1,19 @@
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
 import { KonvaSlide } from "./canvas/KonvaSlide";
 import { styles } from "./editorStyles";
-import { EXPORT_H, EXPORT_W, kindLabel, withHash, withoutHash } from "./editorUtils";
+import {
+  EXPORT_H,
+  EXPORT_W,
+  PT_TO_PX,
+  PX_PER_IN,
+  kindLabel,
+  withHash,
+  withoutHash,
+} from "./editorUtils";
 import { useDeckExport, useStageSize } from "./hooks";
 import { Inspector } from "./inspector/Inspector";
 import { Segmented } from "./shared/Segmented";
@@ -51,6 +59,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
   const isExporting = useAtomValue(isExportingAtom);
+  const [editingTextIndex, setEditingTextIndex] = useState<number | null>(null);
 
   const selectElement = useSetAtom(selectElementAtom);
   const selectElements = useSetAtom(selectElementsAtom);
@@ -65,6 +74,16 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
 
   const { stageWidth, stageWrapRef } = useStageSize();
   const { exportStageRefs, handleExport } = useDeckExport();
+  const stageScale = stageWidth / SLIDE_W;
+  const selectedTextElement =
+    selectedElement?.kind === "text" ? selectedElement : null;
+  const drawerElement =
+    selectedElement?.kind === "text" ? null : selectedElement;
+  const editingTextElement = useMemo(() => {
+    if (editingTextIndex == null) return null;
+    const element = activeSlide.elements[editingTextIndex];
+    return element?.kind === "text" ? element : null;
+  }, [activeSlide.elements, editingTextIndex]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -179,6 +198,148 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               >
                 Edit
               </button>
+              {selectedTextElement ? (
+                <div
+                  style={{
+                    ...styles.inlineTextToolbar,
+                    left: Math.max(8, selectedTextElement.x * stageScale),
+                    top: Math.max(8, selectedTextElement.y * stageScale - 48),
+                  }}
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    title="Bold"
+                    aria-pressed={selectedTextElement.bold ?? false}
+                    onClick={() =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedTextElement,
+                          bold: !(selectedTextElement.bold ?? false),
+                        },
+                      })
+                    }
+                    style={{
+                      ...styles.inlineTextButton,
+                      ...(selectedTextElement.bold ? styles.inlineTextButtonActive : {}),
+                    }}
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    title="Italic"
+                    aria-pressed={selectedTextElement.italic ?? false}
+                    onClick={() =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedTextElement,
+                          italic: !(selectedTextElement.italic ?? false),
+                        },
+                      })
+                    }
+                    style={{
+                      ...styles.inlineTextButton,
+                      fontStyle: "italic",
+                      ...(selectedTextElement.italic ? styles.inlineTextButtonActive : {}),
+                    }}
+                  >
+                    I
+                  </button>
+                  <input
+                    aria-label="Font size"
+                    title="Font size"
+                    type="number"
+                    min={6}
+                    max={360}
+                    value={selectedTextElement.fontSize}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedTextElement,
+                          fontSize: Number(event.target.value) || selectedTextElement.fontSize,
+                        },
+                      })
+                    }
+                    style={styles.inlineFontSize}
+                  />
+                  <input
+                    aria-label="Text color"
+                    title="Text color"
+                    type="color"
+                    value={withHash(selectedTextElement.color)}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedTextElement,
+                          color: withoutHash(event.target.value),
+                        },
+                      })
+                    }
+                    style={styles.inlineColor}
+                  />
+                  <input
+                    aria-label="Text opacity"
+                    title="Text opacity"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={selectedTextElement.opacity ?? 1}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedTextElement,
+                          opacity: Number(event.target.value),
+                        },
+                      })
+                    }
+                    style={styles.inlineOpacity}
+                  />
+                </div>
+              ) : null}
+              {editingTextElement && editingTextIndex != null ? (
+                <textarea
+                  autoFocus
+                  value={editingTextElement.text}
+                  onChange={(event) =>
+                    updateElement({
+                      index: editingTextIndex,
+                      element: { ...editingTextElement, text: event.target.value || " " },
+                    })
+                  }
+                  onBlur={() => setEditingTextIndex(null)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  style={{
+                    ...styles.inlineTextEditor,
+                    left: editingTextElement.x * stageScale,
+                    top: editingTextElement.y * stageScale,
+                    width: editingTextElement.w * stageScale,
+                    height: editingTextElement.h * stageScale,
+                    color: withHash(editingTextElement.color),
+                    fontFamily: `${editingTextElement.fontFace ?? "Arial"}, Helvetica, sans-serif`,
+                    fontSize:
+                      editingTextElement.fontSize * PT_TO_PX * (stageScale / PX_PER_IN),
+                    fontWeight: editingTextElement.bold ? 700 : 400,
+                    fontStyle: editingTextElement.italic ? "italic" : "normal",
+                    textAlign: editingTextElement.align ?? "left",
+                    lineHeight: editingTextElement.lineHeight ?? 1.15,
+                    letterSpacing:
+                      ((editingTextElement.charSpacing ?? 0) / 100) *
+                      PT_TO_PX *
+                      (stageScale / PX_PER_IN),
+                  }}
+                />
+              ) : null}
               <KonvaSlide
                 slide={activeSlide}
                 width={stageWidth}
@@ -191,6 +352,8 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                 }
                 onSelectMany={selectElements}
                 onDelete={deleteSelected}
+                onEditText={setEditingTextIndex}
+                editingTextIndex={editingTextIndex}
                 onChange={(index, element) => updateElement({ index, element })}
                 onChangeMany={updateElements}
               />
@@ -215,20 +378,20 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   SLIDE {String(active + 1).padStart(2, "0")}
                 </div>
                 <h2 style={styles.inspectorTitle}>
-                  {selectedElement
-                    ? kindLabel(selectedElement.kind)
-                    : "Nothing selected"}
+                  {drawerElement ? kindLabel(drawerElement.kind) : "Slide"}
                 </h2>
               </div>
               <div style={styles.iconRow}>
-                <button
-                  type="button"
-                  title="Duplicate"
-                  onClick={() => duplicateSelected()}
-                  style={styles.iconButton}
-                >
-                  ⧉
-                </button>
+                {drawerElement ? (
+                  <button
+                    type="button"
+                    title="Duplicate"
+                    onClick={() => duplicateSelected()}
+                    style={styles.iconButton}
+                  >
+                    ⧉
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   title="Close editor"
@@ -241,7 +404,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             </div>
 
             <div style={styles.drawerHint}>
-              Select an object on the slide, then adjust it here.
+              {drawerElement
+                ? "Select an object on the slide, then adjust it here."
+                : "Adjust slide-level settings or add new elements."}
             </div>
 
             <label style={styles.field}>
@@ -258,9 +423,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               />
             </label>
 
-            {selectedElement ? (
+            {drawerElement ? (
               <Inspector
-                element={selectedElement}
+                element={drawerElement}
                 onPatch={patchSelected}
                 onReplace={(next) =>
                   updateElement({ index: selectedIndex, element: next })
