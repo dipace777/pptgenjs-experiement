@@ -1,6 +1,6 @@
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
 import { KonvaSlide } from "./canvas/KonvaSlide";
@@ -63,6 +63,8 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const [editingTextIndex, setEditingTextIndex] = useState<number | null>(null);
   const [editingBulletsIndex, setEditingBulletsIndex] = useState<number | null>(null);
   const [editingBulletsDraft, setEditingBulletsDraft] = useState("");
+  const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const imageUploadTargetRef = useRef<number | null>(null);
 
   const selectElement = useSetAtom(selectElementAtom);
   const selectElements = useSetAtom(selectElementsAtom);
@@ -82,8 +84,12 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
     selectedElement?.kind === "text" ? selectedElement : null;
   const selectedBulletsElement =
     selectedElement?.kind === "bullets" ? selectedElement : null;
+  const selectedImageElement =
+    selectedElement?.kind === "image" ? selectedElement : null;
   const drawerElement =
-    selectedElement?.kind === "text" || selectedElement?.kind === "bullets"
+    selectedElement?.kind === "text" ||
+    selectedElement?.kind === "bullets" ||
+    selectedElement?.kind === "image"
       ? null
       : selectedElement;
   const editingTextElement = useMemo(() => {
@@ -96,6 +102,11 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
     const element = activeSlide.elements[editingBulletsIndex];
     return element?.kind === "bullets" ? element : null;
   }, [activeSlide.elements, editingBulletsIndex]);
+
+  const openImageUpload = useCallback((index: number) => {
+    imageUploadTargetRef.current = index;
+    imageUploadInputRef.current?.click();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -220,6 +231,36 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               >
                 Edit
               </button>
+              <input
+                ref={imageUploadInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                style={styles.inlineHiddenInput}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  const targetIndex = imageUploadTargetRef.current;
+                  imageUploadTargetRef.current = null;
+                  if (!file || targetIndex == null) {
+                    event.target.value = "";
+                    return;
+                  }
+                  const target = activeSlide.elements[targetIndex];
+                  if (target?.kind !== "image") {
+                    event.target.value = "";
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.addEventListener("load", () => {
+                    if (typeof reader.result !== "string") return;
+                    updateElement({
+                      index: targetIndex,
+                      element: { ...target, data: reader.result, name: file.name },
+                    });
+                  });
+                  reader.readAsDataURL(file);
+                  event.target.value = "";
+                }}
+              />
               {selectedTextElement ? (
                 <div
                   style={{
@@ -415,6 +456,103 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   />
                 </div>
               ) : null}
+              {selectedImageElement ? (
+                <div
+                  style={{
+                    ...styles.inlineTextToolbar,
+                    left: Math.max(8, selectedImageElement.x * stageScale),
+                    top: Math.max(8, selectedImageElement.y * stageScale - 48),
+                  }}
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <label style={styles.inlineFileLabel} title="Upload image">
+                    Image
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      style={styles.inlineHiddenInput}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.addEventListener("load", () => {
+                          if (typeof reader.result !== "string") return;
+                          updateElement({
+                            index: selectedIndex,
+                            element: {
+                              ...selectedImageElement,
+                              data: reader.result,
+                              name: file.name,
+                            },
+                          });
+                        });
+                        reader.readAsDataURL(file);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <select
+                    aria-label="Image fit"
+                    title="Fit"
+                    value={selectedImageElement.fit ?? "contain"}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedImageElement,
+                          fit: event.target.value as "contain" | "cover" | "fill",
+                        },
+                      })
+                    }
+                    style={styles.inlineSelect}
+                  >
+                    <option value="contain">Contain</option>
+                    <option value="cover">Cover</option>
+                    <option value="fill">Fill</option>
+                  </select>
+                  <input
+                    aria-label="Image opacity"
+                    title="Opacity"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={selectedImageElement.opacity ?? 1}
+                    onChange={(event) =>
+                      updateElement({
+                        index: selectedIndex,
+                        element: {
+                          ...selectedImageElement,
+                          opacity: Number(event.target.value),
+                        },
+                      })
+                    }
+                    style={styles.inlineOpacity}
+                  />
+                  {selectedImageElement.data ? (
+                    <button
+                      type="button"
+                      title="Remove image"
+                      onClick={() =>
+                        updateElement({
+                          index: selectedIndex,
+                          element: {
+                            ...selectedImageElement,
+                            data: undefined,
+                            name: undefined,
+                          },
+                        })
+                      }
+                      style={{
+                        ...styles.inlineTextButton,
+                        ...styles.inlineDangerButton,
+                      }}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               {editingTextElement && editingTextIndex != null ? (
                 <textarea
                   autoFocus
@@ -519,6 +657,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   setEditingTextIndex(null);
                   setEditingBulletsIndex(index);
                 }}
+                onEditImage={openImageUpload}
                 editingTextIndex={editingTextIndex}
                 editingBulletsIndex={editingBulletsIndex}
                 onChange={(index, element) => updateElement({ index, element })}

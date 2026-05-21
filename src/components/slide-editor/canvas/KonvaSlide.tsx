@@ -18,6 +18,7 @@ export function KonvaSlide({
   onDelete,
   onEditText,
   onEditBullets,
+  onEditImage,
   onChange,
   onChangeMany,
   stageRef,
@@ -35,6 +36,7 @@ export function KonvaSlide({
   onDelete?: () => void;
   onEditText?: (index: number) => void;
   onEditBullets?: (index: number) => void;
+  onEditImage?: (index: number) => void;
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
@@ -102,11 +104,12 @@ export function KonvaSlide({
     onClick: (event: Konva.KonvaEventObject<MouseEvent>) =>
       onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey),
     onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
-      if (el.kind !== "text" && el.kind !== "bullets") return;
+      if (el.kind !== "text" && el.kind !== "bullets" && el.kind !== "image") return;
       event.cancelBubble = true;
       onSelect?.(index);
       if (el.kind === "text") onEditText?.(index);
       if (el.kind === "bullets") onEditBullets?.(index);
+      if (el.kind === "image") onEditImage?.(index);
     },
     onTap: () => onSelect?.(index),
     onDragStart: () => {
