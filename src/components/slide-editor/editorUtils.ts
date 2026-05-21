@@ -25,6 +25,12 @@ export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+export function truncateWords(text: string, maxWords: number) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text;
+  return `${words.slice(0, maxWords).join(" ")}...`;
+}
+
 export function kindLabel(kind: string) {
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }

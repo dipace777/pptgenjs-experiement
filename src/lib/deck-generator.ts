@@ -381,6 +381,7 @@ export function deckFromOutline(input: DeckGenerationInput, outline: SlideOutlin
 
   return DeckSchema.parse({
     title: outline.title,
+    description: input.description,
     slides,
   });
 }

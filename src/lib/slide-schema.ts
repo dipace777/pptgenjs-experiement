@@ -160,6 +160,7 @@ export const SlideSchema = z.object({
 
 export const DeckSchema = z.object({
   title: z.string().min(1).max(90),
+  description: z.string().max(1200).nullish(),
   slides: z.array(SlideSchema).min(1).max(12),
 });
 

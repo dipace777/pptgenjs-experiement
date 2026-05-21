@@ -11,6 +11,7 @@ import {
   PT_TO_PX,
   PX_PER_IN,
   kindLabel,
+  truncateWords,
   withHash,
   withoutHash,
 } from "./editorUtils";
@@ -159,7 +160,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               {activeSlide.title ?? `Slide ${active + 1}`}
             </div>
             <div style={styles.meta}>
-              React + Konva live preview; JSON remains the source of truth.
+              {deck.description
+                ? truncateWords(deck.description, 15)
+                : "React + Konva live preview; JSON remains the source of truth."}
             </div>
           </div>
           <div style={styles.toolbar}>
