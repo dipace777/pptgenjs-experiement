@@ -47,6 +47,11 @@ export const setSelectionAtom = atom(null, (_get, set, next: number) => {
   set(selectedItemsAtom, next < 0 ? [] : [next]);
 });
 
+export const selectElementsAtom = atom(null, (_get, set, indexes: number[]) => {
+  set(selectedItemsAtom, indexes);
+  set(selectedAtom, indexes.at(-1) ?? -1);
+});
+
 // --- Deck mutation actions ---------------------------------------------
 
 // Draft-mutator signature: callers receive the active slide's draft and
@@ -135,14 +140,26 @@ export const duplicateSelectedAtom = atom(null, (get, set) => {
 });
 
 export const deleteSelectedAtom = atom(null, (get, set) => {
-  const idx = get(selectedIndexAtom);
   const slide = get(activeSlideAtom);
-  if (!slide || idx < 0 || slide.elements.length <= 1) return;
+  const selectedItems = get(selectedItemsAtom);
+  const selected = selectedItems.length > 0 ? selectedItems : [get(selectedIndexAtom)];
+  const indexes = [...new Set(selected)]
+    .filter((index) => index >= 0 && index < (slide?.elements.length ?? 0))
+    .sort((a, b) => b - a);
+  if (!slide || indexes.length === 0) return;
   const activeIdx = get(activeSlideIndexAtom);
   set(deckAtom, (draft) => {
-    draft.slides[activeIdx].elements.splice(idx, 1);
+    for (const index of indexes) {
+      draft.slides[activeIdx].elements.splice(index, 1);
+    }
   });
-  const nextSelected = Math.max(0, idx - 1);
+  const remainingCount = slide.elements.length - indexes.length;
+  if (remainingCount <= 0) {
+    set(selectedAtom, -1);
+    set(selectedItemsAtom, []);
+    return;
+  }
+  const nextSelected = Math.min(Math.max(0, indexes.at(-1) ?? 0), remainingCount - 1);
   set(selectedAtom, nextSelected);
   set(selectedItemsAtom, [nextSelected]);
 });

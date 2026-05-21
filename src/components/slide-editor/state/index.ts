@@ -13,6 +13,7 @@ export {
 } from "./atoms";
 export {
   selectElementAtom,
+  selectElementsAtom,
   setSelectionAtom,
   updateActiveSlideAtom,
   updateElementAtom,

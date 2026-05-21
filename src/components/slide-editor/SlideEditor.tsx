@@ -1,5 +1,6 @@
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
+import { useEffect } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { messiDeck } from "../../slide/spec";
 import { KonvaSlide } from "./canvas/KonvaSlide";
@@ -20,6 +21,7 @@ import {
   isExportingAtom,
   patchSelectedAtom,
   selectElementAtom,
+  selectElementsAtom,
   selectedElementAtom,
   selectedIndexAtom,
   selectedItemsAtom,
@@ -51,6 +53,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const isExporting = useAtomValue(isExportingAtom);
 
   const selectElement = useSetAtom(selectElementAtom);
+  const selectElements = useSetAtom(selectElementsAtom);
   const setSelection = useSetAtom(setSelectionAtom);
   const updateActiveSlide = useSetAtom(updateActiveSlideAtom);
   const updateElement = useSetAtom(updateElementAtom);
@@ -62,6 +65,27 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
 
   const { stageWidth, stageWrapRef } = useStageSize();
   const { exportStageRefs, handleExport } = useDeckExport();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      if (selectedItems.length === 0 && selectedIndex < 0) return;
+      event.preventDefault();
+      deleteSelected();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteSelected, selectedIndex, selectedItems.length]);
 
   return (
     <div style={styles.shell}>
@@ -165,6 +189,8 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                 onSelect={(index, additive) =>
                   selectElement({ index, additive })
                 }
+                onSelectMany={selectElements}
+                onDelete={deleteSelected}
                 onChange={(index, element) => updateElement({ index, element })}
                 onChangeMany={updateElements}
               />
@@ -202,14 +228,6 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   style={styles.iconButton}
                 >
                   ⧉
-                </button>
-                <button
-                  type="button"
-                  title="Delete"
-                  onClick={() => deleteSelected()}
-                  style={styles.iconButton}
-                >
-                  ×
                 </button>
                 <button
                   type="button"

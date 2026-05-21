@@ -1,6 +1,6 @@
 import Konva from "konva";
-import { useEffect, useMemo, useRef } from "react";
-import { Layer, Rect, Stage, Transformer } from "react-konva";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Group, Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from "../../../lib/slide-schema";
 import { clamp, withHash } from "../editorUtils";
 import { KonvaElement } from "./KonvaElement";
@@ -14,6 +14,8 @@ export function KonvaSlide({
   selected,
   selectedItems,
   onSelect,
+  onSelectMany,
+  onDelete,
   onChange,
   onChangeMany,
   stageRef,
@@ -25,12 +27,23 @@ export function KonvaSlide({
   selected?: number;
   selectedItems?: number[];
   onSelect?: (index: number, additive?: boolean) => void;
+  onSelectMany?: (indexes: number[]) => void;
+  onDelete?: () => void;
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
 }) {
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const nodeRefs = useRef<Array<Konva.Node | null>>([]);
+  const [selectionBox, setSelectionBox] = useState<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const groupDragRef = useRef<{
     index: number;
     nodePositions: Array<{ index: number; x: number; y: number }>;
@@ -46,6 +59,24 @@ export function KonvaSlide({
           : [],
     [selected, selectedItems],
   );
+  const selectedBounds = useMemo(() => {
+    if (selectedIndexes.length === 0) return null;
+    const boxes = selectedIndexes
+      .map((index) => slide.elements[index])
+      .filter((element): element is SlideElement => Boolean(element))
+      .map((element) => ({
+        x: element.x * scale,
+        y: element.y * scale,
+        width: element.w * scale,
+        height: element.h * scale,
+      }));
+    if (boxes.length === 0) return null;
+    const minX = Math.min(...boxes.map((box) => box.x));
+    const minY = Math.min(...boxes.map((box) => box.y));
+    const maxX = Math.max(...boxes.map((box) => box.x + box.width));
+    const maxY = Math.max(...boxes.map((box) => box.y + box.height));
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }, [scale, selectedIndexes, slide.elements]);
 
   useEffect(() => {
     if (!interactive) return;
@@ -146,6 +177,66 @@ export function KonvaSlide({
     },
   });
 
+  const normalizedSelectionBox = selectionBox
+    ? {
+        x: Math.min(selectionBox.startX, selectionBox.x),
+        y: Math.min(selectionBox.startY, selectionBox.y),
+        width: Math.abs(selectionBox.width),
+        height: Math.abs(selectionBox.height),
+      }
+    : null;
+
+  const elementIntersectsBox = (
+    element: SlideElement,
+    box: { x: number; y: number; width: number; height: number },
+  ) => {
+    const elementBox = {
+      x: element.x * scale,
+      y: element.y * scale,
+      width: element.w * scale,
+      height: element.h * scale,
+    };
+    const elementCenter = {
+      x: elementBox.x + elementBox.width / 2,
+      y: elementBox.y + elementBox.height / 2,
+    };
+    const centerInside =
+      elementCenter.x >= box.x &&
+      elementCenter.x <= box.x + box.width &&
+      elementCenter.y >= box.y &&
+      elementCenter.y <= box.y + box.height;
+    if (centerInside) return true;
+
+    const overlapX = Math.max(
+      0,
+      Math.min(elementBox.x + elementBox.width, box.x + box.width) -
+        Math.max(elementBox.x, box.x),
+    );
+    const overlapY = Math.max(
+      0,
+      Math.min(elementBox.y + elementBox.height, box.y + box.height) -
+        Math.max(elementBox.y, box.y),
+    );
+    const elementArea = elementBox.width * elementBox.height;
+    const overlapArea = overlapX * overlapY;
+    return elementArea > 0 && overlapArea / elementArea >= 0.35;
+  };
+
+  const selectionRectFromPoints = (
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+  ) => ({
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  });
+
+  const stagePointer = (stage: Konva.Stage | null) => {
+    const point = stage?.getPointerPosition();
+    return point ? { x: point.x, y: point.y } : null;
+  };
+
   return (
     <Stage
       ref={stageRef}
@@ -159,7 +250,54 @@ export function KonvaSlide({
         boxShadow: interactive ? "0 24px 70px rgba(0,0,0,0.42)" : "none",
       }}
       onMouseDown={(event) => {
-        if (event.target === event.target.getStage()) onSelect?.(-1);
+        if (!interactive || event.target !== event.target.getStage()) return;
+        const point = stagePointer(event.target.getStage());
+        if (!point) return;
+        setSelectionBox({
+          active: true,
+          startX: point.x,
+          startY: point.y,
+          x: point.x,
+          y: point.y,
+          width: 0,
+          height: 0,
+        });
+      }}
+      onMouseMove={(event) => {
+        if (!selectionBox?.active) return;
+        const point = stagePointer(event.target.getStage());
+        if (!point) return;
+        setSelectionBox((current) =>
+          current?.active
+            ? {
+                ...current,
+                x: point.x,
+                y: point.y,
+                width: point.x - current.startX,
+                height: point.y - current.startY,
+              }
+            : current,
+        );
+      }}
+      onMouseUp={(event) => {
+        if (!selectionBox?.active) return;
+        const endPoint = stagePointer(event.target.getStage());
+        const box = endPoint
+          ? selectionRectFromPoints(
+              { x: selectionBox.startX, y: selectionBox.startY },
+              endPoint,
+            )
+          : normalizedSelectionBox;
+        setSelectionBox(null);
+        if (!box || (box.width < 4 && box.height < 4)) {
+          onSelect?.(-1);
+          return;
+        }
+        const indexes = slide.elements
+          .map((element, index) => ({ element, index }))
+          .filter(({ element }) => elementIntersectsBox(element, box))
+          .map(({ index }) => index);
+        onSelectMany?.(indexes);
       }}
     >
       <Layer>
@@ -193,6 +331,67 @@ export function KonvaSlide({
             anchorFill="#f4f6fa"
             anchorStroke={SELECTION_STROKE}
             keepRatio={false}
+          />
+        ) : null}
+        {interactive && selectedBounds && onDelete ? (
+          <Group
+            x={clamp(selectedBounds.x + selectedBounds.width - 34, 4, width - 34)}
+            y={clamp(selectedBounds.y - 42, 4, height - 34)}
+            onMouseDown={(event) => {
+              event.cancelBubble = true;
+            }}
+            onClick={(event) => {
+              event.cancelBubble = true;
+              onDelete();
+            }}
+            onTap={(event) => {
+              event.cancelBubble = true;
+              onDelete();
+            }}
+            onMouseEnter={(event) => {
+              event.target.getStage()?.container().style.setProperty("cursor", "pointer");
+            }}
+            onMouseLeave={(event) => {
+              event.target.getStage()?.container().style.removeProperty("cursor");
+            }}
+          >
+            <Rect
+              width={30}
+              height={30}
+              fill="#1f2430"
+              stroke="#3a4050"
+              strokeWidth={1}
+              cornerRadius={6}
+              shadowColor="rgba(0,0,0,0.25)"
+              shadowBlur={10}
+              shadowOffsetY={5}
+            />
+            <Line points={[9, 10, 21, 10]} stroke="#f4f6fa" strokeWidth={1.8} />
+            <Line points={[12, 8, 18, 8]} stroke="#f4f6fa" strokeWidth={1.8} />
+            <Rect
+              x={10}
+              y={12}
+              width={10}
+              height={10}
+              stroke="#f4f6fa"
+              strokeWidth={1.8}
+              cornerRadius={1}
+            />
+            <Line points={[13, 14, 13, 20]} stroke="#f4f6fa" strokeWidth={1.2} />
+            <Line points={[17, 14, 17, 20]} stroke="#f4f6fa" strokeWidth={1.2} />
+          </Group>
+        ) : null}
+        {interactive && normalizedSelectionBox ? (
+          <Rect
+            x={normalizedSelectionBox.x}
+            y={normalizedSelectionBox.y}
+            width={normalizedSelectionBox.width}
+            height={normalizedSelectionBox.height}
+            fill="rgba(88, 132, 255, 0.12)"
+            stroke="#6f93ff"
+            strokeWidth={1}
+            dash={[6, 4]}
+            listening={false}
           />
         ) : null}
       </Layer>
