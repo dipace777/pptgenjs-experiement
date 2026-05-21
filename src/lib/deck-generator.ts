@@ -220,6 +220,10 @@ function sectionSlide(
   total: number,
   colors: ReturnType<typeof palette>,
 ): Slide {
+  const titleLineCount = Math.min(3, Math.max(1, Math.ceil(section.title.length / 34)));
+  const titleHeight = titleLineCount * 0.38;
+  const summaryY = 0.82 + titleHeight + 0.16;
+  const bulletsY = Math.max(2.35, summaryY + 1);
   const base: SlideElement[] = [
     { kind: "rect", x: 0.65, y: 0.62, w: 0.55, h: 0.06, fill: colors.accent },
     {
@@ -227,17 +231,18 @@ function sectionSlide(
       x: 0.65,
       y: 0.82,
       w: 5.8,
-      h: 0.45,
+      h: titleHeight,
       text: section.title,
       fontFace: SANS,
       fontSize: 26,
       bold: true,
       color: colors.text,
+      lineHeight: 1.05,
     },
     {
       kind: "text",
       x: 0.68,
-      y: 1.35,
+      y: summaryY,
       w: 4.1,
       h: 0.78,
       text: section.summary,
@@ -338,9 +343,9 @@ function sectionSlide(
       {
         kind: "bullets",
         x: 0.8,
-        y: 2.35,
+        y: bulletsY,
         w: 3.7,
-        h: 1.85,
+        h: Math.max(1.2, 4.82 - bulletsY),
         items: section.bullets.slice(0, 4),
         fontFace: SANS,
         fontSize: 14,
