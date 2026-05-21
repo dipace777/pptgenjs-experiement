@@ -107,6 +107,14 @@ export const TableElementSchema = z.object({
   fill: HexColorSchema.nullish(),
 });
 
+export const ImageElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("image"),
+  data: z.string().nullish(),
+  name: z.string().max(120).nullish(),
+  fit: z.enum(["contain", "cover", "fill"]).nullish(),
+});
+
 export const GridItemSchema = z.object({
   type: z.enum(["text", "chart", "image"]),
   chartType: z.enum(["bar", "line", "pie", "donut"]).nullish(),
@@ -140,6 +148,7 @@ export const SlideElementSchema = z.discriminatedUnion("kind", [
   ChartElementSchema,
   TableElementSchema,
   GridElementSchema,
+  ImageElementSchema,
 ]);
 
 export const SlideSchema = z.object({
@@ -165,6 +174,7 @@ export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
 export type GridItem = z.infer<typeof GridItemSchema>;
 export type GridElement = z.infer<typeof GridElementSchema>;
+export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;

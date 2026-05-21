@@ -521,6 +521,35 @@ function addElement(
     return;
   }
 
+  if (el.kind === "image") {
+    if (el.data) {
+      s.addImage({
+        data: el.data,
+        x: el.x,
+        y: el.y,
+        w: el.w,
+        h: el.h,
+        sizing:
+          el.fit === "cover"
+            ? { type: "cover", w: el.w, h: el.h }
+            : el.fit === "fill"
+              ? undefined
+              : { type: "contain", w: el.w, h: el.h },
+        transparency: transparencyPct(el.opacity ?? undefined),
+      });
+    } else {
+      s.addShape(pptx.ShapeType.rect, {
+        x: el.x,
+        y: el.y,
+        w: el.w,
+        h: el.h,
+        fill: { transparency: 100 },
+        line: { color: "7D89A3", width: 0.75, dashType: "dash" },
+      });
+    }
+    return;
+  }
+
   // bullets
   const runs = el.items.map((t) => ({
     text: t,

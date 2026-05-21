@@ -486,6 +486,63 @@ export function Inspector({
         </>
       ) : null}
 
+      {element.kind === "image" ? (
+        <>
+          <Field label="Image file">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.addEventListener("load", () => {
+                  if (typeof reader.result !== "string") return;
+                  onReplace({
+                    ...element,
+                    data: reader.result,
+                    name: file.name,
+                  });
+                });
+                reader.readAsDataURL(file);
+              }}
+              style={styles.input}
+            />
+          </Field>
+          {element.data ? (
+            <>
+              <div style={{ fontSize: 11, color: "#9aa7bd" }}>
+                {element.name ?? "Uploaded image"}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  onReplace({ ...element, data: undefined, name: undefined })
+                }
+                style={styles.secondaryButton}
+              >
+                Remove image
+              </button>
+            </>
+          ) : null}
+          <Field label="Fit">
+            <select
+              value={element.fit ?? "contain"}
+              onChange={(event) =>
+                onPatch({
+                  fit: event.target.value as "contain" | "cover" | "fill",
+                })
+              }
+              style={styles.input}
+            >
+              <option value="contain">Contain</option>
+              <option value="cover">Cover</option>
+              <option value="fill">Fill (stretch)</option>
+            </select>
+          </Field>
+        </>
+      ) : null}
+
       {element.kind === "rect" || element.kind === "ellipse" ? (
         <div style={styles.grid2}>
           <ColorField

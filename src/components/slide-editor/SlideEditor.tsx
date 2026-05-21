@@ -175,6 +175,14 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
                 gap: 0.14,
                 rx: 0.08,
               }
+          : kind === "image"
+            ? {
+                ...base,
+                w: 3.6,
+                h: 2.4,
+                kind,
+                fit: "contain" as const,
+              }
           : kind === "bullets"
             ? {
                 ...base,
@@ -463,7 +471,7 @@ export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck })
             ) : null}
 
             <div style={styles.addGrid}>
-              {(["text", "rect", "ellipse", "bullets", "chart", "table", "grid"] as const).map((kind) => (
+              {(["text", "rect", "ellipse", "bullets", "chart", "table", "grid", "image"] as const).map((kind) => (
                 <button
                   key={kind}
                   type="button"
