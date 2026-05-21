@@ -48,8 +48,6 @@ import {
   isExportingAtom,
   patchSelectedAtom,
   redoAtom,
-  selectElementAtom,
-  selectElementsAtom,
   selectedBulletsElementAtom,
   selectedIndexAtom,
   selectedImageElementAtom,
@@ -62,7 +60,6 @@ import {
   undoAtom,
   updateActiveSlideAtom,
   updateElementAtom,
-  updateElementsAtom,
 } from "./state";
 
 export function SlideEditor({ initialDeck = messiDeck }: { initialDeck?: Deck }) {
@@ -86,7 +83,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const selectedImageElement = useAtomValue(selectedImageElementAtom);
   const selectedShapeElement = useAtomValue(selectedShapeElementAtom);
   const selectedTableElement = useAtomValue(selectedTableElementAtom);
-  const [selectedTableCell, setSelectedTableCell] = useAtom(selectedTableCellAtom);
+  const selectedTableCell = useAtomValue(selectedTableCellAtom);
   const drawerElement = useAtomValue(drawerElementAtom);
   const editingTextElement = useAtomValue(editingTextElementAtom);
   const editingBulletsElement = useAtomValue(editingBulletsElementAtom);
@@ -106,12 +103,9 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const imageUploadTargetRef = useRef<number | null>(null);
 
-  const selectElement = useSetAtom(selectElementAtom);
-  const selectElements = useSetAtom(selectElementsAtom);
   const setSelection = useSetAtom(setSelectionAtom);
   const updateActiveSlide = useSetAtom(updateActiveSlideAtom);
   const updateElement = useSetAtom(updateElementAtom);
-  const updateElements = useSetAtom(updateElementsAtom);
   const patchSelected = useSetAtom(patchSelectedAtom);
   const addElement = useSetAtom(addElementAtom);
   const duplicateSelected = useSetAtom(duplicateSelectedAtom);
@@ -382,47 +376,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                 width={stageWidth}
                 height={stageWidth * (SLIDE_H / SLIDE_W)}
                 interactive
-                selected={selectedIndex}
-                selectedItems={selectedItems}
-                onSelect={(index, additive) =>
-                  selectElement({ index, additive })
-                }
-                onSelectMany={selectElements}
-                onSelectTableCell={(index, rowIndex, colIndex) => {
-                  setSelectedTableCell({ elementIndex: index, rowIndex, colIndex });
-                }}
-                onDelete={deleteSelected}
-                onEditText={(index) => {
-                  setEditingBulletsIndex(null);
-                  setEditingTableIndex(null);
-                  setEditingTextIndex(index);
-                }}
-                onEditBullets={(index) => {
-                  const element = activeSlide.elements[index];
-                  setEditingBulletsDraft(
-                    element?.kind === "bullets" ? element.items.join("\n") : "",
-                  );
-                  setEditingTableIndex(null);
-                  setEditingTextIndex(null);
-                  setEditingBulletsIndex(index);
-                }}
                 onEditImage={openImageUpload}
-                onEditTable={(index) => {
-                  const element = activeSlide.elements[index];
-                  setEditingTableDraft(
-                    element?.kind === "table"
-                      ? element.rows.map((row) => row.join(", ")).join("\n")
-                      : "",
-                  );
-                  setEditingTextIndex(null);
-                  setEditingBulletsIndex(null);
-                  setEditingTableIndex(index);
-                }}
-                editingTextIndex={editingTextIndex}
-                editingBulletsIndex={editingBulletsIndex}
-                editingTableIndex={editingTableIndex}
-                onChange={(index, element) => updateElement({ index, element })}
-                onChangeMany={updateElements}
               />
             </div>
           </div>
