@@ -28,6 +28,13 @@ export function useDeckExport() {
     await generatePptx(deck, filenameFromTitle(deck.title));
   };
 
+  const handleKeynoteExport = async () => {
+    const { generatePptx } = await import("../../../slide/generatePptx");
+    await generatePptx(deck, filenameFromTitle(deck.title, "-keynote"), {
+      chartMode: "shapes",
+    });
+  };
+
   const handleRasterExport = async () => {
     const { default: PptxGenJS } = await import("pptxgenjs");
     const pptx = new PptxGenJS();
@@ -59,6 +66,8 @@ export function useDeckExport() {
       await waitForPaint();
       if (mode === "native") {
         await handleNativeExport();
+      } else if (mode === "keynote") {
+        await handleKeynoteExport();
       } else {
         await handleRasterExport();
       }
