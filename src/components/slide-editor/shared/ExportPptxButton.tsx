@@ -10,7 +10,12 @@ const OPTIONS: Array<{
   {
     id: "native",
     label: "Native PPTX",
-    description: "Editable shapes and text in PowerPoint",
+    description: "Native editable charts for PowerPoint and Google Slides",
+  },
+  {
+    id: "keynote",
+    label: "Keynote PPTX",
+    description: "Charts as editable shapes for Keynote compatibility",
   },
   {
     id: "raster",
@@ -52,6 +57,12 @@ export function ExportPptxButton({
   }, [open]);
 
   const activeOption = OPTIONS.find((option) => option.id === mode) ?? OPTIONS[0];
+  const activeLabel =
+    activeOption.id === "native"
+      ? "Native"
+      : activeOption.id === "keynote"
+        ? "Keynote"
+        : "Raster";
 
   return (
     <div ref={wrapperRef} style={styles.splitButton}>
@@ -62,7 +73,7 @@ export function ExportPptxButton({
         style={styles.splitButtonMain}
         title={`Export as ${activeOption.label}`}
       >
-        {exportingLabel ?? `Export PPTX · ${activeOption.id === "native" ? "Native" : "Raster"}`}
+        {exportingLabel ?? `Export PPTX · ${activeLabel}`}
       </button>
       <button
         type="button"

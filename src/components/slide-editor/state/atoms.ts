@@ -4,7 +4,7 @@ import { atomWithImmer } from "jotai-immer";
 import type { Slide, SlideElement } from "../../../lib/slide-schema";
 import { messiDeck } from "../../../slide/spec";
 
-export type ExportMode = "native" | "raster";
+export type ExportMode = "native" | "keynote" | "raster";
 export type TextSlideElement = Extract<SlideElement, { kind: "text" }>;
 export type BulletsSlideElement = Extract<SlideElement, { kind: "bullets" }>;
 export type ImageSlideElement = Extract<SlideElement, { kind: "image" }>;

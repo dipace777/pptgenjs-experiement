@@ -11,6 +11,7 @@ import type { ElementCommonProps, TableInteractionProps } from "./types";
 export function KonvaElement({
   element,
   bulletsRenderMode,
+  chartRenderMode,
   onTableCellClick,
   tableRenderMode,
   textRenderMode,
@@ -19,6 +20,7 @@ export function KonvaElement({
   TableInteractionProps & {
     element: SlideElement;
     bulletsRenderMode?: "canvas" | "proxy";
+    chartRenderMode?: "canvas" | "proxy";
     tableRenderMode?: "canvas" | "proxy";
     textRenderMode?: "canvas" | "proxy";
   }) {
@@ -28,7 +30,7 @@ export function KonvaElement({
     case "ellipse":
       return <EllipseElement element={element} {...rest} />;
     case "chart":
-      return <ChartElement element={element} {...rest} />;
+      return <ChartElement element={element} renderMode={chartRenderMode} {...rest} />;
     case "table":
       return (
         <TableElement

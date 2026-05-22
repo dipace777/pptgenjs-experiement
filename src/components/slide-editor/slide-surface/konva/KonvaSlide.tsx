@@ -25,6 +25,7 @@ export function KonvaSlide({
   onChangeMany,
   stageRef,
   bulletsRenderMode,
+  chartRenderMode,
   tableRenderMode,
   textRenderMode,
   editingTextIndex,
@@ -49,6 +50,7 @@ export function KonvaSlide({
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
   bulletsRenderMode?: "canvas" | "proxy";
+  chartRenderMode?: "canvas" | "proxy";
   tableRenderMode?: "canvas" | "proxy";
   textRenderMode?: "canvas" | "proxy";
   editingTextIndex?: number | null;
@@ -121,6 +123,7 @@ export function KonvaSlide({
         nodeRefs={nodeRefs}
         normalizedSelectionBox={normalizedSelectionBox}
         bulletsRenderMode={bulletsRenderMode}
+        chartRenderMode={chartRenderMode}
         onChange={resolvedOnChange}
         onChangeMany={resolvedOnChangeMany}
         onDelete={resolvedOnDelete}

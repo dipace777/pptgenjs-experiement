@@ -9,6 +9,10 @@ import {
 } from "../lib/slide-schema";
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
+export type PptxChartMode = "native" | "shapes";
+export type GeneratePptxOptions = {
+  chartMode?: PptxChartMode;
+};
 
 function transparencyPct(opacity?: number): number {
   if (opacity == null) return 0;
@@ -34,8 +38,95 @@ function blendHex(fg: string, bg: string, opacity: number): string {
   return toHex(mix(fr, br)) + toHex(mix(fg_, bg_)) + toHex(mix(fb, bb));
 }
 
+function addChartElement(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: ChartElement,
+): void {
+  const axisColor = el.axisColor ?? "9AA7BD";
+  const labelColor = el.labelColor ?? "6A7894";
+  const chartType =
+    el.chartType === "donut"
+      ? pptx.ChartType.doughnut
+      : el.chartType === "line"
+        ? pptx.ChartType.line
+        : pptx.ChartType.bar;
+  const labels = el.data.map((datum) => datum.label);
+  const values = el.data.map((datum) => datum.value);
+  const chartColors = el.data.map((datum) => datum.color ?? el.color);
+  const isDonut = el.chartType === "donut";
+  const data: PptxGenJS.OptsChartData[] = [
+    {
+      name: el.title ?? "Series",
+      labels,
+      values,
+    },
+  ];
+  const options: PptxGenJS.IChartOpts = {
+    x: el.x,
+    y: el.y,
+    w: el.w,
+    h: el.h,
+    altText: el.title ?? "Chart",
+    barDir: "col",
+    barGapWidthPct: 70,
+    chartArea: {
+      fill: { color: "FFFFFF", transparency: transparencyPct(el.opacity ?? 0.92) },
+      border: { color: axisColor, pt: 0.25 },
+      roundedCorners: true,
+    },
+    chartColors,
+    dataLabelColor: labelColor,
+    dataLabelFontFace: "Arial",
+    dataLabelFontSize: isDonut ? 7 : 6.5,
+    dataLabelPosition: isDonut ? "bestFit" : "outEnd",
+    holeSize: 62,
+    lineDataSymbol: "circle",
+    lineDataSymbolSize: 5,
+    lineSize: 2,
+    lineSmooth: false,
+    plotArea: {
+      fill: { transparency: 100 },
+      border: { type: "none" },
+    },
+    showLabel: isDonut,
+    showLegend: isDonut,
+    showTitle: Boolean(el.title),
+    showValue: el.showValues ?? false,
+    title: el.title ?? undefined,
+    titleBold: true,
+    titleColor: labelColor,
+    titleFontFace: "Arial",
+    titleFontSize: 9,
+    valAxisHidden: isDonut,
+    catAxisHidden: isDonut,
+    valAxisLabelColor: labelColor,
+    catAxisLabelColor: labelColor,
+    valAxisLabelFontFace: "Arial",
+    catAxisLabelFontFace: "Arial",
+    valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 7,
+    valAxisLineColor: axisColor,
+    catAxisLineColor: axisColor,
+    valAxisLineSize: 0.75,
+    catAxisLineSize: 0.75,
+    valGridLine: { color: axisColor, size: 0.5, style: "dot" },
+    legendColor: labelColor,
+    legendFontFace: "Arial",
+    legendFontSize: 7,
+    legendPos: "r",
+  };
+
+  s.addChart(chartType, data, options);
+}
+
 function chartMax(el: ChartElement): number {
   return Math.max(1, ...el.data.map((datum) => datum.value));
+}
+
+function normalizeAngle(angle: number): number {
+  const normalized = Math.round(angle % 360);
+  return normalized < 0 ? normalized + 360 : normalized;
 }
 
 function addLineSegment(
@@ -44,7 +135,8 @@ function addLineSegment(
   from: { x: number; y: number },
   to: { x: number; y: number },
   color: string,
-) {
+  width = 1.5,
+): void {
   const x = Math.min(from.x, to.x);
   const y = Math.min(from.y, to.y);
   const w = Math.abs(to.x - from.x);
@@ -57,26 +149,20 @@ function addLineSegment(
     w,
     h,
     flipV: rises,
-    line: { color, width: 2 },
+    line: { color, width },
   });
 }
 
-function addChartElement(
+function addChartShell(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
   el: ChartElement,
-): void {
-  const titleH = el.title ? 0.28 : 0;
-  const pad = 0.14;
-  const plot = {
-    x: el.x + pad,
-    y: el.y + pad + titleH,
-    w: el.w - pad * 2,
-    h: el.h - pad * 2 - titleH - 0.18,
-  };
+): { x: number; y: number; w: number; h: number } {
   const axisColor = el.axisColor ?? "9AA7BD";
   const labelColor = el.labelColor ?? "6A7894";
-  const max = chartMax(el);
+  const titleH = el.title ? 0.28 : 0.08;
+  const pad = 0.14;
+  const labelBand = el.chartType === "donut" ? 0 : 0.22;
 
   s.addShape(pptx.ShapeType.roundRect, {
     x: el.x,
@@ -85,7 +171,7 @@ function addChartElement(
     h: el.h,
     rectRadius: 0.04,
     fill: { color: "FFFFFF", transparency: transparencyPct(el.opacity ?? 0.92) },
-    line: { color: axisColor, transparency: 80 },
+    line: { color: axisColor, transparency: 65, width: 0.75 },
   });
 
   if (el.title) {
@@ -93,63 +179,35 @@ function addChartElement(
       x: el.x + pad,
       y: el.y + 0.08,
       w: el.w - pad * 2,
-      h: 0.22,
+      h: 0.18,
       fontFace: "Arial",
       fontSize: 9,
       bold: true,
       color: labelColor,
       margin: 0,
+      fit: "shrink",
     });
   }
 
-  if (el.chartType === "donut") {
-    const size = Math.min(plot.w, plot.h);
-    const cx = plot.x + size * 0.04;
-    const cy = plot.y + (plot.h - size) / 2;
-    s.addShape(pptx.ShapeType.donut, {
-      x: cx,
-      y: cy,
-      w: size,
-      h: size,
-      fill: { color: el.data[0]?.color ?? el.color },
-      line: { type: "none" },
-    });
-    s.addText(String(el.data.reduce((sum, datum) => sum + datum.value, 0)), {
-      x: cx + size * 0.22,
-      y: cy + size * 0.35,
-      w: size * 0.56,
-      h: size * 0.22,
-      fontFace: "Arial",
-      fontSize: 10,
-      bold: true,
-      color: el.color,
-      align: "center",
-      margin: 0,
-    });
+  return {
+    x: el.x + pad,
+    y: el.y + pad + titleH,
+    w: Math.max(0.2, el.w - pad * 2),
+    h: Math.max(0.2, el.h - pad * 2 - titleH - labelBand),
+  };
+}
 
-    el.data.forEach((datum, index) => {
-      const y = plot.y + index * 0.24;
-      s.addShape(pptx.ShapeType.rect, {
-        x: plot.x + size + 0.16,
-        y,
-        w: 0.1,
-        h: 0.1,
-        fill: { color: datum.color ?? el.color },
-        line: { type: "none" },
-      });
-      s.addText(`${datum.label}${el.showValues ? ` ${datum.value}` : ""}`, {
-        x: plot.x + size + 0.3,
-        y: y - 0.02,
-        w: Math.max(0.2, plot.w - size - 0.34),
-        h: 0.16,
-        fontFace: "Arial",
-        fontSize: 7,
-        color: labelColor,
-        margin: 0,
-      });
-    });
-    return;
-  }
+function addBarShapeChart(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: ChartElement,
+  plot: { x: number; y: number; w: number; h: number },
+): void {
+  const axisColor = el.axisColor ?? "9AA7BD";
+  const labelColor = el.labelColor ?? "6A7894";
+  const max = chartMax(el);
+  const gap = Math.min(0.1, plot.w / Math.max(12, el.data.length * 4));
+  const barW = Math.max(0.08, (plot.w - gap * (el.data.length - 1)) / el.data.length);
 
   s.addShape(pptx.ShapeType.line, {
     x: plot.x,
@@ -166,46 +224,80 @@ function addChartElement(
     line: { color: axisColor, width: 0.75 },
   });
 
-  if (el.chartType === "bar") {
-    const gap = 0.08;
-    const barW = Math.max(0.08, (plot.w - gap * (el.data.length - 1)) / el.data.length);
-    el.data.forEach((datum, index) => {
-      const h = (datum.value / max) * (plot.h * 0.82);
-      const x = plot.x + index * (barW + gap);
-      const y = plot.y + plot.h - h;
-      s.addShape(pptx.ShapeType.rect, {
-        x,
-        y,
-        w: barW,
-        h,
-        fill: { color: datum.color ?? el.color },
-        line: { type: "none" },
-      });
-      if (el.showValues) {
-        s.addText(String(datum.value), {
-          x,
-          y: y - 0.16,
-          w: barW,
-          h: 0.13,
-          fontFace: "Arial",
-          fontSize: 6.5,
-          color: labelColor,
-          align: "center",
-          margin: 0,
-        });
-      }
+  el.data.forEach((datum, index) => {
+    const h = (datum.value / max) * (plot.h * 0.82);
+    const x = plot.x + index * (barW + gap);
+    const y = plot.y + plot.h - h;
+    s.addShape(pptx.ShapeType.rect, {
+      x,
+      y,
+      w: barW,
+      h,
+      fill: { color: datum.color ?? el.color },
+      line: { type: "none" },
     });
-    return;
-  }
+    if (el.showValues) {
+      s.addText(String(datum.value), {
+        x,
+        y: Math.max(plot.y, y - 0.16),
+        w: barW,
+        h: 0.13,
+        fontFace: "Arial",
+        fontSize: 6.5,
+        color: labelColor,
+        align: "center",
+        margin: 0,
+        fit: "shrink",
+      });
+    }
+    s.addText(datum.label, {
+      x: x - 0.03,
+      y: plot.y + plot.h + 0.04,
+      w: barW + 0.06,
+      h: 0.14,
+      fontFace: "Arial",
+      fontSize: 5.5,
+      color: labelColor,
+      align: "center",
+      margin: 0,
+      fit: "shrink",
+    });
+  });
+}
+
+function addLineShapeChart(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: ChartElement,
+  plot: { x: number; y: number; w: number; h: number },
+): void {
+  const axisColor = el.axisColor ?? "9AA7BD";
+  const labelColor = el.labelColor ?? "6A7894";
+  const max = chartMax(el);
+
+  s.addShape(pptx.ShapeType.line, {
+    x: plot.x,
+    y: plot.y + plot.h,
+    w: plot.w,
+    h: 0,
+    line: { color: axisColor, width: 0.75 },
+  });
+  s.addShape(pptx.ShapeType.line, {
+    x: plot.x,
+    y: plot.y,
+    w: 0,
+    h: plot.h,
+    line: { color: axisColor, width: 0.75 },
+  });
 
   const points = el.data.map((datum, index) => ({
-    x: plot.x + (el.data.length === 1 ? 0 : (index / (el.data.length - 1)) * plot.w),
+    x: plot.x + (el.data.length === 1 ? plot.w / 2 : (index / (el.data.length - 1)) * plot.w),
     y: plot.y + plot.h - (datum.value / max) * (plot.h * 0.82),
-    color: datum.color ?? el.color,
+    datum,
   }));
+
   points.slice(1).forEach((point, index) => {
-    const prev = points[index];
-    addLineSegment(pptx, s, prev, point, el.color);
+    addLineSegment(pptx, s, points[index], point, el.color, 1.5);
   });
   points.forEach((point) => {
     s.addShape(pptx.ShapeType.ellipse, {
@@ -213,10 +305,131 @@ function addChartElement(
       y: point.y - 0.035,
       w: 0.07,
       h: 0.07,
-      fill: { color: point.color },
+      fill: { color: point.datum.color ?? el.color },
       line: { color: "FFFFFF", width: 0.5 },
     });
+    if (el.showValues) {
+      s.addText(String(point.datum.value), {
+        x: point.x - 0.14,
+        y: Math.max(plot.y, point.y - 0.17),
+        w: 0.28,
+        h: 0.12,
+        fontFace: "Arial",
+        fontSize: 6,
+        color: labelColor,
+        align: "center",
+        margin: 0,
+        fit: "shrink",
+      });
+    }
+    s.addText(point.datum.label, {
+      x: point.x - 0.17,
+      y: plot.y + plot.h + 0.04,
+      w: 0.34,
+      h: 0.14,
+      fontFace: "Arial",
+      fontSize: 5.5,
+      color: labelColor,
+      align: "center",
+      margin: 0,
+      fit: "shrink",
+    });
   });
+}
+
+function addDonutShapeChart(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: ChartElement,
+  plot: { x: number; y: number; w: number; h: number },
+): void {
+  const labelColor = el.labelColor ?? "6A7894";
+  const total = Math.max(1, el.data.reduce((sum, datum) => sum + datum.value, 0));
+  const size = Math.min(plot.w * 0.52, plot.h * 0.95);
+  const donutX = plot.x;
+  const donutY = plot.y + Math.max(0, (plot.h - size) / 2);
+
+  if (el.data.length === 1) {
+    s.addShape(pptx.ShapeType.donut, {
+      x: donutX,
+      y: donutY,
+      w: size,
+      h: size,
+      fill: { color: el.data[0]?.color ?? el.color },
+      line: { type: "none" },
+    });
+  } else {
+    let start = -90;
+    el.data.forEach((datum) => {
+      const sweep = Math.max(1, (datum.value / total) * 360);
+      s.addShape(pptx.ShapeType.blockArc, {
+        x: donutX,
+        y: donutY,
+        w: size,
+        h: size,
+        angleRange: [normalizeAngle(start), normalizeAngle(start + sweep)],
+        arcThicknessRatio: 0.46,
+        fill: { color: datum.color ?? el.color },
+        line: { color: "FFFFFF", transparency: 35, width: 0.4 },
+      });
+      start += sweep;
+    });
+  }
+
+  s.addText(String(total), {
+    x: donutX + size * 0.25,
+    y: donutY + size * 0.38,
+    w: size * 0.5,
+    h: size * 0.2,
+    fontFace: "Arial",
+    fontSize: 10,
+    bold: true,
+    color: el.color,
+    align: "center",
+    margin: 0,
+    fit: "shrink",
+  });
+
+  el.data.forEach((datum, index) => {
+    const y = plot.y + index * Math.min(0.24, plot.h / Math.max(1, el.data.length));
+    s.addShape(pptx.ShapeType.rect, {
+      x: donutX + size + 0.16,
+      y,
+      w: 0.1,
+      h: 0.1,
+      fill: { color: datum.color ?? el.color },
+      line: { type: "none" },
+    });
+    s.addText(`${datum.label}${el.showValues ? ` ${datum.value}` : ""}`, {
+      x: donutX + size + 0.3,
+      y: y - 0.02,
+      w: Math.max(0.2, plot.x + plot.w - (donutX + size + 0.3)),
+      h: 0.16,
+      fontFace: "Arial",
+      fontSize: 7,
+      color: labelColor,
+      margin: 0,
+      fit: "shrink",
+    });
+  });
+}
+
+function addChartShapeElement(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: ChartElement,
+): void {
+  const plot = addChartShell(pptx, s, el);
+
+  if (el.chartType === "bar") {
+    addBarShapeChart(pptx, s, el, plot);
+    return;
+  }
+  if (el.chartType === "line") {
+    addLineShapeChart(pptx, s, el, plot);
+    return;
+  }
+  addDonutShapeChart(pptx, s, el, plot);
 }
 
 function addTableElement(
@@ -272,6 +485,7 @@ function addElement(
   s: PptxGenJS.Slide,
   el: SlideElement,
   bg: string,
+  options: Required<GeneratePptxOptions>,
 ): void {
   if (el.kind === "rect") {
     const rounded = el.rx != null && el.rx > 0;
@@ -345,7 +559,8 @@ function addElement(
   }
 
   if (el.kind === "chart") {
-    addChartElement(pptx, s, el);
+    if (options.chartMode === "shapes") addChartShapeElement(pptx, s, el);
+    else addChartElement(pptx, s, el);
     return;
   }
 
@@ -410,18 +625,29 @@ function addElement(
   });
 }
 
-function addSlide(pptx: PptxGenJS, slide: Slide): void {
+function addSlide(
+  pptx: PptxGenJS,
+  slide: Slide,
+  options: Required<GeneratePptxOptions>,
+): void {
   const s = pptx.addSlide();
   s.background = { color: slide.background };
-  for (const el of slide.elements) addElement(pptx, s, el, slide.background);
+  for (const el of slide.elements) addElement(pptx, s, el, slide.background, options);
 }
 
-export async function generatePptx(deck: Deck, filename = "presentation.pptx") {
+export async function generatePptx(
+  deck: Deck,
+  filename = "presentation.pptx",
+  options: GeneratePptxOptions = {},
+) {
+  const resolvedOptions: Required<GeneratePptxOptions> = {
+    chartMode: options.chartMode ?? "native",
+  };
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "PPTY_16x9", width: SLIDE_W, height: SLIDE_H });
   pptx.layout = "PPTY_16x9";
 
-  for (const slide of deck.slides) addSlide(pptx, slide);
+  for (const slide of deck.slides) addSlide(pptx, slide, resolvedOptions);
 
   await pptx.writeFile({ fileName: filename });
 }
