@@ -12,5 +12,6 @@ const layerStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   zIndex: 2,
+  overflow: "hidden",
   pointerEvents: "none",
 };

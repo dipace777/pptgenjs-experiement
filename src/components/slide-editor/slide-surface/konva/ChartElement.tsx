@@ -18,7 +18,11 @@ export function ChartElement({
   selected,
   setRef,
   events,
-}: ElementCommonProps & { element: ChartEl }) {
+  renderMode = "canvas",
+}: ElementCommonProps & {
+  element: ChartEl;
+  renderMode?: "canvas" | "proxy";
+}) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   const max = Math.max(1, ...element.data.map((datum) => datum.value));
   const titleH = element.title ? 24 * (scale / PX_PER_IN) : 8;
@@ -44,60 +48,74 @@ export function ChartElement({
       opacity={element.opacity ?? 1}
       {...events}
     >
-      <Rect
-        width={width}
-        height={height}
-        fill="#ffffff"
-        opacity={0.92}
-        cornerRadius={6}
-        stroke={stroke ?? axisColor}
-        strokeWidth={selected ? strokeWidth : 0.5}
-      />
-      {element.title ? (
-        <Text
-          x={pad}
-          y={8 * (scale / PX_PER_IN)}
-          width={width - pad * 2}
-          height={14 * (scale / PX_PER_IN)}
-          text={element.title}
-          fontFamily="Arial, Helvetica, sans-serif"
-          fontSize={9 * (scale / PX_PER_IN)}
-          fontStyle="bold"
-          fill={labelColor}
+      <Rect width={width} height={height} fill="rgba(0,0,0,0)" />
+      {renderMode === "proxy" ? null : (
+        <>
+          <Rect
+            width={width}
+            height={height}
+            fill="#ffffff"
+            opacity={0.92}
+            cornerRadius={6}
+            stroke={stroke ?? axisColor}
+            strokeWidth={selected ? strokeWidth : 0.5}
+          />
+          {element.title ? (
+            <Text
+              x={pad}
+              y={8 * (scale / PX_PER_IN)}
+              width={width - pad * 2}
+              height={14 * (scale / PX_PER_IN)}
+              text={element.title}
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontSize={9 * (scale / PX_PER_IN)}
+              fontStyle="bold"
+              fill={labelColor}
+            />
+          ) : null}
+          {element.chartType === "bar" ? (
+            <BarChartParts
+              data={element.data}
+              max={max}
+              plot={plot}
+              color={chartColor}
+              axisColor={axisColor}
+              labelColor={labelColor}
+              scale={scale}
+              showValues={element.showValues ?? false}
+            />
+          ) : element.chartType === "line" ? (
+            <LineChartParts
+              data={element.data}
+              max={max}
+              plot={plot}
+              color={chartColor}
+              axisColor={axisColor}
+              labelColor={labelColor}
+              scale={scale}
+              showValues={element.showValues ?? false}
+            />
+          ) : (
+            <DonutChartParts
+              data={element.data}
+              plot={plot}
+              color={chartColor}
+              labelColor={labelColor}
+              scale={scale}
+              showValues={element.showValues ?? false}
+            />
+          )}
+        </>
+      )}
+      {selected && renderMode === "proxy" ? (
+        <Rect
+          width={width}
+          height={height}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          listening={false}
         />
       ) : null}
-      {element.chartType === "bar" ? (
-        <BarChartParts
-          data={element.data}
-          max={max}
-          plot={plot}
-          color={chartColor}
-          axisColor={axisColor}
-          labelColor={labelColor}
-          scale={scale}
-          showValues={element.showValues ?? false}
-        />
-      ) : element.chartType === "line" ? (
-        <LineChartParts
-          data={element.data}
-          max={max}
-          plot={plot}
-          color={chartColor}
-          axisColor={axisColor}
-          labelColor={labelColor}
-          scale={scale}
-          showValues={element.showValues ?? false}
-        />
-      ) : (
-        <DonutChartParts
-          data={element.data}
-          plot={plot}
-          color={chartColor}
-          labelColor={labelColor}
-          scale={scale}
-          showValues={element.showValues ?? false}
-        />
-      )}
     </Group>
   );
 }

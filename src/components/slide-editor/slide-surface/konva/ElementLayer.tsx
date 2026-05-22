@@ -22,6 +22,7 @@ export function ElementLayer({
   nodeRefs,
   normalizedSelectionBox,
   bulletsRenderMode = "canvas",
+  chartRenderMode = "canvas",
   onChange,
   onChangeMany,
   onDelete,
@@ -48,6 +49,7 @@ export function ElementLayer({
   nodeRefs: RefObject<Array<Konva.Node | null>>;
   normalizedSelectionBox: Bounds | null;
   bulletsRenderMode?: "canvas" | "proxy";
+  chartRenderMode?: "canvas" | "proxy";
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   onDelete?: () => void;
@@ -142,6 +144,7 @@ export function ElementLayer({
           key={index}
           element={el}
           bulletsRenderMode={bulletsRenderMode}
+          chartRenderMode={chartRenderMode}
           index={index}
           scale={scale}
           tableRenderMode={tableRenderMode}

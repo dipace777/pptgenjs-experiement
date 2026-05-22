@@ -34,189 +34,86 @@ function blendHex(fg: string, bg: string, opacity: number): string {
   return toHex(mix(fr, br)) + toHex(mix(fg_, bg_)) + toHex(mix(fb, bb));
 }
 
-function chartMax(el: ChartElement): number {
-  return Math.max(1, ...el.data.map((datum) => datum.value));
-}
-
-function addLineSegment(
-  pptx: PptxGenJS,
-  s: PptxGenJS.Slide,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  color: string,
-) {
-  const x = Math.min(from.x, to.x);
-  const y = Math.min(from.y, to.y);
-  const w = Math.abs(to.x - from.x);
-  const h = Math.abs(to.y - from.y);
-  const rises = to.y < from.y;
-
-  s.addShape(pptx.ShapeType.line, {
-    x,
-    y,
-    w,
-    h,
-    flipV: rises,
-    line: { color, width: 2 },
-  });
-}
-
 function addChartElement(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
   el: ChartElement,
 ): void {
-  const titleH = el.title ? 0.28 : 0;
-  const pad = 0.14;
-  const plot = {
-    x: el.x + pad,
-    y: el.y + pad + titleH,
-    w: el.w - pad * 2,
-    h: el.h - pad * 2 - titleH - 0.18,
-  };
   const axisColor = el.axisColor ?? "9AA7BD";
   const labelColor = el.labelColor ?? "6A7894";
-  const max = chartMax(el);
-
-  s.addShape(pptx.ShapeType.roundRect, {
+  const chartType =
+    el.chartType === "donut"
+      ? pptx.ChartType.doughnut
+      : el.chartType === "line"
+        ? pptx.ChartType.line
+        : pptx.ChartType.bar;
+  const labels = el.data.map((datum) => datum.label);
+  const values = el.data.map((datum) => datum.value);
+  const chartColors = el.data.map((datum) => datum.color ?? el.color);
+  const isDonut = el.chartType === "donut";
+  const data: PptxGenJS.OptsChartData[] = [
+    {
+      name: el.title ?? "Series",
+      labels,
+      values,
+    },
+  ];
+  const options: PptxGenJS.IChartOpts = {
     x: el.x,
     y: el.y,
     w: el.w,
     h: el.h,
-    rectRadius: 0.04,
-    fill: { color: "FFFFFF", transparency: transparencyPct(el.opacity ?? 0.92) },
-    line: { color: axisColor, transparency: 80 },
-  });
+    altText: el.title ?? "Chart",
+    barDir: "col",
+    barGapWidthPct: 70,
+    chartArea: {
+      fill: { color: "FFFFFF", transparency: transparencyPct(el.opacity ?? 0.92) },
+      border: { color: axisColor, pt: 0.25 },
+      roundedCorners: true,
+    },
+    chartColors,
+    dataLabelColor: labelColor,
+    dataLabelFontFace: "Arial",
+    dataLabelFontSize: isDonut ? 7 : 6.5,
+    dataLabelPosition: isDonut ? "bestFit" : "outEnd",
+    holeSize: 62,
+    lineDataSymbol: "circle",
+    lineDataSymbolSize: 5,
+    lineSize: 2,
+    lineSmooth: false,
+    plotArea: {
+      fill: { transparency: 100 },
+      border: { type: "none" },
+    },
+    showLabel: isDonut,
+    showLegend: isDonut,
+    showTitle: Boolean(el.title),
+    showValue: el.showValues ?? false,
+    title: el.title ?? undefined,
+    titleBold: true,
+    titleColor: labelColor,
+    titleFontFace: "Arial",
+    titleFontSize: 9,
+    valAxisHidden: isDonut,
+    catAxisHidden: isDonut,
+    valAxisLabelColor: labelColor,
+    catAxisLabelColor: labelColor,
+    valAxisLabelFontFace: "Arial",
+    catAxisLabelFontFace: "Arial",
+    valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 7,
+    valAxisLineColor: axisColor,
+    catAxisLineColor: axisColor,
+    valAxisLineSize: 0.75,
+    catAxisLineSize: 0.75,
+    valGridLine: { color: axisColor, size: 0.5, style: "dot" },
+    legendColor: labelColor,
+    legendFontFace: "Arial",
+    legendFontSize: 7,
+    legendPos: "r",
+  };
 
-  if (el.title) {
-    s.addText(el.title, {
-      x: el.x + pad,
-      y: el.y + 0.08,
-      w: el.w - pad * 2,
-      h: 0.22,
-      fontFace: "Arial",
-      fontSize: 9,
-      bold: true,
-      color: labelColor,
-      margin: 0,
-    });
-  }
-
-  if (el.chartType === "donut") {
-    const size = Math.min(plot.w, plot.h);
-    const cx = plot.x + size * 0.04;
-    const cy = plot.y + (plot.h - size) / 2;
-    s.addShape(pptx.ShapeType.donut, {
-      x: cx,
-      y: cy,
-      w: size,
-      h: size,
-      fill: { color: el.data[0]?.color ?? el.color },
-      line: { type: "none" },
-    });
-    s.addText(String(el.data.reduce((sum, datum) => sum + datum.value, 0)), {
-      x: cx + size * 0.22,
-      y: cy + size * 0.35,
-      w: size * 0.56,
-      h: size * 0.22,
-      fontFace: "Arial",
-      fontSize: 10,
-      bold: true,
-      color: el.color,
-      align: "center",
-      margin: 0,
-    });
-
-    el.data.forEach((datum, index) => {
-      const y = plot.y + index * 0.24;
-      s.addShape(pptx.ShapeType.rect, {
-        x: plot.x + size + 0.16,
-        y,
-        w: 0.1,
-        h: 0.1,
-        fill: { color: datum.color ?? el.color },
-        line: { type: "none" },
-      });
-      s.addText(`${datum.label}${el.showValues ? ` ${datum.value}` : ""}`, {
-        x: plot.x + size + 0.3,
-        y: y - 0.02,
-        w: Math.max(0.2, plot.w - size - 0.34),
-        h: 0.16,
-        fontFace: "Arial",
-        fontSize: 7,
-        color: labelColor,
-        margin: 0,
-      });
-    });
-    return;
-  }
-
-  s.addShape(pptx.ShapeType.line, {
-    x: plot.x,
-    y: plot.y + plot.h,
-    w: plot.w,
-    h: 0,
-    line: { color: axisColor, width: 0.75 },
-  });
-  s.addShape(pptx.ShapeType.line, {
-    x: plot.x,
-    y: plot.y,
-    w: 0,
-    h: plot.h,
-    line: { color: axisColor, width: 0.75 },
-  });
-
-  if (el.chartType === "bar") {
-    const gap = 0.08;
-    const barW = Math.max(0.08, (plot.w - gap * (el.data.length - 1)) / el.data.length);
-    el.data.forEach((datum, index) => {
-      const h = (datum.value / max) * (plot.h * 0.82);
-      const x = plot.x + index * (barW + gap);
-      const y = plot.y + plot.h - h;
-      s.addShape(pptx.ShapeType.rect, {
-        x,
-        y,
-        w: barW,
-        h,
-        fill: { color: datum.color ?? el.color },
-        line: { type: "none" },
-      });
-      if (el.showValues) {
-        s.addText(String(datum.value), {
-          x,
-          y: y - 0.16,
-          w: barW,
-          h: 0.13,
-          fontFace: "Arial",
-          fontSize: 6.5,
-          color: labelColor,
-          align: "center",
-          margin: 0,
-        });
-      }
-    });
-    return;
-  }
-
-  const points = el.data.map((datum, index) => ({
-    x: plot.x + (el.data.length === 1 ? 0 : (index / (el.data.length - 1)) * plot.w),
-    y: plot.y + plot.h - (datum.value / max) * (plot.h * 0.82),
-    color: datum.color ?? el.color,
-  }));
-  points.slice(1).forEach((point, index) => {
-    const prev = points[index];
-    addLineSegment(pptx, s, prev, point, el.color);
-  });
-  points.forEach((point) => {
-    s.addShape(pptx.ShapeType.ellipse, {
-      x: point.x - 0.035,
-      y: point.y - 0.035,
-      w: 0.07,
-      h: 0.07,
-      fill: { color: point.color },
-      line: { color: "FFFFFF", width: 0.5 },
-    });
-  });
+  s.addChart(chartType, data, options);
 }
 
 function addTableElement(

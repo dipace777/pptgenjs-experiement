@@ -2,6 +2,7 @@ import type Konva from "konva";
 import { SLIDE_W, type Slide, type SlideElement } from "../../../lib/slide-schema";
 import type { TableCellSelection } from "../state";
 import { BulletsDomElement } from "./element-renderers/bullets";
+import { ChartDomElement } from "./element-renderers/chart";
 import { TableDomElement } from "./element-renderers/table";
 import { TextDomElement } from "./element-renderers/text";
 import { KonvaSlide } from "./konva/KonvaSlide";
@@ -76,10 +77,12 @@ export function SlideSurface({
         slide={slide}
         stageRef={stageRef}
         bulletsRenderMode="proxy"
+        chartRenderMode="proxy"
         tableRenderMode="proxy"
         textRenderMode="proxy"
         width={width}
       />
+      <ChartDomElement scale={scale} slide={slide} />
       <BulletsDomElement
         editingBulletsIndex={editingBulletsIndex}
         scale={scale}
