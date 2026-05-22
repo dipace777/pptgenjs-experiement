@@ -10,7 +10,7 @@ export type BulletsSlideElement = Extract<SlideElement, { kind: "bullets" }>;
 export type ImageSlideElement = Extract<SlideElement, { kind: "image" }>;
 export type ShapeSlideElement = Extract<SlideElement, { kind: "rect" | "ellipse" }>;
 export type TableSlideElement = Extract<SlideElement, { kind: "table" }>;
-export type ChartGridSlideElement = Extract<SlideElement, { kind: "chart" | "grid" }>;
+export type ChartSlideElement = Extract<SlideElement, { kind: "chart" }>;
 export type TableCellSelection = { elementIndex: number; rowIndex: number; colIndex: number };
 
 // --- Primitive atoms ----------------------------------------------------
@@ -82,9 +82,9 @@ export const selectedTableElementAtom = atom<TableSlideElement | null>((get) => 
   return element?.kind === "table" ? element : null;
 });
 
-export const drawerElementAtom = atom<ChartGridSlideElement | null>((get) => {
+export const drawerElementAtom = atom<ChartSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "chart" || element?.kind === "grid" ? element : null;
+  return element?.kind === "chart" ? element : null;
 });
 
 export const editingTextElementAtom = atom<TextSlideElement | null>((get) => {

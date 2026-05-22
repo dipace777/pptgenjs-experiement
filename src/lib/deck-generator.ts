@@ -21,7 +21,7 @@ export const SlideOutlineSchema = z.object({
         title: z.string().min(1).max(60),
         summary: z.string().min(1).max(180),
         bullets: z.array(z.string().min(1).max(110)).min(2).max(5),
-        visual: z.enum(["bullets", "chart", "grid", "table"]),
+        visual: z.enum(["bullets", "chart", "table"]),
       }),
     )
     .min(3)
@@ -83,7 +83,7 @@ export function fallbackOutline(input: DeckGenerationInput): SlideOutline {
         title: "Operating Model",
         summary: "The core components that need to work together for the idea to land.",
         bullets: ["People", "Process", "Product", "Data", "Distribution", "Risk"],
-        visual: "grid",
+        visual: "bullets",
       },
       {
         title: "Plan",
@@ -186,29 +186,61 @@ function agendaSlide(outline: SlideOutline, colors: ReturnType<typeof palette>, 
         bold: true,
         color: colors.text,
       },
-      {
-        kind: "grid",
-        x: 0.65,
-        y: 1.35,
-        w: 8.7,
-        h: 3.25,
-        columns: 2,
-        items: outline.sections.map((section, index) => ({
-          type: section.visual === "chart" ? ("chart" as const) : ("text" as const),
-          chartType: section.visual === "chart" ? ("bar" as const) : undefined,
-          title: String(index + 1).padStart(2, "0"),
-          subtitle: section.title,
-        })),
-        fontFace: SANS,
-        numberFontSize: 25,
-        labelFontSize: 9,
-        numberColor: colors.primary,
-        labelColor: colors.muted,
-        fill: colors.white,
-        borderColor: colors.line,
-        gap: 0.16,
-        rx: 0.08,
-      },
+      ...outline.sections.flatMap((section, sectionIndex) => {
+        const col = sectionIndex % 2;
+        const row = Math.floor(sectionIndex / 2);
+        const x = 0.65 + col * 4.43;
+        const y = 1.35 + row * 1.7;
+        return [
+          {
+            kind: "rect" as const,
+            x,
+            y,
+            w: 4.25,
+            h: 1.52,
+            fill: colors.white,
+            line: { color: colors.line, width: 0.75 },
+            rx: 0.08,
+          },
+          {
+            kind: "text" as const,
+            x: x + 0.2,
+            y: y + 0.2,
+            w: 0.75,
+            h: 0.4,
+            text: String(sectionIndex + 1).padStart(2, "0"),
+            fontFace: SANS,
+            fontSize: 25,
+            bold: true,
+            color: colors.primary,
+          },
+          {
+            kind: "text" as const,
+            x: x + 1.05,
+            y: y + 0.25,
+            w: 2.85,
+            h: 0.32,
+            text: section.title.toUpperCase(),
+            fontFace: SANS,
+            fontSize: 9,
+            bold: true,
+            color: colors.muted,
+            charSpacing: 120,
+          },
+          {
+            kind: "text" as const,
+            x: x + 1.05,
+            y: y + 0.68,
+            w: 2.85,
+            h: 0.45,
+            text: section.summary,
+            fontFace: SANS,
+            fontSize: 9,
+            color: colors.text,
+            lineHeight: 1.18,
+          },
+        ];
+      }),
       ...footer(2, total, colors.muted),
     ],
   };
@@ -277,31 +309,7 @@ function sectionSlide(
           labelColor: colors.muted,
           showValues: true,
         }
-      : section.visual === "grid"
-        ? {
-            kind: "grid",
-            x: 5.05,
-            y: visualY,
-            w: 4.1,
-            h: visualH,
-            columns: 2,
-            items: section.bullets.slice(0, 6).map((item, itemIndex) => ({
-              type: itemIndex % 3 === 1 ? ("chart" as const) : ("text" as const),
-              chartType: itemIndex % 3 === 1 ? ("donut" as const) : undefined,
-              title: String(itemIndex + 1).padStart(2, "0"),
-              subtitle: item,
-            })),
-            fontFace: SANS,
-            numberFontSize: 22,
-            labelFontSize: 8,
-            numberColor: colors.primary,
-            labelColor: colors.muted,
-            fill: colors.white,
-            borderColor: colors.line,
-            gap: 0.13,
-            rx: 0.08,
-          }
-        : section.visual === "table"
+      : section.visual === "table"
           ? {
               kind: "table",
               x: 5.05,

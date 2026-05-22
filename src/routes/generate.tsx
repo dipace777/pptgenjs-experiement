@@ -47,7 +47,7 @@ const generateDeck = createServerFn({ method: "POST" })
             content: [
               `Title: ${data.title}`,
               `Description: ${data.description}`,
-              "Create 4 sections. Mix visual types across bullets, chart, grid, and table.",
+              "Create 4 sections. Mix visual types across bullets, chart, and table.",
               "Each section should have practical bullets that can be rendered directly on a slide.",
             ].join("\n"),
           },

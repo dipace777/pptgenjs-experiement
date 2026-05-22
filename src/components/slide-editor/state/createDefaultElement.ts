@@ -46,28 +46,6 @@ export function createDefaultElement(kind: SlideElement["kind"]): SlideElement {
         borderColor: "DDE5F0",
         fill: "FFFFFF",
       };
-    case "grid":
-      return {
-        ...base,
-        w: 5.2,
-        h: 2.2,
-        kind,
-        columns: 3,
-        items: Array.from({ length: 9 }, (_, index) => ({
-          type: "text" as const,
-          title: String(index + 1).padStart(2, "0"),
-          subtitle: "Placeholder",
-        })),
-        fontFace: "Arial",
-        numberFontSize: 24,
-        labelFontSize: 7,
-        numberColor: "3E78B2",
-        labelColor: "6A7894",
-        fill: "FFFFFF",
-        borderColor: "DDE5F0",
-        gap: 0.14,
-        rx: 0.08,
-      };
     case "image":
       return { ...base, w: 3.6, h: 2.4, kind, fit: "contain" };
     case "bullets":

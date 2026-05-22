@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Slide } from "../../../../../lib/slide-schema";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../../editorUtils";
 import type { TableCellSelection } from "../../../state";
+import { DomElementLayer, elementBoxStyle } from "../shared";
 
 export function TableDomElement({
   editingTableIndex,
@@ -15,15 +16,7 @@ export function TableDomElement({
   slide: Slide;
 }) {
   return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 2,
-        pointerEvents: "none",
-      }}
-    >
+    <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
         if (element.kind !== "table" || editingTableIndex === elementIndex) {
           return null;
@@ -32,21 +25,16 @@ export function TableDomElement({
         const rows = element.rows;
         const cols = Math.max(1, ...rows.map((row) => row.length));
         const borderColor = withHash(element.borderColor);
-        const opacity = element.opacity ?? 1;
 
         return (
           <table
             key={elementIndex}
             style={{
+              ...elementBoxStyle(element, scale),
               ...tableStyle,
-              left: element.x * scale,
-              top: element.y * scale,
-              width: element.w * scale,
-              height: element.h * scale,
               borderColor,
               fontFamily: `${element.fontFace ?? "Arial"}, Helvetica, sans-serif`,
               fontSize: element.fontSize * PT_TO_PX * (scale / PX_PER_IN),
-              opacity,
             }}
           >
             <tbody>
@@ -93,15 +81,13 @@ export function TableDomElement({
           </table>
         );
       })}
-    </div>
+    </DomElementLayer>
   );
 }
 
 const tableStyle: CSSProperties = {
-  position: "absolute",
   tableLayout: "fixed",
   borderCollapse: "collapse",
-  boxSizing: "border-box",
   borderWidth: 1,
   borderStyle: "solid",
   overflow: "hidden",

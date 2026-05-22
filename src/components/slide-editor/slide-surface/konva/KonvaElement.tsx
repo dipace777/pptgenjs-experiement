@@ -2,7 +2,6 @@ import type { SlideElement } from "../../../../lib/slide-schema";
 import { BulletsElement } from "./BulletsElement";
 import { ChartElement } from "./ChartElement";
 import { EllipseElement } from "./EllipseElement";
-import { GridElement } from "./GridElement";
 import { ImageElement } from "./ImageElement";
 import { RectElement } from "./RectElement";
 import { TableElement } from "./TableElement";
@@ -39,8 +38,6 @@ export function KonvaElement({
           {...rest}
         />
       );
-    case "grid":
-      return <GridElement element={element} {...rest} />;
     case "image":
       return <ImageElement element={element} {...rest} />;
     case "bullets":
