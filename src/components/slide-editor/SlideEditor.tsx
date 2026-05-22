@@ -25,7 +25,7 @@ import {
   TextInlineEditor,
   TextToolbar,
 } from "./inline";
-import { ChartGridInspector } from "./inspector/ChartGridInspector";
+import { ChartInspector } from "./inspector/ChartInspector";
 import { ExportPptxButton } from "./shared/ExportPptxButton";
 import { KonvaSlide, SlideSurface } from "./slide-surface";
 import {
@@ -482,7 +482,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             </label>
 
             {drawerElement ? (
-              <ChartGridInspector
+              <ChartInspector
                 element={drawerElement}
                 onPatch={patchSelected}
                 onReplace={(next) =>
@@ -500,7 +500,6 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   "bullets",
                   "chart",
                   "table",
-                  "grid",
                   "image",
                 ] as const
               ).map((kind) => (

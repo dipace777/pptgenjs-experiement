@@ -115,31 +115,6 @@ export const ImageElementSchema = z.object({
   fit: z.enum(["contain", "cover", "fill"]).nullish(),
 });
 
-export const GridItemSchema = z.object({
-  type: z.enum(["text", "chart", "image"]),
-  chartType: z.enum(["bar", "line", "pie", "donut"]).nullish(),
-  imageData: z.string().nullish(),
-  imageName: z.string().max(120).nullish(),
-  title: z.string().min(1).max(80),
-  subtitle: z.string().max(120).nullish(),
-});
-
-export const GridElementSchema = z.object({
-  ...baseElement,
-  kind: z.literal("grid"),
-  items: z.array(GridItemSchema).min(1).max(12),
-  columns: z.number().int().min(1).max(4),
-  fontFace: z.string().min(1).max(80).nullish(),
-  numberFontSize: z.number().min(8).max(72),
-  labelFontSize: z.number().min(6).max(24),
-  numberColor: HexColorSchema,
-  labelColor: HexColorSchema,
-  fill: HexColorSchema,
-  borderColor: HexColorSchema,
-  gap: z.number().min(0).max(0.4).nullish(),
-  rx: z.number().min(0).max(0.5).nullish(),
-});
-
 export const SlideElementSchema = z.discriminatedUnion("kind", [
   TextElementSchema,
   RectElementSchema,
@@ -147,7 +122,6 @@ export const SlideElementSchema = z.discriminatedUnion("kind", [
   BulletsElementSchema,
   ChartElementSchema,
   TableElementSchema,
-  GridElementSchema,
   ImageElementSchema,
 ]);
 
@@ -173,8 +147,6 @@ export type BulletsElement = z.infer<typeof BulletsElementSchema>;
 export type ChartDatum = z.infer<typeof ChartDatumSchema>;
 export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
-export type GridItem = z.infer<typeof GridItemSchema>;
-export type GridElement = z.infer<typeof GridElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;

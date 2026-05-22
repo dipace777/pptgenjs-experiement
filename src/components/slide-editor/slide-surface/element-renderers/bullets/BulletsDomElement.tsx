@@ -1,6 +1,11 @@
 import type { CSSProperties } from "react";
 import type { Slide } from "../../../../../lib/slide-schema";
-import { PT_TO_PX, PX_PER_IN, withHash } from "../../../editorUtils";
+import {
+  DomElementLayer,
+  elementBoxStyle,
+  fontStyle,
+  wrappedTextStyle,
+} from "../shared";
 
 export function BulletsDomElement({
   editingBulletsIndex,
@@ -12,7 +17,7 @@ export function BulletsDomElement({
   slide: Slide;
 }) {
   return (
-    <div aria-hidden="true" style={layerStyle}>
+    <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
         if (
           element.kind !== "bullets" ||
@@ -21,20 +26,19 @@ export function BulletsDomElement({
           return null;
         }
 
-        const fontSize = element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
         return (
           <ul
             key={elementIndex}
             style={{
+              ...elementBoxStyle(element, scale),
+              ...fontStyle(
+                {
+                  ...element,
+                  lineHeight: element.lineSpacingMultiple ?? 1.3,
+                },
+                scale,
+              ),
               ...listStyle,
-              color: withHash(element.color),
-              fontFamily: `${element.fontFace ?? "Arial"}, Helvetica, sans-serif`,
-              fontSize,
-              height: element.h * scale,
-              left: element.x * scale,
-              lineHeight: element.lineSpacingMultiple ?? 1.3,
-              top: element.y * scale,
-              width: element.w * scale,
             }}
           >
             {element.items.map((item, itemIndex) => (
@@ -54,25 +58,15 @@ export function BulletsDomElement({
           </ul>
         );
       })}
-    </div>
+    </DomElementLayer>
   );
 }
 
-const layerStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  zIndex: 2,
-  pointerEvents: "none",
-};
-
 const listStyle: CSSProperties = {
-  position: "absolute",
-  boxSizing: "border-box",
   margin: 0,
-  overflow: "hidden",
   paddingLeft: "1.1em",
+  ...wrappedTextStyle,
   whiteSpace: "normal",
-  wordBreak: "break-word",
 };
 
 const itemStyle: CSSProperties = {
