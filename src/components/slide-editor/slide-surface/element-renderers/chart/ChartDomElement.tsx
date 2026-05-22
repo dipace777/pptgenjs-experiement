@@ -1,4 +1,5 @@
 import {
+  ArcElement,
   BarController,
   BarElement,
   CategoryScale,
@@ -19,6 +20,7 @@ import { PX_PER_IN, withHash } from "../../../editorUtils";
 import { DomElementLayer, elementBoxStyle } from "../shared";
 
 Chart.register(
+  ArcElement,
   BarController,
   BarElement,
   CategoryScale,
@@ -69,6 +71,8 @@ function ChartCanvas({ element, scale }: { element: ChartEl; scale: number }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    Chart.getChart(canvas)?.destroy();
 
     const isDonut = element.chartType === "donut";
     const chart = new Chart(canvas, {
