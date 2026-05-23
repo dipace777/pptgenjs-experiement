@@ -1,7 +1,7 @@
 import type { TextSlideElement } from "../state";
-import { styles } from "../editorStyles";
 import { withHash, withoutHash } from "../editorUtils";
 import { InlineToolbar } from "./InlineToolbar";
+import { inlineStyles } from "./inlineStyles";
 
 export function TextToolbar({
   element,
@@ -27,8 +27,8 @@ export function TextToolbar({
           })
         }
         style={{
-          ...styles.inlineTextButton,
-          ...(element.bold ? styles.inlineTextButtonActive : {}),
+          ...inlineStyles.iconButton,
+          ...(element.bold ? inlineStyles.iconButtonActive : {}),
         }}
       >
         B
@@ -44,9 +44,9 @@ export function TextToolbar({
           })
         }
         style={{
-          ...styles.inlineTextButton,
+          ...inlineStyles.iconButton,
           fontStyle: "italic",
-          ...(element.italic ? styles.inlineTextButtonActive : {}),
+          ...(element.italic ? inlineStyles.iconButtonActive : {}),
         }}
       >
         I
@@ -64,7 +64,7 @@ export function TextToolbar({
             fontSize: Number(event.target.value) || element.fontSize,
           })
         }
-        style={styles.inlineFontSize}
+        style={inlineStyles.numberInput}
       />
       <input
         aria-label="Text color"
@@ -77,7 +77,7 @@ export function TextToolbar({
             color: withoutHash(event.target.value),
           })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Text opacity"
@@ -93,7 +93,7 @@ export function TextToolbar({
             opacity: Number(event.target.value),
           })
         }
-        style={styles.inlineOpacity}
+        style={inlineStyles.opacityInput}
       />
     </InlineToolbar>
   );

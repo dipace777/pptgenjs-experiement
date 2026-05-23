@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { SlideElement } from "../../../lib/slide-schema";
-import { styles } from "../editorStyles";
+import { inlineStyles } from "./inlineStyles";
 
 export function InlineToolbar({
   element,
@@ -14,7 +14,7 @@ export function InlineToolbar({
   return (
     <div
       style={{
-        ...styles.inlineTextToolbar,
+        ...inlineStyles.toolbar,
         left: Math.max(8, element.x * scale),
         top: Math.max(8, element.y * scale - 48),
       }}

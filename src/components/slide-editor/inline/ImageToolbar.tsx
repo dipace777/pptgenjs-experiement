@@ -1,6 +1,6 @@
 import type { ImageSlideElement } from "../state";
-import { styles } from "../editorStyles";
 import { InlineToolbar } from "./InlineToolbar";
+import { inlineStyles } from "./inlineStyles";
 
 export function ImageToolbar({
   element,
@@ -21,7 +21,7 @@ export function ImageToolbar({
         type="button"
         title="Upload image"
         onClick={() => onUpload(index)}
-        style={styles.inlineFileLabel}
+        style={inlineStyles.fileButton}
       >
         Image
       </button>
@@ -35,7 +35,7 @@ export function ImageToolbar({
             fit: event.target.value as "contain" | "cover" | "fill",
           })
         }
-        style={styles.inlineSelect}
+        style={inlineStyles.select}
       >
         <option value="contain">Contain</option>
         <option value="cover">Cover</option>
@@ -55,7 +55,7 @@ export function ImageToolbar({
             opacity: Number(event.target.value),
           })
         }
-        style={styles.inlineOpacity}
+        style={inlineStyles.opacityInput}
       />
       {element.data ? (
         <button
@@ -69,8 +69,8 @@ export function ImageToolbar({
             })
           }
           style={{
-            ...styles.inlineTextButton,
-            ...styles.inlineDangerButton,
+            ...inlineStyles.iconButton,
+            ...inlineStyles.dangerButton,
           }}
         >
           ×

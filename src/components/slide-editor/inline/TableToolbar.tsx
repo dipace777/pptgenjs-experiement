@@ -1,7 +1,7 @@
 import type { TableCellSelection, TableSlideElement } from "../state";
-import { styles } from "../editorStyles";
 import { withHash, withoutHash } from "../editorUtils";
 import { InlineToolbar } from "./InlineToolbar";
+import { inlineStyles } from "./inlineStyles";
 
 export function TableToolbar({
   element,
@@ -53,7 +53,7 @@ export function TableToolbar({
             disabled={!canAddRow}
             onClick={() => insertRow("above")}
             style={{
-              ...styles.inlineActionButton,
+              ...inlineStyles.actionButton,
               opacity: canAddRow ? 1 : 0.45,
               cursor: canAddRow ? "pointer" : "not-allowed",
             }}
@@ -66,7 +66,7 @@ export function TableToolbar({
             disabled={!canAddRow}
             onClick={() => insertRow("below")}
             style={{
-              ...styles.inlineActionButton,
+              ...inlineStyles.actionButton,
               opacity: canAddRow ? 1 : 0.45,
               cursor: canAddRow ? "pointer" : "not-allowed",
             }}
@@ -79,7 +79,7 @@ export function TableToolbar({
             disabled={!canAddColumn}
             onClick={() => insertColumn("left")}
             style={{
-              ...styles.inlineActionButton,
+              ...inlineStyles.actionButton,
               opacity: canAddColumn ? 1 : 0.45,
               cursor: canAddColumn ? "pointer" : "not-allowed",
             }}
@@ -92,7 +92,7 @@ export function TableToolbar({
             disabled={!canAddColumn}
             onClick={() => insertColumn("right")}
             style={{
-              ...styles.inlineActionButton,
+              ...inlineStyles.actionButton,
               opacity: canAddColumn ? 1 : 0.45,
               cursor: canAddColumn ? "pointer" : "not-allowed",
             }}
@@ -114,7 +114,7 @@ export function TableToolbar({
             fontSize: Number(event.target.value) || element.fontSize,
           })
         }
-        style={styles.inlineFontSize}
+        style={inlineStyles.numberInput}
       />
       <input
         aria-label="Table text color"
@@ -124,7 +124,7 @@ export function TableToolbar({
         onChange={(event) =>
           onChange(index, { ...element, textColor: withoutHash(event.target.value) })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Table header fill"
@@ -134,7 +134,7 @@ export function TableToolbar({
         onChange={(event) =>
           onChange(index, { ...element, headerFill: withoutHash(event.target.value) })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Table header text"
@@ -147,7 +147,7 @@ export function TableToolbar({
             headerTextColor: withoutHash(event.target.value),
           })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Table fill"
@@ -157,7 +157,7 @@ export function TableToolbar({
         onChange={(event) =>
           onChange(index, { ...element, fill: withoutHash(event.target.value) })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Table border"
@@ -167,7 +167,7 @@ export function TableToolbar({
         onChange={(event) =>
           onChange(index, { ...element, borderColor: withoutHash(event.target.value) })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Table opacity"
@@ -180,7 +180,7 @@ export function TableToolbar({
         onChange={(event) =>
           onChange(index, { ...element, opacity: Number(event.target.value) })
         }
-        style={styles.inlineOpacity}
+        style={inlineStyles.opacityInput}
       />
     </InlineToolbar>
   );

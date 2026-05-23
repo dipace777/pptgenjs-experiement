@@ -28,6 +28,8 @@
 - Added shared SVG sanitization for AI output, local fallback output, manual SVG
   edits, DOM rendering, Konva rendering, and PPTX/PDF export paths.
 - Split layout, workspace, and drawer-owned styles out of `editorStyles.ts`.
+- Moved dense inline toolbar/editor styles to `inline/inlineStyles.ts` and
+  presentation mode styles to `presentationStyles.ts`.
 - Grouped the growing editor surface into ownership folders: `shell`,
   `workspace`, `panels`, and `registry`.
 - Split workspace-level selected-element toolbars and inline editors out of the
@@ -37,5 +39,5 @@
 
 ## Remaining Refactors
 
-- Continue migrating dense inline toolbar and presentation styles when those
-  components get their next feature pass.
+- Consider splitting shared editor form/button primitives if inspector and
+  drawer controls continue to diverge.

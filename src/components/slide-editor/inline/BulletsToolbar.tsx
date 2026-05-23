@@ -1,7 +1,7 @@
 import type { BulletsSlideElement } from "../state";
-import { styles } from "../editorStyles";
 import { withHash, withoutHash } from "../editorUtils";
 import { InlineToolbar } from "./InlineToolbar";
+import { inlineStyles } from "./inlineStyles";
 
 export function BulletsToolbar({
   element,
@@ -29,7 +29,7 @@ export function BulletsToolbar({
             fontSize: Number(event.target.value) || element.fontSize,
           })
         }
-        style={styles.inlineFontSize}
+        style={inlineStyles.numberInput}
       />
       <input
         aria-label="Bullet color"
@@ -42,7 +42,7 @@ export function BulletsToolbar({
             color: withoutHash(event.target.value),
           })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Bullet line height"
@@ -59,7 +59,7 @@ export function BulletsToolbar({
               Number(event.target.value) || element.lineSpacingMultiple || 1.3,
           })
         }
-        style={styles.inlineFontSize}
+        style={inlineStyles.numberInput}
       />
       <input
         aria-label="Bullet item gap"
@@ -75,7 +75,7 @@ export function BulletsToolbar({
             itemGap: Number(event.target.value) || element.itemGap || 0,
           })
         }
-        style={styles.inlineFontSize}
+        style={inlineStyles.numberInput}
       />
     </InlineToolbar>
   );

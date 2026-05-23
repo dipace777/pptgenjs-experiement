@@ -1,6 +1,6 @@
 import type { TableSlideElement } from "../state";
-import { styles } from "../editorStyles";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
+import { inlineStyles } from "./inlineStyles";
 
 export function TableInlineEditor({
   element,
@@ -43,7 +43,7 @@ export function TableInlineEditor({
         if (event.key === "Escape") event.currentTarget.blur();
       }}
       style={{
-        ...styles.inlineTextEditor,
+        ...inlineStyles.textEditor,
         left: element.x * scale,
         top: element.y * scale,
         width: element.w * scale,

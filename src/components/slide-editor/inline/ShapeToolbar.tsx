@@ -1,7 +1,7 @@
 import type { ShapeSlideElement } from "../state";
-import { styles } from "../editorStyles";
 import { withHash, withoutHash } from "../editorUtils";
 import { InlineToolbar } from "./InlineToolbar";
+import { inlineStyles } from "./inlineStyles";
 
 export function ShapeToolbar({
   element,
@@ -26,7 +26,7 @@ export function ShapeToolbar({
         onChange={(event) =>
           onChange(index, { ...element, fill: withoutHash(event.target.value) })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Shape border color"
@@ -39,7 +39,7 @@ export function ShapeToolbar({
             line: { ...line, color: withoutHash(event.target.value) },
           })
         }
-        style={styles.inlineColor}
+        style={inlineStyles.colorInput}
       />
       <input
         aria-label="Shape border width"
@@ -55,7 +55,7 @@ export function ShapeToolbar({
             line: { ...line, width: Number(event.target.value) || 0 },
           })
         }
-        style={styles.inlineFontSize}
+        style={inlineStyles.numberInput}
       />
       {element.kind === "rect" ? (
         <input
@@ -72,7 +72,7 @@ export function ShapeToolbar({
               rx: Number(event.target.value) || 0,
             })
           }
-          style={styles.inlineFontSize}
+          style={inlineStyles.numberInput}
         />
       ) : null}
       <input
@@ -86,7 +86,7 @@ export function ShapeToolbar({
         onChange={(event) =>
           onChange(index, { ...element, opacity: Number(event.target.value) })
         }
-        style={styles.inlineOpacity}
+        style={inlineStyles.opacityInput}
       />
     </InlineToolbar>
   );
