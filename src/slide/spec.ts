@@ -3,7 +3,7 @@ import { SLIDE_H, type Deck, type Slide, type SlideElement } from "../lib/slide-
 // ── Palette ─────────────────────────────────────────────────────────────
 const NAVY = "0B1F3A";
 const DEEP = "071425";
-const BLUE = "75AADB"; // Argentina light blue
+const BLUE = "75AADB";
 const BLUE_DK = "3E78B2";
 const GOLD = "D4A24C";
 const OFF_WHITE = "F4F6FA";
@@ -27,7 +27,7 @@ function footer(num: number, total: number, onDark: boolean): SlideElement[] {
       y: 5.25,
       w: 4,
       h: 0.3,
-      text: "LIONEL MESSI",
+      text: "LAYOUT SAMPLE",
       fontSize: 9,
       color: c,
       charSpacing: 200,
@@ -49,13 +49,13 @@ function footer(num: number, total: number, onDark: boolean): SlideElement[] {
 }
 
 // ── Slide 1: Title ──────────────────────────────────────────────────────
-const TOTAL = 8;
+const TOTAL = 15;
 
 const slide1Title: Slide = {
   title: "Title",
   background: NAVY,
   elements: [
-    // Massive watermark "10" on the right. Box stays inside the slide and
+    // Massive watermark "15" on the right. Box stays inside the slide and
     // gives ample horizontal room so the digits never wrap or get clipped.
     {
       kind: "text",
@@ -63,7 +63,7 @@ const slide1Title: Slide = {
       y: 0.1,
       w: 6.2,
       h: 5.4,
-      text: "10",
+      text: "15",
       fontSize: 300,
       bold: true,
       color: "FFFFFF",
@@ -80,21 +80,21 @@ const slide1Title: Slide = {
       y: 0.7,
       w: 6,
       h: 0.3,
-      text: "PLAYER PROFILE · 2026",
+      text: "LAYOUT KIT · 2026",
       fontSize: 11,
       bold: true,
       color: BLUE,
       charSpacing: 300,
       fontFace: SANS,
     },
-    // Big name
+    // Big title
     {
       kind: "text",
       x: 0.6,
       y: 1.5,
       w: 8.5,
       h: 2.55,
-      text: "LIONEL\nMESSI",
+      text: "PRESENTATION\nLAYOUTS",
       fontSize: 78,
       bold: true,
       color: "FFFFFF",
@@ -110,7 +110,7 @@ const slide1Title: Slide = {
       y: 4.3,
       w: 8,
       h: 0.45,
-      text: "A footballing legend, told in seven slides.",
+      text: "Fifteen common slide patterns built from editable elements.",
       fontSize: 18,
       color: BLUE,
       fontFace: SANS,
@@ -135,7 +135,7 @@ const slide2Profile: Slide = {
       y: 0.6,
       w: 3.0,
       h: 0.3,
-      text: "PLAYER PROFILE",
+      text: "COMPANY PROFILE",
       fontSize: 10,
       bold: true,
       color: GOLD,
@@ -149,7 +149,7 @@ const slide2Profile: Slide = {
       y: 1.0,
       w: 3.0,
       h: 1.6,
-      text: "Lionel\nMessi",
+      text: "Acme\nStudio",
       fontSize: 40,
       bold: true,
       color: "FFFFFF",
@@ -162,7 +162,7 @@ const slide2Profile: Slide = {
       y: 2.65,
       w: 3.0,
       h: 0.3,
-      text: "Forward · Inter Miami CF",
+      text: "Product strategy team",
       fontSize: 12,
       color: BLUE,
       fontFace: SANS,
@@ -175,10 +175,10 @@ const slide2Profile: Slide = {
       w: 3.0,
       h: 1.3,
       text:
-        "Born   24 June 1987\n" +
-        "From   Rosario, Argentina\n" +
-        "Foot   Left\n" +
-        "Height 1.70 m",
+        "Founded   2018\n" +
+        "HQ        Remote-first\n" +
+        "Focus     Product design\n" +
+        "Team      42 people",
       fontSize: 11,
       color: "D5DCE8",
       lineHeight: 1.6,
@@ -206,7 +206,7 @@ const slide2Profile: Slide = {
       y: 1.0,
       w: 5.4,
       h: 0.7,
-      text: "The Greatest of All Time",
+      text: "A concise overview slide",
       fontSize: 26,
       bold: true,
       color: INK,
@@ -220,9 +220,9 @@ const slide2Profile: Slide = {
       w: 5.4,
       h: 1.3,
       text:
-        "An Argentine forward widely regarded as the greatest footballer of all time. " +
-        "Record eight-time Ballon d'Or winner and 2022 FIFA World Cup champion " +
-        "with Argentina, after two decades of dominance with FC Barcelona.",
+        "A flexible profile layout for a company, product, person, or project. " +
+        "Use the left panel for identity details, then reserve the wider right " +
+        "side for positioning, context, and high-level proof points.",
       fontSize: 13,
       color: INK,
       lineHeight: 1.45,
@@ -235,7 +235,7 @@ const slide2Profile: Slide = {
       y: 3.35,
       w: 5.4,
       h: 0.3,
-      text: "CAREER HIGHLIGHTS",
+      text: "KEY HIGHLIGHTS",
       fontSize: 10,
       bold: true,
       color: BLUE_DK,
@@ -255,22 +255,22 @@ const slide2Profile: Slide = {
       lineSpacingMultiple: 1.4,
       fontFace: SANS,
       items: [
-        "8× Ballon d'Or winner (all-time record)",
-        "FIFA World Cup champion — Qatar 2022",
-        "4× UEFA Champions League winner",
-        "All-time top scorer for Argentina and Barcelona",
+        "Reusable side-panel profile structure",
+        "Large narrative area for overview copy",
+        "Editable bullets with accent color",
+        "Balanced text density for executive scans",
       ],
     },
     ...footer(2, TOTAL, false),
   ],
 };
 
-// ── Slide 3: Career timeline ────────────────────────────────────────────
+// ── Slide 3: Project timeline ───────────────────────────────────────────
 function timelineStop(
   cx: number,
   year: string,
   letter: string,
-  club: string,
+  label: string,
   period: string,
 ): SlideElement[] {
   return [
@@ -305,14 +305,14 @@ function timelineStop(
       valign: "middle",
       fontFace: SANS,
     },
-    // Club
+    // Label
     {
       kind: "text",
       x: cx - 1.4,
       y: 3.65,
       w: 2.8,
       h: 0.4,
-      text: club,
+      text: label,
       fontSize: 16,
       bold: true,
       color: "FFFFFF",
@@ -336,7 +336,7 @@ function timelineStop(
 }
 
 const slide3Timeline: Slide = {
-  title: "Career",
+  title: "Timeline",
   background: DEEP,
   elements: [
     // Eyebrow
@@ -346,7 +346,7 @@ const slide3Timeline: Slide = {
       y: 0.6,
       w: 6,
       h: 0.3,
-      text: "CAREER JOURNEY",
+      text: "PROJECT JOURNEY",
       fontSize: 10,
       bold: true,
       color: GOLD,
@@ -360,7 +360,7 @@ const slide3Timeline: Slide = {
       y: 0.95,
       w: 9,
       h: 0.7,
-      text: "Three clubs. One left foot.",
+      text: "Three phases from idea to scale.",
       fontSize: 28,
       bold: true,
       color: "FFFFFF",
@@ -371,9 +371,9 @@ const slide3Timeline: Slide = {
     { kind: "rect", x: 1.5, y: 2.99, w: 7.0, h: 0.025, fill: BLUE_DK },
 
     // Stops
-    ...timelineStop(1.5, "2004", "B", "FC Barcelona", "2004 – 2021"),
-    ...timelineStop(5.0, "2021", "P", "Paris SG", "2021 – 2023"),
-    ...timelineStop(8.5, "2023", "M", "Inter Miami", "2023 – present"),
+    ...timelineStop(1.5, "2024", "D", "Discovery", "Research and framing"),
+    ...timelineStop(5.0, "2025", "L", "Launch", "Build and release"),
+    ...timelineStop(8.5, "2026", "S", "Scale", "Optimize and expand"),
 
     ...footer(3, TOTAL, true),
   ],
@@ -448,7 +448,7 @@ const slide4Stats: Slide = {
       y: 0.9,
       w: 9,
       h: 0.7,
-      text: "A career measured in records.",
+      text: "Performance at a glance.",
       fontSize: 26,
       bold: true,
       color: INK,
@@ -460,66 +460,51 @@ const slide4Stats: Slide = {
       y: 1.55,
       w: 9,
       h: 0.3,
-      text: "Career totals across club and country, through 2026.",
+      text: "Sample metrics for a product, campaign, or operating review.",
       fontSize: 12,
       color: MUTED,
       fontFace: SANS,
     },
 
-    ...statCard(0.6, 2.05, 2.05, 1.2, "850+", "GOALS"),
-    ...statCard(2.85, 2.05, 2.05, 1.2, "380+", "ASSISTS"),
-    {
-      kind: "chart",
-      chartType: "bar",
-      x: 5.25,
-      y: 2.0,
-      w: 4.15,
-      h: 1.55,
-      title: "Output mix",
-      color: GOLD,
-      axisColor: BLUE_DK,
-      labelColor: MUTED,
-      showValues: true,
-      data: [
-        { label: "Goals", value: 850, color: GOLD },
-        { label: "Assists", value: 380, color: BLUE_DK },
-        { label: "Trophies", value: 46, color: NAVY },
-      ],
-    },
+    ...statCard(0.6, 2.0, 2.72, 1.12, "85%", "ADOPTION"),
+    ...statCard(3.64, 2.0, 2.72, 1.12, "38%", "GROWTH"),
+    ...statCard(6.68, 2.0, 2.72, 1.12, "$1.8M", "PIPELINE"),
     {
       kind: "chart",
       chartType: "line",
-      x: 0.85,
-      y: 3.65,
-      w: 4.2,
-      h: 1.35,
-      title: "Era momentum",
+      x: 0.6,
+      y: 3.45,
+      w: 4.25,
+      h: 1.45,
+      title: "Quarterly trend",
       color: BLUE_DK,
       axisColor: MUTED_DK,
       labelColor: MUTED,
       showValues: true,
       data: [
-        { label: "04", value: 8 },
-        { label: "09", value: 38 },
-        { label: "14", value: 58 },
-        { label: "19", value: 51 },
-        { label: "24", value: 32 },
+        { label: "Q1", value: 18 },
+        { label: "Q2", value: 38 },
+        { label: "Q3", value: 58 },
+        { label: "Q4", value: 51 },
+        { label: "Q5", value: 62 },
       ],
     },
     {
       kind: "chart",
-      chartType: "donut",
-      x: 5.65,
-      y: 3.62,
-      w: 3.15,
-      h: 1.28,
-      title: "Honors",
+      chartType: "bar",
+      x: 5.15,
+      y: 3.45,
+      w: 4.25,
+      h: 1.45,
+      title: "Channel mix",
       color: GOLD,
+      axisColor: BLUE_DK,
       labelColor: MUTED,
       showValues: true,
       data: [
-        { label: "Club", value: 39, color: BLUE_DK },
-        { label: "Country", value: 7, color: GOLD },
+        { label: "Web", value: 850, color: GOLD },
+        { label: "Sales", value: 380, color: BLUE_DK },
+        { label: "Partner", value: 140, color: NAVY },
       ],
     },
 
@@ -527,8 +512,8 @@ const slide4Stats: Slide = {
   ],
 };
 
-// ── Slide 5: World Cup 2022 ─────────────────────────────────────────────
-function wcStat(x: number, big: string, label: string): SlideElement[] {
+// ── Slide 5: Milestone highlight ────────────────────────────────────────
+function milestoneStat(x: number, big: string, label: string): SlideElement[] {
   return [
     {
       kind: "text",
@@ -561,11 +546,11 @@ function wcStat(x: number, big: string, label: string): SlideElement[] {
   ];
 }
 
-const slide5WorldCup: Slide = {
-  title: "Qatar 2022",
+const slide5Milestone: Slide = {
+  title: "Milestone",
   background: NAVY,
   elements: [
-    // Decorative big "22" watermark. Box is intentionally much wider/taller
+    // Decorative big "26" watermark. Box is intentionally much wider/taller
     // than the text so engine-to-engine metric differences (Chrome vs Google
     // Slides) can't cause wrapping or clipping.
     {
@@ -574,7 +559,7 @@ const slide5WorldCup: Slide = {
       y: 0.1,
       w: 6.5,
       h: 5.4,
-      text: "22",
+      text: "26",
       fontSize: 240,
       bold: true,
       color: "FFFFFF",
@@ -591,7 +576,7 @@ const slide5WorldCup: Slide = {
       y: 0.7,
       w: 6,
       h: 0.3,
-      text: "QATAR 2022",
+      text: "MILESTONE 2026",
       fontSize: 11,
       bold: true,
       color: GOLD,
@@ -604,7 +589,7 @@ const slide5WorldCup: Slide = {
       y: 1.25,
       w: 9,
       h: 1.6,
-      text: "“Finally, we have it.”",
+      text: "“A turning point for the team.”",
       fontSize: 44,
       bold: true,
       italic: true,
@@ -618,7 +603,7 @@ const slide5WorldCup: Slide = {
       y: 3.1,
       w: 6.5,
       h: 0.8,
-      text: "After a 36-year wait, Argentina lift the World Cup — Messi finally claims the only trophy missing from his cabinet.",
+      text: "Use this layout for a launch, funding moment, award, major customer win, or any story that deserves a dramatic single-slide treatment.",
       fontSize: 13,
       color: "D5DCE8",
       lineHeight: 1.5,
@@ -628,16 +613,16 @@ const slide5WorldCup: Slide = {
     // Divider above stats
     { kind: "rect", x: 0.6, y: 3.9, w: 8.8, h: 0.01, fill: BLUE_DK, opacity: 0.5 },
 
-    ...wcStat(0.6, "7", "GOALS"),
-    ...wcStat(3.7, "3", "ASSISTS"),
-    ...wcStat(6.8, "2", "GOLDEN BALL"),
+    ...milestoneStat(0.6, "7", "MARKETS"),
+    ...milestoneStat(3.7, "3", "TEAMS"),
+    ...milestoneStat(6.8, "2", "REGIONS"),
 
     ...footer(5, TOTAL, true),
   ],
 };
 
 const slide6Table: Slide = {
-  title: "Competition Table",
+  title: "Data Table",
   background: OFF_WHITE,
   elements: [
     {
@@ -646,7 +631,7 @@ const slide6Table: Slide = {
       y: 0.55,
       w: 6,
       h: 0.3,
-      text: "CAREER TABLE",
+      text: "DATA TABLE",
       fontSize: 10,
       bold: true,
       color: BLUE_DK,
@@ -659,7 +644,7 @@ const slide6Table: Slide = {
       y: 0.9,
       w: 8.8,
       h: 0.7,
-      text: "Production across competitions.",
+      text: "Performance across segments.",
       fontSize: 26,
       bold: true,
       color: INK,
@@ -683,11 +668,11 @@ const slide6Table: Slide = {
       w: 7.65,
       h: 2.6,
       rows: [
-        ["Competition", "Apps", "Goals", "Assists"],
-        ["La Liga", "520", "474", "216"],
-        ["UEFA Champions League", "163", "129", "40"],
-        ["Argentina", "190+", "110+", "60+"],
-        ["FIFA World Cup", "26", "13", "8"],
+        ["Segment", "Users", "Revenue", "Growth"],
+        ["Enterprise", "520", "$4.7M", "21%"],
+        ["Mid-market", "163", "$1.3M", "40%"],
+        ["Self-serve", "190+", "$1.1M", "60%"],
+        ["Partners", "26", "$0.8M", "18%"],
       ],
       fontFace: SANS,
       fontSize: 11,
@@ -704,7 +689,7 @@ const slide6Table: Slide = {
       y: 2.05,
       w: 0.55,
       h: 2.55,
-      text: "10",
+      text: "04",
       fontSize: 76,
       bold: true,
       color: GOLD,
@@ -816,9 +801,515 @@ const slide7Grid: Slide = {
   ],
 };
 
-// ── Slide 8: Legacy / closing ───────────────────────────────────────────
-const slide6Legacy: Slide = {
-  title: "Legacy",
+// ── Slide 8: Section divider ────────────────────────────────────────────
+const slide8SectionDivider: Slide = {
+  title: "Section Divider",
+  background: NAVY,
+  elements: [
+    { kind: "rect", x: 0, y: 0, w: 3.0, h: SLIDE_H, fill: DEEP },
+    { kind: "rect", x: 3.0, y: 0, w: 0.08, h: SLIDE_H, fill: GOLD },
+    {
+      kind: "text",
+      x: 0.55,
+      y: 0.72,
+      w: 1.7,
+      h: 0.35,
+      text: "02",
+      fontSize: 14,
+      bold: true,
+      color: GOLD,
+      charSpacing: 260,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.55,
+      y: 2.05,
+      w: 2.0,
+      h: 1.45,
+      text: "THE\nGAME",
+      fontSize: 36,
+      bold: true,
+      color: "FFFFFF",
+      lineHeight: 1.0,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 3.65,
+      y: 1.25,
+      w: 5.8,
+      h: 1.4,
+      text: "Common deck layouts, rendered as fully editable slide elements.",
+      fontSize: 30,
+      bold: true,
+      color: "FFFFFF",
+      lineHeight: 1.18,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 3.65,
+      y: 3.05,
+      w: 5.2,
+      h: 0.85,
+      text: "Use this as a richer fixture for previews, export checks, and editor interactions.",
+      fontSize: 13,
+      color: "D5DCE8",
+      lineHeight: 1.45,
+      fontFace: SANS,
+    },
+    ...footer(8, TOTAL, true),
+  ],
+};
+
+// ── Slide 9: Two-column content ─────────────────────────────────────────
+const slide9TwoColumn: Slide = {
+  title: "Two Column",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 6,
+      h: 0.3,
+      text: "TWO-COLUMN LAYOUT",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.8,
+      h: 0.7,
+      text: "Vision on the left, evidence on the right.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    { kind: "rect", x: 0.75, y: 1.85, w: 4.0, h: 2.85, fill: PAPER, rx: 0.08 },
+    { kind: "rect", x: 5.25, y: 1.85, w: 4.0, h: 2.85, fill: PAPER, rx: 0.08 },
+    {
+      kind: "text",
+      x: 1.1,
+      y: 2.2,
+      w: 3.25,
+      h: 0.35,
+      text: "STRATEGY",
+      fontSize: 10,
+      bold: true,
+      color: GOLD,
+      charSpacing: 260,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 1.1,
+      y: 2.62,
+      w: 3.25,
+      h: 1.35,
+      text: "A clear frame for priorities, tradeoffs, and action.",
+      fontSize: 21,
+      bold: true,
+      color: INK,
+      lineHeight: 1.2,
+      fontFace: SANS,
+    },
+    {
+      kind: "bullets",
+      x: 5.62,
+      y: 2.22,
+      w: 3.25,
+      h: 1.85,
+      fontSize: 12,
+      color: INK,
+      bulletColor: GOLD,
+      lineSpacingMultiple: 1.35,
+      fontFace: SANS,
+      items: [
+        "Use the left column for the core message",
+        "Use the right column for evidence or detail",
+        "Keep both sides balanced and scannable",
+      ],
+    },
+    ...footer(9, TOTAL, false),
+  ],
+};
+
+// ── Slide 10: Image and caption ─────────────────────────────────────────
+const slide10ImageCaption: Slide = {
+  title: "Image Caption",
+  background: PAPER,
+  elements: [
+    { kind: "image", x: 0, y: 0, w: 5.55, h: SLIDE_H, fit: "cover", name: "Full-height image placeholder" },
+    { kind: "rect", x: 5.55, y: 0, w: 4.45, h: SLIDE_H, fill: NAVY },
+    {
+      kind: "text",
+      x: 6.05,
+      y: 0.72,
+      w: 3.4,
+      h: 0.3,
+      text: "IMAGE + CAPTION",
+      fontSize: 10,
+      bold: true,
+      color: GOLD,
+      charSpacing: 260,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 6.05,
+      y: 1.35,
+      w: 3.35,
+      h: 1.65,
+      text: "A visual lead with a strong editorial caption.",
+      fontSize: 30,
+      bold: true,
+      color: "FFFFFF",
+      lineHeight: 1.15,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 6.05,
+      y: 3.35,
+      w: 3.25,
+      h: 0.9,
+      text: "Drop in a product screenshot, customer image, venue photo, or campaign visual. The caption block stays editable.",
+      fontSize: 13,
+      color: "D5DCE8",
+      lineHeight: 1.45,
+      fontFace: SANS,
+    },
+    { kind: "rect", x: 6.05, y: 4.55, w: 0.46, h: 0.04, fill: GOLD },
+    ...footer(10, TOTAL, true),
+  ],
+};
+
+// ── Slide 11: Process steps ─────────────────────────────────────────────
+function processStep(x: number, n: string, title: string, body: string): SlideElement[] {
+  return [
+    { kind: "ellipse", x, y: 2.05, w: 0.72, h: 0.72, fill: BLUE_DK },
+    {
+      kind: "text",
+      x,
+      y: 2.05,
+      w: 0.72,
+      h: 0.72,
+      text: n,
+      fontSize: 18,
+      bold: true,
+      color: "FFFFFF",
+      align: "center",
+      valign: "middle",
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: x - 0.42,
+      y: 3.0,
+      w: 1.55,
+      h: 0.35,
+      text: title,
+      fontSize: 14,
+      bold: true,
+      color: INK,
+      align: "center",
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: x - 0.5,
+      y: 3.42,
+      w: 1.72,
+      h: 0.7,
+      text: body,
+      fontSize: 10,
+      color: MUTED,
+      align: "center",
+      lineHeight: 1.25,
+      fontFace: SANS,
+    },
+  ];
+}
+
+const slide11Process: Slide = {
+  title: "Process",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 6,
+      h: 0.3,
+      text: "PROCESS LAYOUT",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.8,
+      h: 0.7,
+      text: "Four steps from insight to action.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    { kind: "rect", x: 1.25, y: 2.4, w: 7.1, h: 0.03, fill: BLUE, opacity: 0.55 },
+    ...processStep(1.25, "1", "Discover", "Collect context, constraints, and user needs."),
+    ...processStep(3.55, "2", "Define", "Align on scope, priorities, and success criteria."),
+    ...processStep(5.85, "3", "Build", "Create the solution and validate the details."),
+    ...processStep(8.15, "4", "Launch", "Release, measure, and improve the experience."),
+    ...footer(11, TOTAL, false),
+  ],
+};
+
+// ── Slide 12: Comparison ────────────────────────────────────────────────
+const slide12Comparison: Slide = {
+  title: "Comparison",
+  background: PAPER,
+  elements: [
+    { kind: "rect", x: 0, y: 0, w: 5, h: SLIDE_H, fill: OFF_WHITE },
+    { kind: "rect", x: 5, y: 0, w: 5, h: SLIDE_H, fill: NAVY },
+    {
+      kind: "text",
+      x: 0.65,
+      y: 0.65,
+      w: 3.6,
+      h: 0.3,
+      text: "BEFORE",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 5.65,
+      y: 0.65,
+      w: 3.6,
+      h: 0.3,
+      text: "AFTER",
+      fontSize: 10,
+      bold: true,
+      color: GOLD,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.65,
+      y: 1.2,
+      w: 3.65,
+      h: 1.15,
+      text: "A manual workflow with limited visibility.",
+      fontSize: 28,
+      bold: true,
+      color: INK,
+      lineHeight: 1.12,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 5.65,
+      y: 1.2,
+      w: 3.65,
+      h: 1.15,
+      text: "A scalable system with shared visibility.",
+      fontSize: 28,
+      bold: true,
+      color: "FFFFFF",
+      lineHeight: 1.12,
+      fontFace: SANS,
+    },
+    {
+      kind: "bullets",
+      x: 0.85,
+      y: 2.8,
+      w: 3.55,
+      h: 1.3,
+      fontSize: 12,
+      color: INK,
+      bulletColor: BLUE_DK,
+      lineSpacingMultiple: 1.35,
+      fontFace: SANS,
+      items: ["Fragmented tools", "Slow handoffs", "Limited reporting"],
+    },
+    {
+      kind: "bullets",
+      x: 5.85,
+      y: 2.8,
+      w: 3.55,
+      h: 1.3,
+      fontSize: 12,
+      color: "E8EEF7",
+      bulletColor: GOLD,
+      lineSpacingMultiple: 1.35,
+      fontFace: SANS,
+      items: ["Central workspace", "Clear ownership", "Reliable dashboards"],
+    },
+    ...footer(12, TOTAL, false),
+  ],
+};
+
+// ── Slide 13: Agenda / tabs ─────────────────────────────────────────────
+const slide13Agenda: Slide = {
+  title: "Agenda",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 6,
+      h: 0.3,
+      text: "AGENDA LAYOUT",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.8,
+      h: 0.7,
+      text: "A clean structure for meetings and reports.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    ...["Context", "Analysis", "Decision", "Next steps"].flatMap((label, index): SlideElement[] => {
+      const y = 1.85 + index * 0.78;
+      return [
+        { kind: "rect", x: 0.85, y, w: 8.3, h: 0.58, fill: index === 1 ? NAVY : PAPER, rx: 0.08 },
+        {
+          kind: "text",
+          x: 1.15,
+          y: y + 0.16,
+          w: 0.55,
+          h: 0.2,
+          text: String(index + 1).padStart(2, "0"),
+          fontSize: 10,
+          bold: true,
+          color: index === 1 ? GOLD : BLUE_DK,
+          fontFace: SANS,
+        },
+        {
+          kind: "text",
+          x: 1.95,
+          y: y + 0.13,
+          w: 3.0,
+          h: 0.28,
+          text: label,
+          fontSize: 14,
+          bold: true,
+          color: index === 1 ? "FFFFFF" : INK,
+          fontFace: SANS,
+        },
+        {
+          kind: "text",
+          x: 5.15,
+          y: y + 0.15,
+          w: 3.45,
+          h: 0.24,
+          text: index === 1 ? "Current section highlighted" : "Editable agenda description",
+          fontSize: 10,
+          color: index === 1 ? "D5DCE8" : MUTED,
+          align: "right",
+          fontFace: SANS,
+        },
+      ];
+    }),
+    ...footer(13, TOTAL, false),
+  ],
+};
+
+// ── Slide 14: Gallery cards ─────────────────────────────────────────────
+const slide14Gallery: Slide = {
+  title: "Gallery",
+  background: PAPER,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 6,
+      h: 0.3,
+      text: "GALLERY LAYOUT",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.8,
+      h: 0.7,
+      text: "Four visual moments with short labels.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    ...["Kickoff", "Prototype", "Launch", "Scale"].flatMap((label, index): SlideElement[] => {
+      const x = 0.75 + index * 2.28;
+      return [
+        { kind: "image", x, y: 1.9, w: 1.85, h: 2.25, fit: "cover", name: `${label} image placeholder` },
+        {
+          kind: "text",
+          x,
+          y: 4.28,
+          w: 1.85,
+          h: 0.3,
+          text: label,
+          fontSize: 13,
+          bold: true,
+          color: INK,
+          align: "center",
+          fontFace: SANS,
+        },
+        {
+          kind: "text",
+          x,
+          y: 4.62,
+          w: 1.85,
+          h: 0.28,
+          text: `Phase ${index + 1}`,
+          fontSize: 10,
+          color: MUTED,
+          align: "center",
+          fontFace: SANS,
+        },
+      ];
+    }),
+    ...footer(14, TOTAL, false),
+  ],
+};
+
+// ── Slide 15: Closing quote ─────────────────────────────────────────────
+const slide15Closing: Slide = {
+  title: "Closing",
   background: OFF_WHITE,
   elements: [
     // Big decorative opening quote
@@ -843,7 +1334,7 @@ const slide6Legacy: Slide = {
       y: 0.7,
       w: 7,
       h: 0.3,
-      text: "LEGACY",
+      text: "CLOSING THOUGHT",
       fontSize: 10,
       bold: true,
       color: BLUE_DK,
@@ -859,7 +1350,7 @@ const slide6Legacy: Slide = {
       y: 1.3,
       w: 7.6,
       h: 2.8,
-      text: "Messi is the greatest of all time. He has won everything, and he has won it for longer than anyone else.",
+      text: "The best presentations make the important idea easy to understand, easy to remember, and easy to act on.",
       fontSize: 24,
       italic: true,
       color: INK,
@@ -874,7 +1365,7 @@ const slide6Legacy: Slide = {
       y: 4.35,
       w: 7,
       h: 0.35,
-      text: "Pep Guardiola",
+      text: "Sample Attribution",
       fontSize: 14,
       bold: true,
       color: INK,
@@ -886,26 +1377,33 @@ const slide6Legacy: Slide = {
       y: 4.7,
       w: 7,
       h: 0.3,
-      text: "Former FC Barcelona manager",
+      text: "Role, company, or source",
       fontSize: 11,
       color: MUTED,
       fontFace: SANS,
     },
 
-    ...footer(8, TOTAL, false),
+    ...footer(15, TOTAL, false),
   ],
 };
 
-export const messiDeck: Deck = {
-  title: "Lionel Messi",
+export const sampleDeck: Deck = {
+  title: "Presentation Layout Kit",
   slides: [
     slide1Title,
     slide2Profile,
     slide3Timeline,
     slide4Stats,
-    slide5WorldCup,
+    slide5Milestone,
     slide6Table,
     slide7Grid,
-    slide6Legacy,
+    slide8SectionDivider,
+    slide9TwoColumn,
+    slide10ImageCaption,
+    slide11Process,
+    slide12Comparison,
+    slide13Agenda,
+    slide14Gallery,
+    slide15Closing,
   ],
 };

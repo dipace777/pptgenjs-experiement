@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SlideEditor } from "../components/slide-editor";
 import { DeckSchema, type Deck } from "../lib/slide-schema";
-import { messiDeck } from "../slide/spec";
+import { sampleDeck } from "../slide/spec";
 
 export const Route = createFileRoute("/preview")({
   component: PreviewPage,
@@ -15,13 +15,13 @@ function PreviewPage() {
 }
 
 function readStoredDeck(): Deck {
-  if (typeof window === "undefined") return messiDeck;
+  if (typeof window === "undefined") return sampleDeck;
   try {
     const raw = window.sessionStorage.getItem("ppty:generatedDeck");
-    if (!raw) return messiDeck;
+    if (!raw) return sampleDeck;
     const parsed = DeckSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : messiDeck;
+    return parsed.success ? parsed.data : sampleDeck;
   } catch {
-    return messiDeck;
+    return sampleDeck;
   }
 }

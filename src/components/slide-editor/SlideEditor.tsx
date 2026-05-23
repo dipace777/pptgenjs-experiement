@@ -3,7 +3,7 @@ import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
-import { messiDeck } from "../../slide/spec";
+import { sampleDeck } from "../../slide/spec";
 import { PresentationMode } from "./PresentationMode";
 import { styles } from "./editorStyles";
 import {
@@ -65,7 +65,7 @@ import {
 } from "./state";
 
 export function SlideEditor({
-  initialDeck = messiDeck,
+  initialDeck = sampleDeck,
 }: {
   initialDeck?: Deck;
 }) {
