@@ -157,9 +157,16 @@ export const SlideElementSchema = z.discriminatedUnion("kind", [
   SvgElementSchema,
 ]);
 
+export const SlideBackgroundImageSchema = z.object({
+  data: z.string().min(1),
+  fit: z.enum(["cover", "contain", "fill"]).nullish(),
+  opacity: z.number().min(0).max(1).nullish(),
+});
+
 export const SlideSchema = z.object({
   background: HexColorSchema,
   backgroundRole: ThemeRoleSchema.nullish(),
+  backgroundImage: SlideBackgroundImageSchema.nullish(),
   elements: z.array(SlideElementSchema).min(1).max(60),
   /** Optional short label shown in the thumbnail rail. */
   title: z.string().min(1).max(60).nullish(),
@@ -193,6 +200,7 @@ export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type SvgElement = z.infer<typeof SvgElementSchema>;
+export type SlideBackgroundImage = z.infer<typeof SlideBackgroundImageSchema>;
 export type DeckTheme = z.infer<typeof DeckThemeSchema>;
 export type ThemeRole = z.infer<typeof ThemeRoleSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;

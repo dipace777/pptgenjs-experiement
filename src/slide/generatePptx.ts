@@ -655,13 +655,51 @@ function addElement(
   });
 }
 
-function addSlide(
+function loadImageNaturalSize(
+  src: string,
+): Promise<{ w: number; h: number } | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function addSlide(
   pptx: PptxGenJS,
   slide: Slide,
   options: Required<GeneratePptxOptions>,
-): void {
+): Promise<void> {
   const s = pptx.addSlide();
   s.background = { color: slide.background };
+  if (slide.backgroundImage) {
+    const fit = slide.backgroundImage.fit ?? "cover";
+    // pptxgenjs computes cover/contain srcRect using addImage's `w`/`h` as
+    // the natural image size. If we pass slide dims for both, the ratio is
+    // 1:1 and the crop collapses to fill. Decode natural dims so cover and
+    // contain produce the right srcRect.
+    const natural =
+      fit === "fill"
+        ? null
+        : await loadImageNaturalSize(slide.backgroundImage.data);
+    const imgW = natural?.w ? natural.w / 96 : SLIDE_W;
+    const imgH = natural?.h ? natural.h / 96 : SLIDE_H;
+    s.addImage({
+      data: slide.backgroundImage.data,
+      x: 0,
+      y: 0,
+      w: imgW,
+      h: imgH,
+      sizing:
+        fit === "cover"
+          ? { type: "cover", w: SLIDE_W, h: SLIDE_H }
+          : fit === "contain"
+            ? { type: "contain", w: SLIDE_W, h: SLIDE_H }
+            : undefined,
+      transparency: transparencyPct(slide.backgroundImage.opacity ?? undefined),
+    });
+  }
   for (const el of slide.elements) addElement(pptx, s, el, slide.background, options);
 }
 
@@ -677,7 +715,7 @@ export async function generatePptx(
   pptx.defineLayout({ name: "PPTY_16x9", width: SLIDE_W, height: SLIDE_H });
   pptx.layout = "PPTY_16x9";
 
-  for (const slide of deck.slides) addSlide(pptx, slide, resolvedOptions);
+  for (const slide of deck.slides) await addSlide(pptx, slide, resolvedOptions);
 
   await pptx.writeFile({ fileName: filename });
 }

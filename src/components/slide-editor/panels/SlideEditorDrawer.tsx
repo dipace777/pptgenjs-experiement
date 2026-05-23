@@ -1,3 +1,4 @@
+import { useRef, type ChangeEvent } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { styles } from "../editorStyles";
 import { kindLabel, withHash, withoutHash } from "../editorUtils";
@@ -38,6 +39,28 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
     svgGenerationStatus,
     generatePromptSvg,
   } = useSvgGeneration();
+  const backgroundImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleBackgroundImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      event.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result !== "string") return;
+      updateActiveSlide((slide) => {
+        slide.backgroundImage = {
+          data: reader.result as string,
+          fit: slide.backgroundImage?.fit ?? "cover",
+          opacity: slide.backgroundImage?.opacity ?? null,
+        };
+      });
+    });
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
 
   return (
     <div
@@ -99,6 +122,58 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
             style={styles.colorInput}
           />
         </label>
+
+        <div style={styles.field}>
+          <span>Background image</span>
+          <input
+            ref={backgroundImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={handleBackgroundImageChange}
+            style={{ display: "none" }}
+          />
+          <div style={{ display: "grid", gridTemplateColumns: activeSlide.backgroundImage ? "1fr 1fr" : "1fr", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => backgroundImageInputRef.current?.click()}
+              style={styles.secondaryButton}
+            >
+              {activeSlide.backgroundImage ? "Replace" : "Upload"}
+            </button>
+            {activeSlide.backgroundImage ? (
+              <button
+                type="button"
+                onClick={() =>
+                  updateActiveSlide((slide) => {
+                    slide.backgroundImage = null;
+                  })
+                }
+                style={styles.secondaryButton}
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+          {activeSlide.backgroundImage ? (
+            <select
+              value={activeSlide.backgroundImage.fit ?? "cover"}
+              onChange={(event) =>
+                updateActiveSlide((slide) => {
+                  if (!slide.backgroundImage) return;
+                  slide.backgroundImage.fit = event.target.value as
+                    | "cover"
+                    | "contain"
+                    | "fill";
+                })
+              }
+              style={styles.input}
+            >
+              <option value="cover">Cover</option>
+              <option value="contain">Contain</option>
+              <option value="fill">Fill</option>
+            </select>
+          ) : null}
+        </div>
 
         {selectedElement ? (
           <ElementInspector
