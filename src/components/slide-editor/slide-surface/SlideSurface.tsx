@@ -3,6 +3,7 @@ import { SLIDE_W, type Slide, type SlideElement } from "../../../lib/slide-schem
 import type { TableCellSelection } from "../state";
 import { BulletsDomElement } from "./element-renderers/bullets";
 import { ChartDomElement } from "./element-renderers/chart";
+import { SvgDomElement } from "./element-renderers/svg";
 import { TableDomElement } from "./element-renderers/table";
 import { TextDomElement } from "./element-renderers/text";
 import { KonvaSlide } from "./konva/KonvaSlide";
@@ -82,6 +83,7 @@ export function SlideSurface({
         textRenderMode="proxy"
         width={width}
       />
+      <SvgDomElement scale={scale} slide={slide} />
       <ChartDomElement scale={scale} slide={slide} />
       <BulletsDomElement
         editingBulletsIndex={editingBulletsIndex}

@@ -501,6 +501,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   "chart",
                   "table",
                   "image",
+                  "svg",
                 ] as const
               ).map((kind) => (
                 <button

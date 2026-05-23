@@ -19,6 +19,18 @@ function transparencyPct(opacity?: number): number {
   return Math.max(0, Math.min(100, Math.round((1 - opacity) * 100)));
 }
 
+function svgDataUri(svg: string): string {
+  const encoded =
+    typeof window === "undefined"
+      ? Buffer.from(svg, "utf8").toString("base64")
+      : window.btoa(
+          Array.from(new TextEncoder().encode(svg), (byte) =>
+            String.fromCharCode(byte),
+          ).join(""),
+        );
+  return `data:image/svg+xml;base64,${encoded}`;
+}
+
 // Blends `fg` over `bg` at the given opacity (Porter-Duff "over" with both
 // alphas = 1). Used to bake text opacity into a solid color, because Google
 // Slides ignores <a:alpha> inside text-run color elements (it only honors
@@ -595,6 +607,18 @@ function addElement(
         line: { color: "7D89A3", width: 0.75, dashType: "dash" },
       });
     }
+    return;
+  }
+
+  if (el.kind === "svg") {
+    s.addImage({
+      data: svgDataUri(el.svg),
+      x: el.x,
+      y: el.y,
+      w: el.w,
+      h: el.h,
+      transparency: transparencyPct(el.opacity ?? undefined),
+    });
     return;
   }
 

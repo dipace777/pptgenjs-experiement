@@ -17,6 +17,98 @@ const MUTED_DK = "9AA7BD";
 // substituted with a wider face, which breaks our hand-tuned line wraps.
 const SANS = "Arial";
 
+const ORBIT_SVG = `<svg viewBox="0 0 1000 562" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <defs>
+    <radialGradient id="orbitGlow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#75AADB" stop-opacity="0.28"/>
+      <stop offset="55%" stop-color="#0B1F3A" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#071425" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1000" height="562" fill="url(#orbitGlow)"/>
+  <g fill="none" stroke="#75AADB" stroke-opacity="0.28">
+    <ellipse cx="510" cy="278" rx="360" ry="118"/>
+    <ellipse cx="510" cy="278" rx="310" ry="88" transform="rotate(-18 510 278)"/>
+    <ellipse cx="510" cy="278" rx="250" ry="62" transform="rotate(24 510 278)"/>
+  </g>
+  <g stroke="#D4A24C" stroke-width="3" stroke-opacity="0.8" filter="url(#softGlow)">
+    <line x1="205" y1="262" x2="365" y2="198"/>
+    <line x1="365" y1="198" x2="520" y2="284"/>
+    <line x1="520" y1="284" x2="694" y2="214"/>
+    <line x1="520" y1="284" x2="758" y2="344"/>
+    <line x1="365" y1="198" x2="418" y2="398"/>
+  </g>
+  <g filter="url(#softGlow)">
+    <circle cx="205" cy="262" r="12" fill="#D4A24C"/>
+    <circle cx="365" cy="198" r="18" fill="#75AADB"/>
+    <circle cx="520" cy="284" r="28" fill="#FFFFFF"/>
+    <circle cx="694" cy="214" r="16" fill="#75AADB"/>
+    <circle cx="758" cy="344" r="12" fill="#D4A24C"/>
+    <circle cx="418" cy="398" r="14" fill="#3E78B2"/>
+  </g>
+</svg>`;
+
+const FLOW_SVG = `<svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="flowA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#75AADB"/>
+      <stop offset="48%" stop-color="#D4A24C"/>
+      <stop offset="100%" stop-color="#0B1F3A"/>
+    </linearGradient>
+  </defs>
+  <path d="M-30 225 C180 40, 330 320, 510 150 C690 -20, 800 250, 1030 82" fill="none" stroke="url(#flowA)" stroke-width="34" stroke-linecap="round" opacity="0.88"/>
+  <path d="M-20 285 C190 130, 360 350, 540 220 C720 88, 850 300, 1030 180" fill="none" stroke="#75AADB" stroke-width="12" stroke-linecap="round" opacity="0.36"/>
+  <path d="M-20 145 C190 20, 340 225, 500 100 C680 -35, 820 152, 1030 38" fill="none" stroke="#D4A24C" stroke-width="10" stroke-linecap="round" opacity="0.42"/>
+  <g fill="#FFFFFF" stroke="#0B1F3A" stroke-width="7">
+    <circle cx="205" cy="151" r="26"/>
+    <circle cx="510" cy="150" r="34"/>
+    <circle cx="802" cy="215" r="26"/>
+  </g>
+</svg>`;
+
+const RADAR_SVG = `<svg viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="radarFade" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#75AADB" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#75AADB" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="520" height="520" rx="28" fill="#0B1F3A"/>
+  <circle cx="260" cy="260" r="205" fill="url(#radarFade)"/>
+  <g fill="none" stroke="#75AADB" stroke-opacity="0.36" stroke-width="2">
+    <circle cx="260" cy="260" r="60"/>
+    <circle cx="260" cy="260" r="120"/>
+    <circle cx="260" cy="260" r="180"/>
+    <path d="M260 52v416M52 260h416M113 113l294 294M407 113 113 407"/>
+  </g>
+  <path d="M260 260 L438 155 A205 205 0 0 1 465 260 Z" fill="#D4A24C" opacity="0.34"/>
+  <g fill="#D4A24C">
+    <circle cx="363" cy="176" r="8"/>
+    <circle cx="180" cy="335" r="6"/>
+    <circle cx="308" cy="356" r="10"/>
+    <circle cx="228" cy="158" r="5"/>
+  </g>
+</svg>`;
+
+const STORY_SVG = `<svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#0B1F3A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M78 170 C120 72, 190 72, 232 170"/>
+    <path d="M375 178 L450 70 L525 178 Z"/>
+    <path d="M660 172 C710 88, 790 88, 840 172"/>
+  </g>
+  <g fill="#D4A24C">
+    <circle cx="155" cy="112" r="18"/>
+    <circle cx="450" cy="70" r="18"/>
+    <circle cx="750" cy="112" r="18"/>
+  </g>
+  <g fill="#75AADB" opacity="0.9">
+    <rect x="90" y="188" width="130" height="16" rx="8"/>
+    <rect x="385" y="190" width="130" height="16" rx="8"/>
+    <rect x="685" y="188" width="130" height="16" rx="8"/>
+  </g>
+</svg>`;
+
 // ── Shared chrome ───────────────────────────────────────────────────────
 function footer(num: number, total: number, onDark: boolean): SlideElement[] {
   const c = onDark ? MUTED_DK : MUTED;
@@ -49,13 +141,13 @@ function footer(num: number, total: number, onDark: boolean): SlideElement[] {
 }
 
 // ── Slide 1: Title ──────────────────────────────────────────────────────
-const TOTAL = 15;
+const TOTAL = 19;
 
 const slide1Title: Slide = {
   title: "Title",
   background: NAVY,
   elements: [
-    // Massive watermark "15" on the right. Box stays inside the slide and
+    // Massive watermark "19" on the right. Box stays inside the slide and
     // gives ample horizontal room so the digits never wrap or get clipped.
     {
       kind: "text",
@@ -63,7 +155,7 @@ const slide1Title: Slide = {
       y: 0.1,
       w: 6.2,
       h: 5.4,
-      text: "15",
+      text: "19",
       fontSize: 300,
       bold: true,
       color: "FFFFFF",
@@ -110,7 +202,7 @@ const slide1Title: Slide = {
       y: 4.3,
       w: 8,
       h: 0.45,
-      text: "Fifteen common slide patterns built from editable elements.",
+      text: "Nineteen common slide patterns built from editable elements.",
       fontSize: 18,
       color: BLUE,
       fontFace: SANS,
@@ -1307,8 +1399,280 @@ const slide14Gallery: Slide = {
   ],
 };
 
-// ── Slide 15: Closing quote ─────────────────────────────────────────────
-const slide15Closing: Slide = {
+// ── Slide 15: SVG constellation map ─────────────────────────────────────
+const slide15Constellation: Slide = {
+  title: "Constellation",
+  background: DEEP,
+  elements: [
+    { kind: "svg", x: 0, y: 0, w: 10, h: SLIDE_H, svg: ORBIT_SVG, name: "Orbit network" },
+    {
+      kind: "text",
+      x: 0.65,
+      y: 0.58,
+      w: 4,
+      h: 0.3,
+      text: "SYSTEM MAP",
+      fontSize: 10,
+      bold: true,
+      color: GOLD,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.65,
+      y: 1.0,
+      w: 3.65,
+      h: 1.35,
+      text: "Turn scattered signals into a visible operating model.",
+      fontSize: 29,
+      bold: true,
+      color: "FFFFFF",
+      lineHeight: 1.12,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.65,
+      y: 2.72,
+      w: 3.2,
+      h: 0.82,
+      text: "A wild visual slide for architecture, ecosystems, stakeholder maps, or product platforms.",
+      fontSize: 12,
+      color: "D5DCE8",
+      lineHeight: 1.4,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 6.45,
+      y: 4.42,
+      w: 2.8,
+      h: 0.35,
+      text: "CORE NODE",
+      fontSize: 10,
+      bold: true,
+      color: GOLD,
+      charSpacing: 240,
+      align: "right",
+      fontFace: SANS,
+    },
+    ...footer(15, TOTAL, true),
+  ],
+};
+
+// ── Slide 16: SVG kinetic flow ──────────────────────────────────────────
+const slide16KineticFlow: Slide = {
+  title: "Kinetic Flow",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 5,
+      h: 0.3,
+      text: "KINETIC ROADMAP",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 7.2,
+      h: 0.72,
+      text: "A roadmap that feels like motion.",
+      fontSize: 27,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    { kind: "svg", x: 0, y: 1.65, w: 10, h: 2.25, svg: FLOW_SVG, name: "Flow ribbon" },
+    ...["Discover", "Build", "Scale"].flatMap((label, index): SlideElement[] => {
+      const x = 0.85 + index * 3.05;
+      return [
+        { kind: "rect", x, y: 3.8, w: 2.45, h: 0.85, fill: PAPER, rx: 0.08 },
+        {
+          kind: "text",
+          x: x + 0.24,
+          y: 4.03,
+          w: 1.95,
+          h: 0.25,
+          text: label,
+          fontSize: 14,
+          bold: true,
+          color: INK,
+          align: "center",
+          fontFace: SANS,
+        },
+        {
+          kind: "text",
+          x: x + 0.24,
+          y: 4.36,
+          w: 1.95,
+          h: 0.18,
+          text: `MOTION ${index + 1}`,
+          fontSize: 7,
+          bold: true,
+          color: MUTED,
+          charSpacing: 180,
+          align: "center",
+          fontFace: SANS,
+        },
+      ];
+    }),
+    ...footer(16, TOTAL, false),
+  ],
+};
+
+// ── Slide 17: SVG command center ────────────────────────────────────────
+const slide17CommandCenter: Slide = {
+  title: "Command Center",
+  background: NAVY,
+  elements: [
+    { kind: "svg", x: 0.62, y: 0.62, w: 4.35, h: 4.35, svg: RADAR_SVG, name: "Radar panel" },
+    {
+      kind: "text",
+      x: 5.45,
+      y: 0.72,
+      w: 3.8,
+      h: 0.3,
+      text: "COMMAND CENTER",
+      fontSize: 10,
+      bold: true,
+      color: GOLD,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 5.45,
+      y: 1.14,
+      w: 3.65,
+      h: 1.28,
+      text: "High-signal view for moments that need focus.",
+      fontSize: 28,
+      bold: true,
+      color: "FFFFFF",
+      lineHeight: 1.13,
+      fontFace: SANS,
+    },
+    ...[
+      ["ACTIVE", "24"],
+      ["RISK", "03"],
+      ["CLEAR", "91%"],
+    ].flatMap(([label, value], index): SlideElement[] => {
+      const y = 2.78 + index * 0.58;
+      return [
+        { kind: "rect", x: 5.45, y, w: 3.65, h: 0.42, fill: "102A4A", rx: 0.06 },
+        {
+          kind: "text",
+          x: 5.68,
+          y: y + 0.12,
+          w: 1.2,
+          h: 0.18,
+          text: label,
+          fontSize: 8,
+          bold: true,
+          color: MUTED_DK,
+          charSpacing: 180,
+          fontFace: SANS,
+        },
+        {
+          kind: "text",
+          x: 7.85,
+          y: y + 0.07,
+          w: 0.95,
+          h: 0.28,
+          text: value,
+          fontSize: 14,
+          bold: true,
+          color: GOLD,
+          align: "right",
+          fontFace: SANS,
+        },
+      ];
+    }),
+    ...footer(17, TOTAL, true),
+  ],
+};
+
+// ── Slide 18: SVG storyboard ────────────────────────────────────────────
+const slide18Storyboard: Slide = {
+  title: "Storyboard",
+  background: PAPER,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.55,
+      w: 5,
+      h: 0.3,
+      text: "STORYBOARD",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.9,
+      w: 8.6,
+      h: 0.65,
+      text: "Three frames, one crisp narrative arc.",
+      fontSize: 26,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    { kind: "rect", x: 0.6, y: 1.82, w: 2.55, h: 2.38, fill: OFF_WHITE, rx: 0.08 },
+    { kind: "rect", x: 3.72, y: 1.82, w: 2.55, h: 2.38, fill: OFF_WHITE, rx: 0.08 },
+    { kind: "rect", x: 6.84, y: 1.82, w: 2.55, h: 2.38, fill: OFF_WHITE, rx: 0.08 },
+    { kind: "svg", x: 0.78, y: 2.2, w: 8.45, h: 1.55, svg: STORY_SVG, name: "Storyboard icons" },
+    ...["Problem", "Shift", "Outcome"].flatMap((label, index): SlideElement[] => {
+      const x = 0.92 + index * 3.12;
+      return [
+        {
+          kind: "text",
+          x,
+          y: 3.78,
+          w: 1.9,
+          h: 0.28,
+          text: label,
+          fontSize: 14,
+          bold: true,
+          color: INK,
+          align: "center",
+          fontFace: SANS,
+        },
+        {
+          kind: "text",
+          x,
+          y: 4.22,
+          w: 1.9,
+          h: 0.22,
+          text: `FRAME ${index + 1}`,
+          fontSize: 7,
+          bold: true,
+          color: MUTED,
+          charSpacing: 160,
+          align: "center",
+          fontFace: SANS,
+        },
+      ];
+    }),
+    ...footer(18, TOTAL, false),
+  ],
+};
+
+// ── Slide 19: Closing quote ─────────────────────────────────────────────
+const slide19Closing: Slide = {
   title: "Closing",
   background: OFF_WHITE,
   elements: [
@@ -1383,7 +1747,7 @@ const slide15Closing: Slide = {
       fontFace: SANS,
     },
 
-    ...footer(15, TOTAL, false),
+    ...footer(19, TOTAL, false),
   ],
 };
 
@@ -1404,6 +1768,10 @@ export const sampleDeck: Deck = {
     slide12Comparison,
     slide13Agenda,
     slide14Gallery,
-    slide15Closing,
+    slide15Constellation,
+    slide16KineticFlow,
+    slide17CommandCenter,
+    slide18Storyboard,
+    slide19Closing,
   ],
 };

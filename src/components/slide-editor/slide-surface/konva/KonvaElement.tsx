@@ -4,6 +4,7 @@ import { ChartElement } from "./ChartElement";
 import { EllipseElement } from "./EllipseElement";
 import { ImageElement } from "./ImageElement";
 import { RectElement } from "./RectElement";
+import { SvgElement } from "./SvgElement";
 import { TableElement } from "./TableElement";
 import { TextElement } from "./TextElement";
 import type { ElementCommonProps, TableInteractionProps } from "./types";
@@ -42,6 +43,8 @@ export function KonvaElement({
       );
     case "image":
       return <ImageElement element={element} {...rest} />;
+    case "svg":
+      return <SvgElement element={element} {...rest} />;
     case "bullets":
       return (
         <BulletsElement

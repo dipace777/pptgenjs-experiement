@@ -48,6 +48,20 @@ export function createDefaultElement(kind: SlideElement["kind"]): SlideElement {
       };
     case "image":
       return { ...base, w: 3.6, h: 2.4, kind, fit: "contain" };
+    case "svg":
+      return {
+        ...base,
+        w: 2.4,
+        h: 2.4,
+        kind,
+        name: "SVG shape",
+        svg:
+          '<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">' +
+          '<rect width="240" height="240" rx="24" fill="#0B1F3A"/>' +
+          '<circle cx="120" cy="120" r="74" fill="none" stroke="#D4A24C" stroke-width="14"/>' +
+          '<path d="M62 142 C94 70, 145 70, 178 142" fill="none" stroke="#75AADB" stroke-width="14" stroke-linecap="round"/>' +
+          "</svg>",
+      };
     case "bullets":
       return {
         ...base,

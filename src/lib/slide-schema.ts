@@ -115,6 +115,13 @@ export const ImageElementSchema = z.object({
   fit: z.enum(["contain", "cover", "fill"]).nullish(),
 });
 
+export const SvgElementSchema = z.object({
+  ...baseElement,
+  kind: z.literal("svg"),
+  svg: z.string().min(1).max(20_000),
+  name: z.string().max(120).nullish(),
+});
+
 export const SlideElementSchema = z.discriminatedUnion("kind", [
   TextElementSchema,
   RectElementSchema,
@@ -123,6 +130,7 @@ export const SlideElementSchema = z.discriminatedUnion("kind", [
   ChartElementSchema,
   TableElementSchema,
   ImageElementSchema,
+  SvgElementSchema,
 ]);
 
 export const SlideSchema = z.object({
@@ -148,6 +156,7 @@ export type ChartDatum = z.infer<typeof ChartDatumSchema>;
 export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
+export type SvgElement = z.infer<typeof SvgElementSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;
