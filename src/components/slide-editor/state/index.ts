@@ -42,6 +42,7 @@ export {
   updateElementsAtom,
   patchSelectedAtom,
   addElementAtom,
+  insertElementAtom,
   duplicateSelectedAtom,
   deleteSelectedAtom,
 } from "./actions";

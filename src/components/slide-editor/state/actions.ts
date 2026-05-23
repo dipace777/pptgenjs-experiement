@@ -139,6 +139,24 @@ export const addElementAtom = atom(
   },
 );
 
+export const insertElementAtom = atom(
+  null,
+  (get, set, element: SlideElement) => {
+    const slide = get(activeSlideAtom);
+    if (!slide) return;
+    const newIndex = slide.elements.length;
+    const activeIdx = get(activeSlideIndexAtom);
+    set(pushHistoryAtom);
+    set(deckAtom, (draft) => {
+      draft.slides[activeIdx].elements.push(element);
+    });
+    set(selectedAtom, newIndex);
+    set(selectedItemsAtom, [newIndex]);
+    set(selectedTableCellAtom, null);
+    set(editorOpenAtom, true);
+  },
+);
+
 export const duplicateSelectedAtom = atom(null, (get, set) => {
   const idx = get(selectedIndexAtom);
   const selected = get(activeSlideAtom)?.elements[idx];

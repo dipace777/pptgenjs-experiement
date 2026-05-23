@@ -367,6 +367,15 @@ export const styles = {
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
   },
+  generatorPanel: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 8,
+    border: "1px solid #20283a",
+    background: "#0c1019",
+    display: "grid",
+    gap: 10,
+  },
   secondaryButton: {
     height: 34,
     borderRadius: 7,

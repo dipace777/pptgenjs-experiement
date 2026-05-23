@@ -1,8 +1,11 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
+import { useServerFn } from "@tanstack/react-start";
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { generateSvgWithAi } from "../../lib/svg-ai";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
+import { generateSvgFromPrompt } from "../../lib/svg-generator";
 import { sampleDeck } from "../../slide/spec";
 import { PresentationMode } from "./PresentationMode";
 import { styles } from "./editorStyles";
@@ -48,6 +51,7 @@ import {
   presentingAtom,
   exportModeAtom,
   isExportingAtom,
+  insertElementAtom,
   patchSelectedAtom,
   redoAtom,
   selectedBulletsElementAtom,
@@ -119,10 +123,17 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const updateElement = useSetAtom(updateElementAtom);
   const patchSelected = useSetAtom(patchSelectedAtom);
   const addElement = useSetAtom(addElementAtom);
+  const insertElement = useSetAtom(insertElementAtom);
   const duplicateSelected = useSetAtom(duplicateSelectedAtom);
   const deleteSelected = useSetAtom(deleteSelectedAtom);
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
+  const generateSvgWithAiFn = useServerFn(generateSvgWithAi);
+  const [svgPrompt, setSvgPrompt] = useState(
+    "A connected system map with glowing nodes and one central hub",
+  );
+  const [isGeneratingSvg, setIsGeneratingSvg] = useState(false);
+  const [svgGenerationStatus, setSvgGenerationStatus] = useState<string | null>(null);
 
   useHotkey("Mod+Z", (event) => {
     event.preventDefault();
@@ -141,6 +152,43 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const { exportStageRefs, exportingType, handleExport, handlePdfExport } =
     useDeckExport();
   const stageScale = stageWidth / SLIDE_W;
+
+  const generatePromptSvg = useCallback(async () => {
+    const prompt = svgPrompt.trim();
+    if (!prompt) return;
+    setIsGeneratingSvg(true);
+    setSvgGenerationStatus("Generating with OpenAI...");
+    try {
+      const result = await generateSvgWithAiFn({ data: { prompt } });
+      insertElement({
+        kind: "svg",
+        x: 2.7,
+        y: 1.6,
+        w: 4.6,
+        h: 2.9,
+        name: result.name,
+        svg: result.svg,
+      });
+      setSvgGenerationStatus("Generated with OpenAI.");
+    } catch (error) {
+      insertElement({
+        kind: "svg",
+        x: 2.7,
+        y: 1.6,
+        w: 4.6,
+        h: 2.9,
+        name: prompt.slice(0, 120),
+        svg: generateSvgFromPrompt(prompt),
+      });
+      setSvgGenerationStatus(
+        error instanceof Error
+          ? `OpenAI failed; inserted local fallback. ${error.message}`
+          : "OpenAI failed; inserted local fallback.",
+      );
+    } finally {
+      setIsGeneratingSvg(false);
+    }
+  }, [generateSvgWithAiFn, insertElement, svgPrompt]);
 
   const openImageUpload = useCallback((index: number) => {
     imageUploadTargetRef.current = index;
@@ -501,7 +549,6 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   "chart",
                   "table",
                   "image",
-                  "svg",
                 ] as const
               ).map((kind) => (
                 <button
@@ -513,6 +560,33 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
                   + {kindLabel(kind)}
                 </button>
               ))}
+            </div>
+
+            <div style={styles.generatorPanel}>
+              <label style={styles.field}>
+                <span>Generate SVG from prompt</span>
+                <textarea
+                  value={svgPrompt}
+                  onChange={(event) => setSvgPrompt(event.target.value)}
+                  rows={3}
+                  style={styles.textarea}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={generatePromptSvg}
+                disabled={!svgPrompt.trim() || isGeneratingSvg}
+                style={{
+                  ...styles.primaryButton,
+                  opacity: svgPrompt.trim() && !isGeneratingSvg ? 1 : 0.55,
+                  cursor: svgPrompt.trim() && !isGeneratingSvg ? "pointer" : "not-allowed",
+                }}
+              >
+                {isGeneratingSvg ? "Generating..." : "Generate SVG"}
+              </button>
+              {svgGenerationStatus ? (
+                <div style={styles.drawerHint}>{svgGenerationStatus}</div>
+              ) : null}
             </div>
           </aside>
         </div>
