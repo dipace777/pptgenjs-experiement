@@ -1,4 +1,9 @@
-import { prepare, layout } from "@chenglou/pretext";
+import {
+  layout,
+  layoutWithLines,
+  prepare,
+  prepareWithSegments,
+} from "@chenglou/pretext";
 import type { TextElement } from "./slide-schema";
 
 // Reference DPI used across the editor (`PX_PER_IN` in editorUtils). Keep
@@ -61,4 +66,35 @@ export function textElementOverflows(el: TextElement): boolean {
   );
   if (measured == null) return false;
   return measured > el.h + OVERFLOW_TOLERANCE_IN;
+}
+
+/**
+ * Returns the text broken into the lines Pretext would render given the
+ * element's width/font/spacing. Used to pre-wrap text for PPTX export so the
+ * exported deck doesn't depend on PowerPoint's wrap engine — which has
+ * subtly different glyph metrics and routinely pushes a word onto a new
+ * line, blowing past the box.
+ *
+ * Returns `[el.text]` (a single chunk) if Pretext can't run (SSR, font
+ * sampling failure).
+ */
+export function wrapTextElementLines(el: TextElement): string[] {
+  if (typeof window === "undefined") return [el.text];
+  const fontSizePx = el.fontSize * PT_TO_PX;
+  const lhMul = el.lineHeight ?? DEFAULT_LINE_HEIGHT;
+  const lineHeightPx = fontSizePx * lhMul;
+  const widthPx = el.w * PX_PER_INCH;
+  const letterSpacingPx = ((el.charSpacing ?? 0) / 100) * PT_TO_PX;
+  try {
+    const prepared = prepareWithSegments(
+      el.text,
+      `${fontSizePx}px ${defaultFontFace(el.fontFace)}`,
+      { letterSpacing: letterSpacingPx || undefined },
+    );
+    const { lines } = layoutWithLines(prepared, widthPx, lineHeightPx);
+    if (!lines.length) return [el.text];
+    return lines.map((line) => line.text);
+  } catch {
+    return [el.text];
+  }
 }

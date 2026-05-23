@@ -6,10 +6,10 @@ import {
   type Deck,
   type Slide,
   type SlideElement,
-  type TextElement,
 } from "../lib/slide-schema";
 import { getElementDefinition } from "../lib/slide-elements";
 import { sanitizeSvgMarkup } from "../lib/svg-sanitize";
+import { wrapTextElementLines } from "../lib/textMeasure";
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
 export type PptxChartMode = "native" | "shapes";
@@ -52,22 +52,6 @@ function blendHex(fg: string, bg: string, opacity: number): string {
   const mix = (f: number, b: number) => Math.round(b + (f - b) * a);
   const toHex = (n: number) => n.toString(16).padStart(2, "0").toUpperCase();
   return toHex(mix(fr, br)) + toHex(mix(fg_, bg_)) + toHex(mix(fb, bb));
-}
-
-function authoredLineCount(text: string): number {
-  return text.split(/\r\n|\r|\n/).length;
-}
-
-function maxLinesInTextBox(el: TextElement): number {
-  const lineHeightPt = (el.lineHeight ?? 1.15) * el.fontSize;
-  const lineHeightIn = lineHeightPt / 72;
-  if (lineHeightIn <= 0) return 1;
-  return Math.max(1, Math.floor(el.h / lineHeightIn + 0.15));
-}
-
-function shouldDisablePowerPointWrap(el: TextElement): boolean {
-  if (/\r|\n/.test(el.text)) return true;
-  return authoredLineCount(el.text) >= maxLinesInTextBox(el);
 }
 
 function addChartElement(
@@ -567,8 +551,13 @@ function addElement(
       el.opacity != null && el.opacity < 1
         ? blendHex(el.color, bg, el.opacity)
         : el.color;
-    const disableWrap = shouldDisablePowerPointWrap(el);
-    s.addText(el.text, {
+    // Pre-wrap on our side using Pretext so PowerPoint can't rewrap with
+    // its own (subtly different) font metrics and push a word into a new
+    // line. We then hand PPT the broken lines with `wrap: false` so it
+    // renders exactly what the preview showed. `fit: shrink` is a safety
+    // net for sub-character residual drift between Chrome and PPT metrics.
+    const lines = wrapTextElementLines(el);
+    s.addText(lines.join("\n"), {
       x: el.x,
       y: el.y,
       w: el.w,
@@ -589,8 +578,8 @@ function addElement(
       // Zero the text-frame inset so coordinates match the React preview
       // (which has no padding inside its boxes).
       margin: 0,
-      wrap: disableWrap ? false : undefined,
-      fit: disableWrap ? "shrink" : undefined,
+      wrap: false,
+      fit: "shrink",
     });
     return;
   }
