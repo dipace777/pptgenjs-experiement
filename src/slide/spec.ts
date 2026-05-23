@@ -1753,6 +1753,13 @@ const slide19Closing: Slide = {
 
 export const sampleDeck: Deck = {
   title: "Presentation Layout Kit",
+  theme: {
+    background: OFF_WHITE,
+    primary: NAVY,
+    secondary: BLUE_DK,
+    accent: GOLD,
+    text: INK,
+  },
   slides: [
     slide1Title,
     slide2Profile,

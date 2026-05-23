@@ -140,9 +140,18 @@ export const SlideSchema = z.object({
   title: z.string().min(1).max(60).nullish(),
 });
 
+export const DeckThemeSchema = z.object({
+  background: HexColorSchema,
+  primary: HexColorSchema,
+  secondary: HexColorSchema,
+  accent: HexColorSchema,
+  text: HexColorSchema,
+});
+
 export const DeckSchema = z.object({
   title: z.string().min(1).max(90),
   description: z.string().max(1200).nullish(),
+  theme: DeckThemeSchema.nullish(),
   slides: z.array(SlideSchema).min(1).max(20),
 });
 
@@ -157,6 +166,7 @@ export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type SvgElement = z.infer<typeof SvgElementSchema>;
+export type DeckTheme = z.infer<typeof DeckThemeSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;

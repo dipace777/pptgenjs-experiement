@@ -3,6 +3,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  applyDeckTheme,
+  resolveDeckTheme,
+  type DeckTheme,
+} from "../../lib/deck-theme";
 import { generateSvgWithAi } from "../../lib/svg-ai";
 import { SLIDE_H, SLIDE_W, type Deck } from "../../lib/slide-schema";
 import { generateSvgFromPrompt } from "../../lib/svg-generator";
@@ -100,6 +105,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   const editingTableElement = useAtomValue(editingTableElementAtom);
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
+  const [themeOpen, setThemeOpen] = useState(false);
   const [editingTextIndex, setEditingTextIndex] = useAtom(editingTextIndexAtom);
   const [editingBulletsIndex, setEditingBulletsIndex] = useAtom(
     editingBulletsIndexAtom,
@@ -134,6 +140,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
   );
   const [isGeneratingSvg, setIsGeneratingSvg] = useState(false);
   const [svgGenerationStatus, setSvgGenerationStatus] = useState<string | null>(null);
+  const deckTheme = resolveDeckTheme(deck);
 
   useHotkey("Mod+Z", (event) => {
     event.preventDefault();
@@ -194,6 +201,18 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
     imageUploadTargetRef.current = index;
     imageUploadInputRef.current?.click();
   }, []);
+
+  const updateDeckThemeColor = useCallback(
+    (key: keyof DeckTheme, value: string) => {
+      setDeck((draft) => {
+        applyDeckTheme(draft, {
+          ...resolveDeckTheme(draft),
+          [key]: withoutHash(value),
+        });
+      });
+    },
+    [setDeck],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -274,6 +293,14 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
             </div>
           </div>
           <div style={styles.toolbar}>
+            <button
+              type="button"
+              onClick={() => setThemeOpen(true)}
+              style={styles.ghostButton}
+              title="Configure deck theme"
+            >
+              Theme
+            </button>
             <button
               type="button"
               onClick={() => setPresenting(true)}
@@ -587,6 +614,65 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
               {svgGenerationStatus ? (
                 <div style={styles.drawerHint}>{svgGenerationStatus}</div>
               ) : null}
+            </div>
+          </aside>
+        </div>
+      ) : null}
+
+      {themeOpen ? (
+        <div
+          aria-modal="true"
+          role="dialog"
+          style={styles.drawerBackdrop}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setThemeOpen(false);
+          }}
+        >
+          <aside style={styles.themeDrawer}>
+            <div style={styles.inspectorHeader}>
+              <div>
+                <div style={styles.eyebrow}>DECK SETTINGS</div>
+                <h2 style={styles.inspectorTitle}>Theme</h2>
+              </div>
+              <button
+                type="button"
+                title="Close theme"
+                onClick={() => setThemeOpen(false)}
+                style={styles.iconButton}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={styles.drawerHint}>
+              Updates matching theme colors across the entire deck. Individual
+              slide overrides stay in the slide editor.
+            </div>
+
+            <div style={styles.themePanel}>
+              <div style={styles.themeGrid}>
+                {(
+                  [
+                    ["background", "Background"],
+                    ["primary", "Primary"],
+                    ["secondary", "Secondary"],
+                    ["accent", "Accent"],
+                    ["text", "Text"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} style={styles.field}>
+                    <span>{label}</span>
+                    <input
+                      type="color"
+                      value={withHash(deckTheme[key])}
+                      onChange={(event) =>
+                        updateDeckThemeColor(key, event.target.value)
+                      }
+                      style={styles.colorInput}
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
           </aside>
         </div>

@@ -390,6 +390,13 @@ export function deckFromOutline(input: DeckGenerationInput, outline: SlideOutlin
   return DeckSchema.parse({
     title: outline.title,
     description: input.description,
+    theme: {
+      background: colors.background,
+      primary: colors.primary,
+      secondary: "3E78B2",
+      accent: colors.accent,
+      text: colors.text,
+    },
     slides,
   });
 }
