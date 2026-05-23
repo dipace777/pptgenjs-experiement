@@ -2,6 +2,7 @@ import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { atomWithImmer } from "jotai-immer";
 import type { Slide, SlideElement } from "../../../lib/slide-schema";
+import { textElementOverflows } from "../../../lib/textMeasure";
 import { layoutKitDeck } from "../../../templates/layout-kit";
 
 export type ExportMode = "native" | "keynote" | "raster";
@@ -106,4 +107,23 @@ export const editingTableElementAtom = atom<TableSlideElement | null>((get) => {
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
   return element?.kind === "table" ? element : null;
+});
+
+// Set of element indices on the active slide whose declared `h` is too small
+// to fit their rendered text. Measured via Pretext — no DOM reflow.
+export const activeSlideOverflowIndicesAtom = atom<ReadonlySet<number>>((get) => {
+  const slide = get(activeSlideAtom);
+  const overflowing = new Set<number>();
+  slide.elements.forEach((element, index) => {
+    if (element.kind === "text" && textElementOverflows(element)) {
+      overflowing.add(index);
+    }
+  });
+  return overflowing;
+});
+
+export const selectedElementOverflowsAtom = atom<boolean>((get) => {
+  const idx = get(selectedIndexAtom);
+  if (idx < 0) return false;
+  return get(activeSlideOverflowIndicesAtom).has(idx);
 });

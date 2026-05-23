@@ -25,6 +25,8 @@ export {
   editingTextElementAtom,
   editingBulletsElementAtom,
   editingTableElementAtom,
+  activeSlideOverflowIndicesAtom,
+  selectedElementOverflowsAtom,
   type ExportMode,
   type TextSlideElement,
   type BulletsSlideElement,

@@ -1,12 +1,13 @@
 import Konva from "konva";
-import type { RefObject } from "react";
-import { Group, Line, Rect, Transformer } from "react-konva";
+import { useMemo, useState, type RefObject } from "react";
+import { Group, Line, Rect, Text, Transformer } from "react-konva";
 import {
   SLIDE_H,
   SLIDE_W,
   type Slide,
   type SlideElement,
 } from "../../../../lib/slide-schema";
+import { textElementOverflows } from "../../../../lib/textMeasure";
 import { clamp } from "../../editorUtils";
 import { useGroupDrag } from "./hooks/useGroupDrag";
 import { KonvaElement } from "./KonvaElement";
@@ -77,6 +78,21 @@ export function ElementLayer({
     slide,
     transformerRef,
   });
+
+  // Pretext-measured overflow set, only computed in the live editor — never
+  // on export rasters, since the badge is a UI affordance, not deck content.
+  const overflowingIndices = useMemo(() => {
+    if (!interactive) return null;
+    const out = new Set<number>();
+    slide.elements.forEach((element, index) => {
+      if (element.kind === "text" && textElementOverflows(element)) {
+        out.add(index);
+      }
+    });
+    return out;
+  }, [interactive, slide]);
+
+  const [hoveredOverflow, setHoveredOverflow] = useState<number | null>(null);
 
   const commonEvents = (index: number, el: SlideElement) => ({
     draggable: interactive,
@@ -166,6 +182,95 @@ export function ElementLayer({
           events={commonEvents(index, el)}
         />
       ))}
+      {overflowingIndices
+        ? slide.elements.map((el, index) => {
+            if (!overflowingIndices.has(index)) return null;
+            const badgeX = el.x * scale + el.w * scale - 10;
+            const badgeY = el.y * scale - 10;
+            return (
+              <Group
+                key={`overflow-${index}`}
+                x={badgeX}
+                y={badgeY}
+                onMouseEnter={(event) => {
+                  setHoveredOverflow(index);
+                  event.target.getStage()?.container().style.setProperty("cursor", "help");
+                }}
+                onMouseLeave={(event) => {
+                  setHoveredOverflow((current) => (current === index ? null : current));
+                  event.target.getStage()?.container().style.removeProperty("cursor");
+                }}
+              >
+                <Rect
+                  width={20}
+                  height={20}
+                  fill="#d83b3b"
+                  cornerRadius={10}
+                  shadowColor="rgba(216,59,59,0.45)"
+                  shadowBlur={6}
+                  shadowOffsetY={2}
+                />
+                <Text
+                  width={20}
+                  height={20}
+                  text="!"
+                  fill="#ffffff"
+                  fontSize={13}
+                  fontStyle="bold"
+                  align="center"
+                  verticalAlign="middle"
+                  listening={false}
+                />
+              </Group>
+            );
+          })
+        : null}
+      {overflowingIndices && hoveredOverflow != null
+        ? (() => {
+            const el = slide.elements[hoveredOverflow];
+            if (!el) return null;
+            const tooltipW = 248;
+            const tooltipH = 50;
+            // Anchor: under the badge, right-aligned to the element's right
+            // edge, then clamped so we never paint off-stage.
+            const anchorX = el.x * scale + el.w * scale - 10 + 20;
+            const anchorY = el.y * scale - 10 + 26;
+            const x = clamp(anchorX - tooltipW, 4, Math.max(4, width - tooltipW - 4));
+            const y = clamp(anchorY, 4, Math.max(4, height - tooltipH - 4));
+            return (
+              <Group x={x} y={y} listening={false}>
+                <Rect
+                  width={tooltipW}
+                  height={tooltipH}
+                  fill="#1a1a1a"
+                  cornerRadius={6}
+                  opacity={0.96}
+                  shadowColor="rgba(0,0,0,0.5)"
+                  shadowBlur={10}
+                  shadowOffsetY={3}
+                />
+                <Text
+                  x={10}
+                  y={8}
+                  width={tooltipW - 20}
+                  text="Text overflows its box"
+                  fill="#ffffff"
+                  fontSize={12}
+                  fontStyle="bold"
+                />
+                <Text
+                  x={10}
+                  y={25}
+                  width={tooltipW - 20}
+                  text="Increase the height, shrink the font, or trim the text."
+                  fill="#cdd2dd"
+                  fontSize={11}
+                  lineHeight={1.35}
+                />
+              </Group>
+            );
+          })()
+        : null}
       {interactive && selectedIndexes.length > 0 ? (
         <Transformer
           ref={transformerRef}
