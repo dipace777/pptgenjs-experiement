@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
+import type { ReactNode } from "react";
 import { styles } from "../editorStyles";
 import { truncateWords } from "../editorUtils";
 import { ExportPptxButton } from "../shared/ExportPptxButton";
@@ -17,6 +18,7 @@ type EditorTopbarProps = {
   onExport: () => void;
   onPdfExport: () => void;
   onOpenTheme: () => void;
+  toolbarLeading?: ReactNode;
 };
 
 export function EditorTopbar({
@@ -24,6 +26,7 @@ export function EditorTopbar({
   onExport,
   onPdfExport,
   onOpenTheme,
+  toolbarLeading,
 }: EditorTopbarProps) {
   const deck = useAtomValue(deckAtom);
   const active = useAtomValue(activeSlideIndexAtom);
@@ -45,6 +48,7 @@ export function EditorTopbar({
         </div>
       </div>
       <div style={layoutStyles.toolbar}>
+        {toolbarLeading}
         <button
           type="button"
           onClick={onOpenTheme}

@@ -2,7 +2,7 @@ import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { atomWithImmer } from "jotai-immer";
 import type { Slide, SlideElement } from "../../../lib/slide-schema";
-import { sampleDeck } from "../../../slide/spec";
+import { layoutKitDeck } from "../../../templates/layout-kit";
 
 export type ExportMode = "native" | "keynote" | "raster";
 export type TextSlideElement = Extract<SlideElement, { kind: "text" }>;
@@ -17,7 +17,7 @@ export type TableCellSelection = { elementIndex: number; rowIndex: number; colIn
 
 // Immer-backed: writers receive a draft of the Deck they can mutate
 // directly. SlideEditor seeds the real deck via `useHydrateAtoms`.
-export const deckAtom = atomWithImmer(sampleDeck);
+export const deckAtom = atomWithImmer(layoutKitDeck);
 export const activeSlideIndexAtom = atom(0);
 export const selectedAtom = atom(-1);
 export const selectedItemsAtom = atom<number[]>([]);

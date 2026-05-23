@@ -1680,7 +1680,7 @@ const slide19Closing: Slide = {
     {
       kind: "text",
       x: 0.3,
-      y: -0.4,
+      y: 0,
       w: 3.5,
       h: 4.2,
       text: "“",
@@ -1751,7 +1751,7 @@ const slide19Closing: Slide = {
   ],
 };
 
-export const sampleDeck: Deck = {
+export const layoutKitDeck: Deck = {
   title: "Presentation Layout Kit",
   theme: {
     background: OFF_WHITE,

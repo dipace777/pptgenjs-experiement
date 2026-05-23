@@ -1,9 +1,9 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Deck } from "../../lib/slide-schema";
-import { sampleDeck } from "../../slide/spec";
+import { layoutKitDeck } from "../../templates/layout-kit";
 import { DeckThemeDrawer, SlideEditorDrawer } from "./panels";
 import { PresentationMode } from "./PresentationMode";
 import {
@@ -29,18 +29,26 @@ import {
 } from "./state";
 
 export function SlideEditor({
-  initialDeck = sampleDeck,
+  initialDeck = layoutKitDeck,
+  toolbarLeading,
 }: {
   initialDeck?: Deck;
+  toolbarLeading?: ReactNode;
 }) {
   return (
     <Provider>
-      <SlideEditorBody initialDeck={initialDeck} />
+      <SlideEditorBody initialDeck={initialDeck} toolbarLeading={toolbarLeading} />
     </Provider>
   );
 }
 
-function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
+function SlideEditorBody({
+  initialDeck,
+  toolbarLeading,
+}: {
+  initialDeck: Deck;
+  toolbarLeading?: ReactNode;
+}) {
   useHydrateAtoms([[deckAtom, initialDeck]]);
   useEditorHotkeys();
   useDeleteShortcut();
@@ -66,6 +74,7 @@ function SlideEditorBody({ initialDeck }: { initialDeck: Deck }) {
           onExport={handleExport}
           onPdfExport={handlePdfExport}
           onOpenTheme={() => setThemeOpen(true)}
+          toolbarLeading={toolbarLeading}
         />
 
         <SlideWorkspace
