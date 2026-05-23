@@ -7,9 +7,22 @@ import {
   type ThemeRole,
 } from "./slide-schema";
 
+export const MIN_SLIDE_COUNT = 5;
+export const MAX_SLIDE_COUNT = 20;
+
+// Sections + title slide + agenda slide = total slides.
+export const MIN_SECTION_COUNT = MIN_SLIDE_COUNT - 2;
+export const MAX_SECTION_COUNT = MAX_SLIDE_COUNT - 2;
+
 export const DeckGenerationInputSchema = z.object({
   title: z.string().min(1).max(90),
   description: z.string().min(1).max(1200),
+  slideCount: z
+    .number()
+    .int()
+    .min(MIN_SLIDE_COUNT)
+    .max(MAX_SLIDE_COUNT)
+    .default(6),
   theme: z.object({
     background: z.string().min(1),
     surface: z.string().min(1),
@@ -33,8 +46,8 @@ export const SlideOutlineSchema = z.object({
         visual: z.enum(["bullets", "chart", "table"]),
       }),
     )
-    .min(3)
-    .max(5),
+    .min(MIN_SECTION_COUNT)
+    .max(MAX_SECTION_COUNT),
 });
 
 export type DeckGenerationInput = z.infer<typeof DeckGenerationInputSchema>;
@@ -131,39 +144,67 @@ export function fallbackOutline(input: DeckGenerationInput): SlideOutline {
     .slice(0, 12);
   const angle = words.slice(0, 4).join(" ") || "strategy";
 
+  const seedSections: SlideOutline["sections"] = [
+    {
+      title: "Context",
+      summary: `Why ${subject} matters now and what the audience should understand first.`,
+      bullets: [
+        `Frame the current state of ${angle}`,
+        "Name the audience, stakes, and decision window",
+        "Separate durable facts from open questions",
+      ],
+      visual: "bullets",
+    },
+    {
+      title: "Momentum",
+      summary: "A compact readout of the signals that point to progress or pressure.",
+      bullets: ["Adoption", "Efficiency", "Reach"],
+      visual: "chart",
+    },
+    {
+      title: "Operating Model",
+      summary: "The core components that need to work together for the idea to land.",
+      bullets: ["People", "Process", "Product", "Data", "Distribution", "Risk"],
+      visual: "bullets",
+    },
+    {
+      title: "Plan",
+      summary: "A practical phased path from exploration to repeatable execution.",
+      bullets: ["Discover", "Prototype", "Launch", "Scale"],
+      visual: "table",
+    },
+    {
+      title: "Risks",
+      summary: "The failure modes worth naming up front so the plan stays honest.",
+      bullets: ["Adoption gaps", "Capacity limits", "Data quality"],
+      visual: "bullets",
+    },
+    {
+      title: "Decisions",
+      summary: "The open calls that need an owner and a date.",
+      bullets: ["Budget approval", "Scope cut", "Hire trigger", "Vendor pick"],
+      visual: "table",
+    },
+  ];
+
+  const desiredSections = Math.max(
+    MIN_SECTION_COUNT,
+    Math.min(MAX_SECTION_COUNT, input.slideCount - 2),
+  );
+  const sections: SlideOutline["sections"] = [];
+  for (let i = 0; i < desiredSections; i += 1) {
+    const base = seedSections[i % seedSections.length];
+    sections.push(
+      i < seedSections.length
+        ? base
+        : { ...base, title: `${base.title} ${Math.floor(i / seedSections.length) + 1}` },
+    );
+  }
+
   return {
     title: subject,
     subtitle: input.description.slice(0, 130),
-    sections: [
-      {
-        title: "Context",
-        summary: `Why ${subject} matters now and what the audience should understand first.`,
-        bullets: [
-          `Frame the current state of ${angle}`,
-          "Name the audience, stakes, and decision window",
-          "Separate durable facts from open questions",
-        ],
-        visual: "bullets",
-      },
-      {
-        title: "Momentum",
-        summary: "A compact readout of the signals that point to progress or pressure.",
-        bullets: ["Adoption", "Efficiency", "Reach"],
-        visual: "chart",
-      },
-      {
-        title: "Operating Model",
-        summary: "The core components that need to work together for the idea to land.",
-        bullets: ["People", "Process", "Product", "Data", "Distribution", "Risk"],
-        visual: "bullets",
-      },
-      {
-        title: "Plan",
-        summary: "A practical phased path from exploration to repeatable execution.",
-        bullets: ["Discover", "Prototype", "Launch", "Scale"],
-        visual: "table",
-      },
-    ],
+    sections,
   };
 }
 

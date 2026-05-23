@@ -4,6 +4,8 @@ import { createServerFn, useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import {
   DeckGenerationInputSchema,
+  MAX_SLIDE_COUNT,
+  MIN_SLIDE_COUNT,
   SlideOutlineSchema,
   deckFromOutline,
   fallbackOutline,
@@ -16,6 +18,7 @@ const defaultInput: DeckGenerationInput = {
   title: "AI Operating Plan",
   description:
     "A concise executive deck explaining how a team can adopt AI tools responsibly across product, operations, and customer workflows.",
+  slideCount: 6,
   theme: {
     background: "#F7F8FB",
     surface: "#FFFFFF",
@@ -38,6 +41,7 @@ const generateDeck = createServerFn({ method: "POST" })
       const adapter = openaiText(
         (process.env.OPENAI_MODEL ?? "gpt-4.1-mini") as Parameters<typeof openaiText>[0],
       );
+      const sectionCount = data.slideCount - 2;
       const outline = await chat({
         adapter,
         outputSchema: SlideOutlineSchema,
@@ -50,7 +54,7 @@ const generateDeck = createServerFn({ method: "POST" })
             content: [
               `Title: ${data.title}`,
               `Description: ${data.description}`,
-              "Create 4 sections. Mix visual types across bullets, chart, and table.",
+              `Create exactly ${sectionCount} sections. Mix visual types across bullets, chart, and table.`,
               "Each section should have practical bullets that can be rendered directly on a slide.",
             ].join("\n"),
           },
@@ -121,16 +125,38 @@ function GeneratePage() {
           <h1 style={titleStyle}>Describe the deck</h1>
         </div>
 
-        <label style={fieldStyle}>
-          <span>Title</span>
-          <input
-            value={input.title}
-            onChange={(event) =>
-              setInput((current) => ({ ...current, title: event.target.value }))
-            }
-            style={inputStyle}
-          />
-        </label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 12 }}>
+          <label style={fieldStyle}>
+            <span>Title</span>
+            <input
+              value={input.title}
+              onChange={(event) =>
+                setInput((current) => ({ ...current, title: event.target.value }))
+              }
+              style={inputStyle}
+            />
+          </label>
+          <label style={fieldStyle}>
+            <span>Slides</span>
+            <input
+              type="number"
+              min={MIN_SLIDE_COUNT}
+              max={MAX_SLIDE_COUNT}
+              step={1}
+              value={input.slideCount}
+              onChange={(event) => {
+                const next = Number.parseInt(event.target.value, 10);
+                if (!Number.isFinite(next)) return;
+                const clamped = Math.max(
+                  MIN_SLIDE_COUNT,
+                  Math.min(MAX_SLIDE_COUNT, next),
+                );
+                setInput((current) => ({ ...current, slideCount: clamped }));
+              }}
+              style={inputStyle}
+            />
+          </label>
+        </div>
 
         <label style={fieldStyle}>
           <span>Description</span>
