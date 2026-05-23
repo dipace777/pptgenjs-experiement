@@ -805,7 +805,7 @@ const slide9Team: Slide = {
 };
 
 // ── Slide 10: Ask ───────────────────────────────────────────────────────
-function useOfFunds(y: number, percent: string, label: string, body: string): SlideElement[] {
+function fundsRow(y: number, percent: string, label: string, body: string): SlideElement[] {
   return [
     {
       kind: "text",
@@ -922,10 +922,10 @@ const slide10Ask: Slide = {
       fontFace: SANS,
     },
     { kind: "rect", x: 5.3, y: 1.0, w: 4.1, h: 0.015, fill: WHISPER, opacity: 0.3 },
-    ...useOfFunds(1.25, "45%", "PRODUCT & ENGINEERING", "Ship Automate; double the platform team."),
-    ...useOfFunds(2.25, "30%", "GO TO MARKET", "Build outbound; mid-market sales motion."),
-    ...useOfFunds(3.25, "15%", "CUSTOMER SUCCESS", "White-glove onboarding for top quartile."),
-    ...useOfFunds(4.25, "10%", "OPERATIONS", "Finance, legal, and the next two milestones."),
+    ...fundsRow(1.25, "45%", "PRODUCT & ENGINEERING", "Ship Automate; double the platform team."),
+    ...fundsRow(2.25, "30%", "GO TO MARKET", "Build outbound; mid-market sales motion."),
+    ...fundsRow(3.25, "15%", "CUSTOMER SUCCESS", "White-glove onboarding for top quartile."),
+    ...fundsRow(4.25, "10%", "OPERATIONS", "Finance, legal, and the next two milestones."),
     ...footer(10, TOTAL, true),
   ],
 };
