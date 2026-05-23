@@ -1,14 +1,23 @@
 import { z } from "zod";
-import { DeckSchema, type Deck, type Slide, type SlideElement } from "./slide-schema";
+import {
+  DeckSchema,
+  type Deck,
+  type Slide,
+  type SlideElement,
+  type ThemeRole,
+} from "./slide-schema";
 
 export const DeckGenerationInputSchema = z.object({
   title: z.string().min(1).max(90),
   description: z.string().min(1).max(1200),
   theme: z.object({
     background: z.string().min(1),
+    surface: z.string().min(1),
     primary: z.string().min(1),
+    secondary: z.string().min(1),
     accent: z.string().min(1),
     text: z.string().min(1),
+    muted: z.string().min(1),
   }),
 });
 
@@ -41,13 +50,76 @@ function cleanHex(value: string, fallback: string): string {
 function palette(input: DeckGenerationInput) {
   return {
     background: cleanHex(input.theme.background, "F7F8FB"),
+    surface: cleanHex(input.theme.surface, "FFFFFF"),
     primary: cleanHex(input.theme.primary, "16324F"),
+    secondary: cleanHex(input.theme.secondary, "3E78B2"),
     accent: cleanHex(input.theme.accent, "D4A24C"),
     text: cleanHex(input.theme.text, "172033"),
-    muted: "68748A",
-    white: "FFFFFF",
+    muted: cleanHex(input.theme.muted, "68748A"),
+    white: cleanHex(input.theme.surface, "FFFFFF"),
     line: "DDE4EF",
   };
+}
+
+function roleForColor(
+  color: string | null | undefined,
+  colors: ReturnType<typeof palette>,
+): ThemeRole | undefined {
+  if (!color) return undefined;
+  const normalized = cleanHex(color, "");
+  const roles: ThemeRole[] = [
+    "background",
+    "surface",
+    "primary",
+    "secondary",
+    "accent",
+    "text",
+    "muted",
+  ];
+  return roles.find((role) => colors[role] === normalized);
+}
+
+function applyGeneratedThemeRoles(deck: Deck, colors: ReturnType<typeof palette>) {
+  for (const slide of deck.slides) {
+    slide.backgroundRole = roleForColor(slide.background, colors);
+    for (const element of slide.elements) applyElementThemeRoles(element, colors);
+  }
+}
+
+function applyElementThemeRoles(
+  element: SlideElement,
+  colors: ReturnType<typeof palette>,
+) {
+  if (element.kind === "text") {
+    element.colorRole = roleForColor(element.color, colors);
+    return;
+  }
+  if (element.kind === "rect" || element.kind === "ellipse") {
+    element.fillRole = roleForColor(element.fill, colors);
+    if (element.line) element.line.colorRole = roleForColor(element.line.color, colors);
+    return;
+  }
+  if (element.kind === "bullets") {
+    element.colorRole = roleForColor(element.color, colors);
+    element.bulletColorRole = roleForColor(element.bulletColor, colors);
+    return;
+  }
+  if (element.kind === "chart") {
+    element.colorRole = roleForColor(element.color, colors);
+    element.axisColorRole = roleForColor(element.axisColor, colors);
+    element.labelColorRole = roleForColor(element.labelColor, colors);
+    element.data.forEach((datum) => {
+      datum.colorRole = roleForColor(datum.color, colors);
+    });
+    return;
+  }
+  if (element.kind === "table") {
+    element.textColorRole = roleForColor(element.textColor, colors);
+    element.headerFillRole = roleForColor(element.headerFill, colors);
+    element.headerTextColorRole = roleForColor(element.headerTextColor, colors);
+    element.borderColorRole = roleForColor(element.borderColor, colors);
+    element.fillRole = roleForColor(element.fill, colors);
+  }
 }
 
 export function fallbackOutline(input: DeckGenerationInput): SlideOutline {
@@ -387,18 +459,22 @@ export function deckFromOutline(input: DeckGenerationInput, outline: SlideOutlin
     ),
   ];
 
-  return DeckSchema.parse({
+  const deck = DeckSchema.parse({
     title: outline.title,
     description: input.description,
     theme: {
       background: colors.background,
+      surface: colors.surface,
       primary: colors.primary,
-      secondary: "3E78B2",
+      secondary: colors.secondary,
       accent: colors.accent,
       text: colors.text,
+      muted: colors.muted,
     },
     slides,
   });
+  applyGeneratedThemeRoles(deck, colors);
+  return deck;
 }
 
 export function generateFallbackDeck(input: DeckGenerationInput): Deck {

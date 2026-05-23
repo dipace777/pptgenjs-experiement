@@ -18,9 +18,12 @@ const defaultInput: DeckGenerationInput = {
     "A concise executive deck explaining how a team can adopt AI tools responsibly across product, operations, and customer workflows.",
   theme: {
     background: "#F7F8FB",
+    surface: "#FFFFFF",
     primary: "#16324F",
+    secondary: "#3E78B2",
     accent: "#D4A24C",
     text: "#172033",
+    muted: "#68748A",
   },
 };
 
@@ -148,9 +151,19 @@ function GeneratePage() {
             onChange={(value) => patchTheme("background", value)}
           />
           <ColorInput
+            label="Surface"
+            value={input.theme.surface}
+            onChange={(value) => patchTheme("surface", value)}
+          />
+          <ColorInput
             label="Primary"
             value={input.theme.primary}
             onChange={(value) => patchTheme("primary", value)}
+          />
+          <ColorInput
+            label="Secondary"
+            value={input.theme.secondary}
+            onChange={(value) => patchTheme("secondary", value)}
           />
           <ColorInput
             label="Accent"
@@ -161,6 +174,11 @@ function GeneratePage() {
             label="Text"
             value={input.theme.text}
             onChange={(value) => patchTheme("text", value)}
+          />
+          <ColorInput
+            label="Muted"
+            value={input.theme.muted}
+            onChange={(value) => patchTheme("muted", value)}
           />
         </div>
 
@@ -261,7 +279,7 @@ const inputStyle = {
 
 const colorGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
   gap: 12,
 } as const;
 

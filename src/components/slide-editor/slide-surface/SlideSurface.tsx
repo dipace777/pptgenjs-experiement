@@ -1,11 +1,7 @@
 import type Konva from "konva";
 import { SLIDE_W, type Slide, type SlideElement } from "../../../lib/slide-schema";
 import type { TableCellSelection } from "../state";
-import { BulletsDomElement } from "./element-renderers/bullets";
-import { ChartDomElement } from "./element-renderers/chart";
-import { SvgDomElement } from "./element-renderers/svg";
-import { TableDomElement } from "./element-renderers/table";
-import { TextDomElement } from "./element-renderers/text";
+import { DomOverlayRenderers } from "./element-renderers/DomOverlayRenderers";
 import { KonvaSlide } from "./konva/KonvaSlide";
 
 export function SlideSurface({
@@ -83,22 +79,12 @@ export function SlideSurface({
         textRenderMode="proxy"
         width={width}
       />
-      <SvgDomElement scale={scale} slide={slide} />
-      <ChartDomElement scale={scale} slide={slide} />
-      <BulletsDomElement
+      <DomOverlayRenderers
         editingBulletsIndex={editingBulletsIndex}
-        scale={scale}
-        slide={slide}
-      />
-      <TextDomElement
+        editingTableIndex={editingTableIndex}
         editingTextIndex={editingTextIndex}
         scale={scale}
-        slide={slide}
-      />
-      <TableDomElement
-        editingTableIndex={editingTableIndex}
-        scale={scale}
-        selectedCell={selectedTableCell}
+        selectedTableCell={selectedTableCell}
         slide={slide}
       />
     </>

@@ -7,6 +7,8 @@ import {
   type Slide,
   type SlideElement,
 } from "../lib/slide-schema";
+import { getElementDefinition } from "../lib/slide-elements";
+import { sanitizeSvgMarkup } from "../lib/svg-sanitize";
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
 export type PptxChartMode = "native" | "shapes";
@@ -20,11 +22,12 @@ function transparencyPct(opacity?: number): number {
 }
 
 function svgDataUri(svg: string): string {
+  const sanitized = sanitizeSvgMarkup(svg);
   const encoded =
     typeof window === "undefined"
-      ? Buffer.from(svg, "utf8").toString("base64")
+      ? Buffer.from(sanitized, "utf8").toString("base64")
       : window.btoa(
-          Array.from(new TextEncoder().encode(svg), (byte) =>
+          Array.from(new TextEncoder().encode(sanitized), (byte) =>
             String.fromCharCode(byte),
           ).join(""),
         );
@@ -499,7 +502,9 @@ function addElement(
   bg: string,
   options: Required<GeneratePptxOptions>,
 ): void {
-  if (el.kind === "rect") {
+  const renderer = getElementDefinition(el.kind).export.pptx;
+
+  if (renderer === "rect" && el.kind === "rect") {
     const rounded = el.rx != null && el.rx > 0;
     const shape = rounded ? pptx.ShapeType.roundRect : pptx.ShapeType.rect;
     const opts: PptxGenJS.ShapeProps = {
@@ -523,7 +528,7 @@ function addElement(
     return;
   }
 
-  if (el.kind === "ellipse") {
+  if (renderer === "ellipse" && el.kind === "ellipse") {
     s.addShape(pptx.ShapeType.ellipse, {
       x: el.x,
       y: el.y,
@@ -540,7 +545,7 @@ function addElement(
     return;
   }
 
-  if (el.kind === "text") {
+  if (renderer === "text" && el.kind === "text") {
     const color =
       el.opacity != null && el.opacity < 1
         ? blendHex(el.color, bg, el.opacity)
@@ -570,18 +575,18 @@ function addElement(
     return;
   }
 
-  if (el.kind === "chart") {
+  if (renderer === "chart" && el.kind === "chart") {
     if (options.chartMode === "shapes") addChartShapeElement(pptx, s, el);
     else addChartElement(pptx, s, el);
     return;
   }
 
-  if (el.kind === "table") {
+  if (renderer === "table" && el.kind === "table") {
     addTableElement(s, el);
     return;
   }
 
-  if (el.kind === "image") {
+  if (renderer === "image" && el.kind === "image") {
     if (el.data) {
       s.addImage({
         data: el.data,
@@ -610,7 +615,7 @@ function addElement(
     return;
   }
 
-  if (el.kind === "svg") {
+  if (renderer === "svg" && el.kind === "svg") {
     s.addImage({
       data: svgDataUri(el.svg),
       x: el.x,
@@ -622,7 +627,8 @@ function addElement(
     return;
   }
 
-  // bullets
+  if (renderer !== "bullets" || el.kind !== "bullets") return;
+
   const runs = el.items.map((t) => ({
     text: t,
     options: {

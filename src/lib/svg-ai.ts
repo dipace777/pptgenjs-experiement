@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { sanitizeSvgMarkup } from "./svg-sanitize";
 
 export const SvgPromptInputSchema = z.object({
   prompt: z.string().min(3).max(800),
@@ -50,26 +51,7 @@ export const generateSvgWithAi = createServerFn({ method: "POST" })
 
     return {
       name: result.name,
-      svg: sanitizeSvg(result.svg),
+      svg: sanitizeSvgMarkup(result.svg, { throwOnInvalid: true }),
       source: "ai" as const,
     };
   });
-
-function sanitizeSvg(svg: string): string {
-  const trimmed = svg
-    .replace(/```(?:svg)?/gi, "")
-    .replace(/```/g, "")
-    .replace(/<\?xml[^>]*>/gi, "")
-    .trim();
-  const match = trimmed.match(/<svg[\s\S]*<\/svg>/i);
-  if (!match) throw new Error("AI response did not include valid SVG markup.");
-  const cleaned = match[0]
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "")
-    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*')/gi, "")
-    .replace(/\s(?:href|xlink:href)\s*=\s*(?:"https?:\/\/[^"]*"|'https?:\/\/[^']*')/gi, "");
-  if (!/^<svg[\s>]/i.test(cleaned)) {
-    throw new Error("AI response did not include valid SVG markup.");
-  }
-  return cleaned;
-}

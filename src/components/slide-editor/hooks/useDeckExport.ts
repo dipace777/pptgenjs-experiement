@@ -3,6 +3,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { SLIDE_H, SLIDE_W } from "../../../lib/slide-schema";
 import { filenameFromTitle } from "../editorUtils";
+import { waitForDeckExportAssets } from "../slide-surface/konva/exportAssets";
 import {
   deckAtom,
   exportModeAtom,
@@ -63,12 +64,13 @@ export function useDeckExport() {
     setIsExporting(true);
     setExportingType("pptx");
     try {
-      await waitForPaint();
       if (mode === "native") {
         await handleNativeExport();
       } else if (mode === "keynote") {
         await handleKeynoteExport();
       } else {
+        await waitForDeckExportAssets(deck);
+        await waitForPaint();
         await handleRasterExport();
       }
     } finally {
@@ -81,6 +83,7 @@ export function useDeckExport() {
     setIsExporting(true);
     setExportingType("pdf");
     try {
+      await waitForDeckExportAssets(deck);
       await waitForPaint();
       const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({

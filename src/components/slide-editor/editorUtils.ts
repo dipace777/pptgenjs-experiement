@@ -1,4 +1,5 @@
 import { SLIDE_H } from "../../lib/slide-schema";
+import { getElementLabel } from "./registry";
 
 export const PX_PER_IN = 96;
 export const PT_TO_PX = 96 / 72;
@@ -32,5 +33,5 @@ export function truncateWords(text: string, maxWords: number) {
 }
 
 export function kindLabel(kind: string) {
-  return kind.charAt(0).toUpperCase() + kind.slice(1);
+  return getElementLabel(kind);
 }

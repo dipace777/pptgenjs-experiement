@@ -13,9 +13,19 @@ export const SLIDE_H = 5.625;
 export const HexColorSchema = z
   .string()
   .regex(/^#?[0-9A-Fa-f]{6}$/, "Use 6-digit hex colors, with or without #.");
+export const ThemeRoleSchema = z.enum([
+  "background",
+  "surface",
+  "primary",
+  "secondary",
+  "accent",
+  "text",
+  "muted",
+]);
 
 export const LineSchema = z.object({
   color: HexColorSchema,
+  colorRole: ThemeRoleSchema.nullish(),
   width: z.number().min(0).max(8),
 });
 
@@ -40,6 +50,7 @@ export const TextElementSchema = z.object({
   bold: z.boolean().nullish(),
   italic: z.boolean().nullish(),
   color: HexColorSchema,
+  colorRole: ThemeRoleSchema.nullish(),
   align: z.enum(["left", "center", "right"]).nullish(),
   valign: z.enum(["top", "middle", "bottom"]).nullish(),
   // Hundredths of a point (pptxgenjs/OOXML convention).
@@ -52,6 +63,7 @@ export const RectElementSchema = z.object({
   ...baseElement,
   kind: z.literal("rect"),
   fill: HexColorSchema,
+  fillRole: ThemeRoleSchema.nullish(),
   line: LineSchema.nullish(),
   // Corner radius in inches; 0 / undefined = square corners.
   rx: z.number().min(0).max(0.5).nullish(),
@@ -61,6 +73,7 @@ export const EllipseElementSchema = z.object({
   ...baseElement,
   kind: z.literal("ellipse"),
   fill: HexColorSchema,
+  fillRole: ThemeRoleSchema.nullish(),
   line: LineSchema.nullish(),
 });
 
@@ -71,7 +84,9 @@ export const BulletsElementSchema = z.object({
   fontFace: z.string().min(1).max(80).nullish(),
   fontSize: z.number().min(8).max(36),
   color: HexColorSchema,
+  colorRole: ThemeRoleSchema.nullish(),
   bulletColor: HexColorSchema.nullish(),
+  bulletColorRole: ThemeRoleSchema.nullish(),
   lineSpacingMultiple: z.number().min(0.9).max(2).nullish(),
   itemGap: z.number().min(0).max(0.4).nullish(),
 });
@@ -80,6 +95,7 @@ export const ChartDatumSchema = z.object({
   label: z.string().min(1).max(40),
   value: z.number().min(0).max(1_000_000),
   color: HexColorSchema.nullish(),
+  colorRole: ThemeRoleSchema.nullish(),
 });
 
 export const ChartElementSchema = z.object({
@@ -89,8 +105,11 @@ export const ChartElementSchema = z.object({
   title: z.string().min(1).max(80).nullish(),
   data: z.array(ChartDatumSchema).min(1).max(8),
   color: HexColorSchema,
+  colorRole: ThemeRoleSchema.nullish(),
   axisColor: HexColorSchema.nullish(),
+  axisColorRole: ThemeRoleSchema.nullish(),
   labelColor: HexColorSchema.nullish(),
+  labelColorRole: ThemeRoleSchema.nullish(),
   showValues: z.boolean().nullish(),
 });
 
@@ -101,10 +120,15 @@ export const TableElementSchema = z.object({
   fontFace: z.string().min(1).max(80).nullish(),
   fontSize: z.number().min(6).max(28),
   textColor: HexColorSchema,
+  textColorRole: ThemeRoleSchema.nullish(),
   headerFill: HexColorSchema,
+  headerFillRole: ThemeRoleSchema.nullish(),
   headerTextColor: HexColorSchema,
+  headerTextColorRole: ThemeRoleSchema.nullish(),
   borderColor: HexColorSchema,
+  borderColorRole: ThemeRoleSchema.nullish(),
   fill: HexColorSchema.nullish(),
+  fillRole: ThemeRoleSchema.nullish(),
 });
 
 export const ImageElementSchema = z.object({
@@ -135,6 +159,7 @@ export const SlideElementSchema = z.discriminatedUnion("kind", [
 
 export const SlideSchema = z.object({
   background: HexColorSchema,
+  backgroundRole: ThemeRoleSchema.nullish(),
   elements: z.array(SlideElementSchema).min(1).max(60),
   /** Optional short label shown in the thumbnail rail. */
   title: z.string().min(1).max(60).nullish(),
@@ -142,10 +167,12 @@ export const SlideSchema = z.object({
 
 export const DeckThemeSchema = z.object({
   background: HexColorSchema,
+  surface: HexColorSchema.nullish(),
   primary: HexColorSchema,
   secondary: HexColorSchema,
   accent: HexColorSchema,
   text: HexColorSchema,
+  muted: HexColorSchema.nullish(),
 });
 
 export const DeckSchema = z.object({
@@ -167,6 +194,7 @@ export type TableElement = z.infer<typeof TableElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type SvgElement = z.infer<typeof SvgElementSchema>;
 export type DeckTheme = z.infer<typeof DeckThemeSchema>;
+export type ThemeRole = z.infer<typeof ThemeRoleSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type Deck = z.infer<typeof DeckSchema>;

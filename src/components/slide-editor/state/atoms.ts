@@ -82,7 +82,7 @@ export const selectedTableElementAtom = atom<TableSlideElement | null>((get) => 
   return element?.kind === "table" ? element : null;
 });
 
-export const drawerElementAtom = atom<ChartSlideElement | null>((get) => {
+export const selectedChartElementAtom = atom<ChartSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
   return element?.kind === "chart" ? element : null;
 });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Group, Image as KonvaImage, Rect } from "react-konva";
 import type { SvgElement as SvgEl } from "../../../../lib/slide-schema";
+import { loadKonvaImage, svgToDataUri } from "./exportAssets";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function SvgElement({
@@ -13,16 +14,22 @@ export function SvgElement({
 }: ElementCommonProps & { element: SvgEl }) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
   const src = useMemo(() => svgToDataUri(element.svg), [element.svg]);
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [loaded, setLoaded] = useState<{
+    image: HTMLImageElement | null;
+    src: string;
+  } | null>(null);
 
   useEffect(() => {
-    const next = new window.Image();
-    next.onload = () => setImage(next);
-    next.src = src;
+    let cancelled = false;
+    void loadKonvaImage(src).then((next) => {
+      if (!cancelled) setLoaded({ image: next, src });
+    });
     return () => {
-      next.onload = null;
+      cancelled = true;
     };
   }, [src]);
+
+  const image = loaded && loaded.src === src ? loaded.image : null;
 
   return (
     <Group
@@ -49,8 +56,4 @@ export function SvgElement({
       />
     </Group>
   );
-}
-
-function svgToDataUri(svg: string): string {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

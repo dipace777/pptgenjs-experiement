@@ -1,5 +1,10 @@
 import { atom } from "jotai";
 import {
+  applyDeckTheme,
+  resolveDeckTheme,
+  type DeckTheme,
+} from "../../../lib/deck-theme";
+import {
   SLIDE_H,
   SLIDE_W,
   type Slide,
@@ -64,6 +69,26 @@ export const selectElementsAtom = atom(null, (get, set, indexes: number[]) => {
 });
 
 // --- Deck mutation actions ---------------------------------------------
+
+export const updateDeckTitleAtom = atom(null, (_get, set, title: string) => {
+  set(pushHistoryAtom, { tag: "updateDeckTitle" });
+  set(deckAtom, (draft) => {
+    draft.title = title;
+  });
+});
+
+export const updateDeckThemeColorAtom = atom(
+  null,
+  (_get, set, payload: { key: keyof DeckTheme; value: string }) => {
+    set(pushHistoryAtom, { tag: `updateDeckTheme:${payload.key}` });
+    set(deckAtom, (draft) => {
+      applyDeckTheme(draft, {
+        ...resolveDeckTheme(draft),
+        [payload.key]: payload.value,
+      });
+    });
+  },
+);
 
 // Draft-mutator signature: callers receive the active slide's draft and
 // mutate it in place.
