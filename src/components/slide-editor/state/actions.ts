@@ -90,6 +90,16 @@ export const updateDeckThemeColorAtom = atom(
   },
 );
 
+export const applyDeckThemePresetAtom = atom(
+  null,
+  (_get, set, payload: { id: string; theme: DeckTheme }) => {
+    set(pushHistoryAtom, { tag: `applyDeckThemePreset:${payload.id}` });
+    set(deckAtom, (draft) => {
+      applyDeckTheme(draft, { ...payload.theme });
+    });
+  },
+);
+
 // Draft-mutator signature: callers receive the active slide's draft and
 // mutate it in place.
 export const updateActiveSlideAtom = atom(

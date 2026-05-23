@@ -12,6 +12,7 @@ import {
   generateFallbackDeck,
   type DeckGenerationInput,
 } from "../lib/deck-generator";
+import { DECK_THEME_PRESETS, type DeckTheme } from "../lib/deck-theme";
 import type { Deck } from "../lib/slide-schema";
 
 const defaultInput: DeckGenerationInput = {
@@ -94,6 +95,21 @@ function GeneratePage() {
     }));
   };
 
+  const applyPresetToInput = (theme: DeckTheme) => {
+    setInput((current) => ({
+      ...current,
+      theme: {
+        background: hashed(theme.background),
+        surface: hashed(theme.surface ?? "FFFFFF"),
+        primary: hashed(theme.primary),
+        secondary: hashed(theme.secondary),
+        accent: hashed(theme.accent),
+        text: hashed(theme.text),
+        muted: hashed(theme.muted ?? "6A7894"),
+      },
+    }));
+  };
+
   const saveAndPreview = (deck: Deck) => {
     window.sessionStorage.setItem("ppty:generatedDeck", JSON.stringify(deck));
     window.location.href = "/preview";
@@ -170,6 +186,34 @@ function GeneratePage() {
           />
         </label>
 
+        <div style={fieldStyle}>
+          <span>Theme preset</span>
+          <div style={presetRowStyle}>
+            {DECK_THEME_PRESETS.map((preset) => {
+              const isActive = isThemePresetActive(preset.theme, input.theme);
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  title={preset.label}
+                  aria-pressed={isActive}
+                  onClick={() => applyPresetToInput(preset.theme)}
+                  style={{
+                    ...presetButtonStyle,
+                    borderColor: isActive ? "#d4a24c" : "#2b3448",
+                    boxShadow: isActive
+                      ? "0 0 0 1px #d4a24c inset"
+                      : "none",
+                  }}
+                >
+                  <PresetSwatch theme={preset.theme} />
+                  <span style={presetLabelStyle}>{preset.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div style={colorGridStyle}>
           <ColorInput
             label="Background"
@@ -245,6 +289,51 @@ function ColorInput({
   );
 }
 
+function PresetSwatch({ theme }: { theme: DeckTheme }) {
+  const stops: Array<keyof DeckTheme> = [
+    "background",
+    "surface",
+    "primary",
+    "secondary",
+    "accent",
+    "text",
+  ];
+  return (
+    <div style={swatchRowStyle}>
+      {stops.map((key) => (
+        <span
+          key={key}
+          style={{ ...swatchStopStyle, background: hashed(theme[key] ?? "FFFFFF") }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function hashed(value: string): string {
+  return value.startsWith("#") ? value : `#${value}`;
+}
+
+function isThemePresetActive(
+  preset: DeckTheme,
+  input: DeckGenerationInput["theme"],
+): boolean {
+  const keys: Array<keyof DeckTheme> = [
+    "background",
+    "surface",
+    "primary",
+    "secondary",
+    "accent",
+    "text",
+    "muted",
+  ];
+  return keys.every((key) => {
+    const presetValue = (preset[key] ?? "").replace(/^#/, "").toUpperCase();
+    const inputValue = (input[key] ?? "").replace(/^#/, "").toUpperCase();
+    return presetValue === inputValue;
+  });
+}
+
 const fontFamily =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
@@ -307,6 +396,44 @@ const colorGridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
   gap: 12,
+} as const;
+
+const presetRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+  gap: 8,
+} as const;
+
+const presetButtonStyle = {
+  display: "grid",
+  gap: 6,
+  padding: "8px 9px",
+  borderRadius: 7,
+  border: "1px solid #2b3448",
+  background: "#0a0d14",
+  color: "#d8dfed",
+  cursor: "pointer",
+  textAlign: "left",
+  font: "inherit",
+} as const;
+
+const presetLabelStyle = {
+  fontSize: 11,
+  fontWeight: 700,
+} as const;
+
+const swatchRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(6, 1fr)",
+  gap: 3,
+  height: 16,
+  borderRadius: 4,
+  overflow: "hidden",
+} as const;
+
+const swatchStopStyle = {
+  width: "100%",
+  height: "100%",
 } as const;
 
 const primaryButtonStyle = {

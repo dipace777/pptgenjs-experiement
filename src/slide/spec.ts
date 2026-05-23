@@ -504,9 +504,9 @@ function statCard(
     {
       kind: "text",
       x: x + 0.35,
-      y: y + h - 0.4,
+      y: y + h - 0.32,
       w: w - 0.5,
-      h: 0.28,
+      h: 0.22,
       text: label,
       fontSize: 11,
       bold: true,
@@ -558,9 +558,9 @@ const slide4Stats: Slide = {
       fontFace: SANS,
     },
 
-    ...statCard(0.6, 2.0, 2.72, 1.12, "85%", "ADOPTION"),
-    ...statCard(3.64, 2.0, 2.72, 1.12, "38%", "GROWTH"),
-    ...statCard(6.68, 2.0, 2.72, 1.12, "$1.8M", "PIPELINE"),
+    ...statCard(0.6, 2.0, 2.72, 1.32, "85%", "ADOPTION"),
+    ...statCard(3.64, 2.0, 2.72, 1.32, "38%", "GROWTH"),
+    ...statCard(6.68, 2.0, 2.72, 1.32, "$1.8M", "PIPELINE"),
     {
       kind: "chart",
       chartType: "line",

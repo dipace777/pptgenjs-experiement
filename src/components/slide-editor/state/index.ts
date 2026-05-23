@@ -39,6 +39,7 @@ export {
   setSelectionAtom,
   updateDeckTitleAtom,
   updateDeckThemeColorAtom,
+  applyDeckThemePresetAtom,
   updateActiveSlideAtom,
   updateElementAtom,
   updateElementsAtom,

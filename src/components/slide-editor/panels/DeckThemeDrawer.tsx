@@ -1,8 +1,16 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { resolveDeckTheme, type DeckTheme } from "../../../lib/deck-theme";
+import {
+  DECK_THEME_PRESETS,
+  resolveDeckTheme,
+  type DeckTheme,
+} from "../../../lib/deck-theme";
 import { styles } from "../editorStyles";
 import { withHash, withoutHash } from "../editorUtils";
-import { deckAtom, updateDeckThemeColorAtom } from "../state";
+import {
+  applyDeckThemePresetAtom,
+  deckAtom,
+  updateDeckThemeColorAtom,
+} from "../state";
 import { drawerStyles } from "./drawerStyles";
 
 type DeckThemeDrawerProps = {
@@ -23,6 +31,10 @@ export function DeckThemeDrawer({ onClose }: DeckThemeDrawerProps) {
   const deck = useAtomValue(deckAtom);
   const deckTheme = resolveDeckTheme(deck);
   const updateDeckThemeColor = useSetAtom(updateDeckThemeColorAtom);
+  const applyDeckThemePreset = useSetAtom(applyDeckThemePresetAtom);
+  const activePresetId = DECK_THEME_PRESETS.find((preset) =>
+    sameTheme(preset.theme, deckTheme),
+  )?.id;
 
   return (
     <div
@@ -55,6 +67,35 @@ export function DeckThemeDrawer({ onClose }: DeckThemeDrawerProps) {
         </div>
 
         <div style={drawerStyles.themePanel}>
+          <div style={styles.field}>
+            <span>Presets</span>
+            <div style={presetRowStyle}>
+              {DECK_THEME_PRESETS.map((preset) => {
+                const isActive = preset.id === activePresetId;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    title={preset.label}
+                    aria-pressed={isActive}
+                    onClick={() =>
+                      applyDeckThemePreset({ id: preset.id, theme: preset.theme })
+                    }
+                    style={{
+                      ...presetButtonStyle,
+                      borderColor: isActive ? "#d4a24c" : "#2b3448",
+                      boxShadow: isActive
+                        ? "0 0 0 1px #d4a24c inset"
+                        : "none",
+                    }}
+                  >
+                    <ThemeSwatch theme={preset.theme} />
+                    <span style={presetLabelStyle}>{preset.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div style={drawerStyles.themeGrid}>
             {THEME_FIELDS.map(([key, label]) => (
               <label key={key} style={styles.field}>
@@ -78,3 +119,79 @@ export function DeckThemeDrawer({ onClose }: DeckThemeDrawerProps) {
     </div>
   );
 }
+
+function ThemeSwatch({ theme }: { theme: DeckTheme }) {
+  const stops: Array<keyof DeckTheme> = [
+    "background",
+    "surface",
+    "primary",
+    "secondary",
+    "accent",
+    "text",
+  ];
+  return (
+    <div style={swatchRowStyle}>
+      {stops.map((key) => (
+        <span
+          key={key}
+          style={{
+            ...swatchStopStyle,
+            background: withHash(theme[key] ?? "FFFFFF"),
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function sameTheme(a: DeckTheme, b: DeckTheme): boolean {
+  const keys: Array<keyof DeckTheme> = [
+    "background",
+    "surface",
+    "primary",
+    "secondary",
+    "accent",
+    "text",
+    "muted",
+  ];
+  return keys.every(
+    (key) => a[key].toUpperCase() === b[key].toUpperCase(),
+  );
+}
+
+const presetRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+  gap: 8,
+} as const;
+
+const presetButtonStyle = {
+  display: "grid",
+  gap: 6,
+  padding: "8px 9px",
+  borderRadius: 7,
+  border: "1px solid #2b3448",
+  background: "#0a0d14",
+  color: "#d8dfed",
+  cursor: "pointer",
+  textAlign: "left",
+} as const;
+
+const presetLabelStyle = {
+  fontSize: 11,
+  fontWeight: 700,
+} as const;
+
+const swatchRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(6, 1fr)",
+  gap: 3,
+  height: 16,
+  borderRadius: 4,
+  overflow: "hidden",
+} as const;
+
+const swatchStopStyle = {
+  width: "100%",
+  height: "100%",
+} as const;
