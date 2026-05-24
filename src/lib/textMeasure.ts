@@ -69,6 +69,54 @@ export function textElementOverflows(el: TextElement): boolean {
 }
 
 /**
+ * Returns a fontSize that makes `text` fit inside a `widthInches × heightInches`
+ * box, by binary-searching downward from the requested `fontSizePt`. Returns
+ * the original size if it already fits, or if Pretext is unavailable.
+ *
+ * Used during PPTX import so labels authored to fit in PowerPoint (which
+ * uses its own font metrics) don't overflow in our preview (which uses the
+ * browser's). Mirrors PowerPoint's shrink-on-overflow behavior even when
+ * the source didn't declare `<a:normAutofit/>` explicitly.
+ *
+ * Floor: 6pt (the schema minimum). Never grows the font.
+ */
+export function fitFontToBox(
+  text: string,
+  fontFace: string | null | undefined,
+  fontSizePt: number,
+  widthInches: number,
+  heightInches: number,
+  lineHeightMultiplier: number | null | undefined,
+  charSpacingHundredthsPt: number | null | undefined,
+): number {
+  if (typeof window === "undefined") return fontSizePt;
+  const measure = (size: number) =>
+    measureTextHeightInches(
+      text,
+      fontFace,
+      size,
+      widthInches,
+      lineHeightMultiplier,
+      charSpacingHundredthsPt,
+    );
+  const startH = measure(fontSizePt);
+  if (startH == null || startH <= heightInches) return fontSizePt;
+
+  // Binary search between 6pt and the requested size. ~6 iterations get us
+  // within 0.5pt of the largest size that fits.
+  let lo = 6;
+  let hi = fontSizePt;
+  for (let i = 0; i < 8 && hi - lo > 0.5; i += 1) {
+    const mid = (lo + hi) / 2;
+    const h = measure(mid);
+    if (h == null) return mid;
+    if (h <= heightInches) lo = mid;
+    else hi = mid;
+  }
+  return Math.max(6, lo);
+}
+
+/**
  * Returns the text broken into the lines Pretext would render given the
  * element's width/font/spacing. Used to pre-wrap text for PPTX export so the
  * exported deck doesn't depend on PowerPoint's wrap engine — which has
