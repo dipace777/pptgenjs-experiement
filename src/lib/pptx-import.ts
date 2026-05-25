@@ -320,11 +320,38 @@ async function spToElement(
 
   // Geometry shape.
   const fill = extractFill(spPr) ?? "DDE5F0";
-  if (geomKind === "ellipse" || geomKind === "oval") {
+  if (isEllipseGeom(geomKind, box)) {
     return { kind: "ellipse", ...box, fill };
   }
   // Default to rect (covers rect, roundRect, and other rectilinear primitives).
   return { kind: "rect", ...box, fill };
+}
+
+// OOXML preset names PowerPoint and friends use for round shapes. The
+// canonical name is "ellipse"; Apple and some Office variants emit
+// "oval", and a few exporters use "circle". `wedgeEllipseCallout` is
+// included so call-out badges land as ellipses too.
+const ELLIPSE_GEOM_PRESETS = new Set([
+  "ellipse",
+  "oval",
+  "circle",
+  "wedgeEllipseCallout",
+]);
+
+function isEllipseGeom(
+  geomKind: unknown,
+  box: { w: number; h: number },
+): boolean {
+  if (typeof geomKind !== "string") return false;
+  if (ELLIPSE_GEOM_PRESETS.has(geomKind)) return true;
+  // `roundRect` with a near-square aspect is almost always a designer
+  // drawing a circular badge — promote to ellipse so it doesn't render
+  // as a chunky rounded rectangle.
+  if (geomKind === "roundRect") {
+    const aspect = box.w / box.h;
+    if (aspect > 0.92 && aspect < 1.08) return true;
+  }
+  return false;
 }
 
 // ── Picture → image ────────────────────────────────────────────────────
