@@ -3,6 +3,7 @@ import { sanitizeSvgMarkup } from "../../../lib/svg-sanitize";
 import { styles } from "../editorStyles";
 import { GeometryInspector } from "./GeometryInspector";
 import {
+  CheckboxField,
   ColorField,
   NumberField,
   SelectField,
@@ -91,22 +92,16 @@ export function TextInspector({
             onChange={(charSpacing) => onPatch({ charSpacing })}
           />
         </div>
-        <label style={styles.checkLabel}>
-          <input
-            type="checkbox"
-            checked={element.bold ?? false}
-            onChange={(event) => onPatch({ bold: event.target.checked })}
-          />
-          Bold
-        </label>
-        <label style={styles.checkLabel}>
-          <input
-            type="checkbox"
-            checked={element.italic ?? false}
-            onChange={(event) => onPatch({ italic: event.target.checked })}
-          />
-          Italic
-        </label>
+        <CheckboxField
+          label="Bold"
+          checked={element.bold ?? false}
+          onChange={(bold) => onPatch({ bold })}
+        />
+        <CheckboxField
+          label="Italic"
+          checked={element.italic ?? false}
+          onChange={(italic) => onPatch({ italic })}
+        />
       </form>
     </>
   );

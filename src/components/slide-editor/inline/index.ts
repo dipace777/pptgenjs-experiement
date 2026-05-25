@@ -1,7 +1,11 @@
 export { BulletsInlineEditor } from "./BulletsInlineEditor";
 export { BulletsToolbar } from "./BulletsToolbar";
+export { ChartInlineEditor, chartDraftFromElement } from "./ChartInlineEditor";
+export { ChartToolbar } from "./ChartToolbar";
 export { ImageToolbar } from "./ImageToolbar";
 export { ShapeToolbar } from "./ShapeToolbar";
+export { SvgInlineEditor, svgDraftFromElement } from "./SvgInlineEditor";
+export { SvgToolbar } from "./SvgToolbar";
 export { TableInlineEditor } from "./TableInlineEditor";
 export { TableToolbar } from "./TableToolbar";
 export { TextInlineEditor } from "./TextInlineEditor";

@@ -1,6 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   BulletsInlineEditor,
+  ChartInlineEditor,
+  SvgInlineEditor,
   TableInlineEditor,
   TextInlineEditor,
 } from "../inline";
@@ -8,6 +10,12 @@ import {
   editingBulletsDraftAtom,
   editingBulletsElementAtom,
   editingBulletsIndexAtom,
+  editingChartDraftAtom,
+  editingChartElementAtom,
+  editingChartIndexAtom,
+  editingSvgDraftAtom,
+  editingSvgElementAtom,
+  editingSvgIndexAtom,
   editingTableDraftAtom,
   editingTableElementAtom,
   editingTableIndexAtom,
@@ -24,6 +32,8 @@ export function WorkspaceInlineEditors({ scale }: WorkspaceInlineEditorsProps) {
   const editingTextElement = useAtomValue(editingTextElementAtom);
   const editingBulletsElement = useAtomValue(editingBulletsElementAtom);
   const editingTableElement = useAtomValue(editingTableElementAtom);
+  const editingChartElement = useAtomValue(editingChartElementAtom);
+  const editingSvgElement = useAtomValue(editingSvgElementAtom);
   const [editingTextIndex, setEditingTextIndex] = useAtom(editingTextIndexAtom);
   const [editingBulletsIndex, setEditingBulletsIndex] = useAtom(
     editingBulletsIndexAtom,
@@ -37,6 +47,14 @@ export function WorkspaceInlineEditors({ scale }: WorkspaceInlineEditorsProps) {
   const [editingTableDraft, setEditingTableDraft] = useAtom(
     editingTableDraftAtom,
   );
+  const [editingChartIndex, setEditingChartIndex] = useAtom(
+    editingChartIndexAtom,
+  );
+  const [editingChartDraft, setEditingChartDraft] = useAtom(
+    editingChartDraftAtom,
+  );
+  const [editingSvgIndex, setEditingSvgIndex] = useAtom(editingSvgIndexAtom);
+  const [editingSvgDraft, setEditingSvgDraft] = useAtom(editingSvgDraftAtom);
   const updateElement = useSetAtom(updateElementAtom);
 
   return (
@@ -75,6 +93,34 @@ export function WorkspaceInlineEditors({ scale }: WorkspaceInlineEditorsProps) {
           onClose={() => {
             setEditingTableIndex(null);
             setEditingTableDraft("");
+          }}
+        />
+      ) : null}
+      {editingChartElement && editingChartIndex != null ? (
+        <ChartInlineEditor
+          element={editingChartElement}
+          index={editingChartIndex}
+          scale={scale}
+          draft={editingChartDraft}
+          onDraftChange={setEditingChartDraft}
+          onChange={(index, element) => updateElement({ index, element })}
+          onClose={() => {
+            setEditingChartIndex(null);
+            setEditingChartDraft("");
+          }}
+        />
+      ) : null}
+      {editingSvgElement && editingSvgIndex != null ? (
+        <SvgInlineEditor
+          element={editingSvgElement}
+          index={editingSvgIndex}
+          scale={scale}
+          draft={editingSvgDraft}
+          onDraftChange={setEditingSvgDraft}
+          onChange={(index, element) => updateElement({ index, element })}
+          onClose={() => {
+            setEditingSvgIndex(null);
+            setEditingSvgDraft("");
           }}
         />
       ) : null}

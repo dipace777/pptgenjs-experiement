@@ -1,4 +1,5 @@
 import type { Deck } from "../lib/slide-schema";
+import { coffeeMarketingDeck } from "./coffee-marketing";
 import { layoutKitDeck } from "./layout-kit";
 import { pitchDeck } from "./pitch-deck";
 
@@ -13,8 +14,14 @@ export const TEMPLATES: ReadonlyArray<TemplateDescriptor> = [
   {
     id: "layout-kit",
     label: "Layout Kit",
-    description: "Nineteen common slide patterns built from editable elements.",
+    description: "Twenty common slide patterns built from editable elements.",
     deck: layoutKitDeck,
+  },
+  {
+    id: "coffee-marketing",
+    label: "Coffee Marketing",
+    description: "A premium coffee launch campaign with high-impact editable visuals.",
+    deck: coffeeMarketingDeck,
   },
   {
     id: "pitch-deck",
@@ -24,4 +31,4 @@ export const TEMPLATES: ReadonlyArray<TemplateDescriptor> = [
   },
 ];
 
-export { layoutKitDeck, pitchDeck };
+export { coffeeMarketingDeck, layoutKitDeck, pitchDeck };

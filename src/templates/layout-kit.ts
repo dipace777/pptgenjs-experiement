@@ -109,6 +109,22 @@ const STORY_SVG = `<svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg"
   </g>
 </svg>`;
 
+const EDITOR_TOOLS_SVG = `<svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="420" height="300" rx="24" fill="#0B1F3A"/>
+  <g fill="none" stroke="#75AADB" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M78 210 L155 88 L235 210"/>
+    <path d="M185 150 H318"/>
+    <path d="M278 110 L318 150 L278 190"/>
+  </g>
+  <g fill="#D4A24C">
+    <circle cx="78" cy="210" r="15"/>
+    <circle cx="155" cy="88" r="15"/>
+    <circle cx="235" cy="210" r="15"/>
+    <circle cx="318" cy="150" r="17"/>
+  </g>
+  <text x="56" y="265" fill="#FFFFFF" font-family="Arial" font-size="24" font-weight="700">SVG EDIT TARGET</text>
+</svg>`;
+
 // ── Shared chrome ───────────────────────────────────────────────────────
 function footer(num: number, total: number, onDark: boolean): SlideElement[] {
   const c = onDark ? MUTED_DK : MUTED;
@@ -141,7 +157,7 @@ function footer(num: number, total: number, onDark: boolean): SlideElement[] {
 }
 
 // ── Slide 1: Title ──────────────────────────────────────────────────────
-const TOTAL = 19;
+const TOTAL = 20;
 
 const slide1Title: Slide = {
   title: "Title",
@@ -1671,8 +1687,144 @@ const slide18Storyboard: Slide = {
   ],
 };
 
-// ── Slide 19: Closing quote ─────────────────────────────────────────────
-const slide19Closing: Slide = {
+// ── Slide 19: Editor feature lab ────────────────────────────────────────
+const slide19EditorFeatureLab: Slide = {
+  title: "Editor Feature Lab",
+  background: OFF_WHITE,
+  elements: [
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.5,
+      w: 5.2,
+      h: 0.3,
+      text: "EDITOR FEATURE LAB",
+      fontSize: 10,
+      bold: true,
+      color: BLUE_DK,
+      charSpacing: 300,
+      fontFace: SANS,
+    },
+    {
+      kind: "text",
+      x: 0.6,
+      y: 0.85,
+      w: 6.2,
+      h: 0.58,
+      text: "One slide for testing new object workflows.",
+      fontSize: 24,
+      bold: true,
+      color: INK,
+      fontFace: SANS,
+    },
+    {
+      kind: "bullets",
+      x: 0.72,
+      y: 1.62,
+      w: 2.6,
+      h: 1.18,
+      items: ["Toolbar routing", "Inline editing", "Drawer inspection"],
+      fontFace: SANS,
+      fontSize: 15,
+      color: INK,
+      bulletColor: GOLD,
+      lineSpacingMultiple: 1.18,
+      itemGap: 0.05,
+    },
+    {
+      kind: "image",
+      x: 0.72,
+      y: 3.05,
+      w: 2.6,
+      h: 1.38,
+      fit: "cover",
+      name: "Upload target",
+    },
+    {
+      kind: "rect",
+      x: 3.62,
+      y: 1.56,
+      w: 1.05,
+      h: 0.64,
+      fill: GOLD,
+      rx: 0.08,
+      line: { color: NAVY, width: 0.75 },
+    },
+    {
+      kind: "ellipse",
+      x: 4.88,
+      y: 1.56,
+      w: 0.86,
+      h: 0.64,
+      fill: BLUE,
+      line: { color: BLUE_DK, width: 0.75 },
+    },
+    {
+      kind: "text",
+      x: 3.62,
+      y: 2.38,
+      w: 2.2,
+      h: 0.8,
+      text: "Shape toolbar\nand geometry",
+      fontSize: 17,
+      bold: true,
+      color: INK,
+      lineHeight: 1.15,
+      fontFace: SANS,
+    },
+    {
+      kind: "svg",
+      x: 6.2,
+      y: 0.9,
+      w: 2.95,
+      h: 1.88,
+      svg: EDITOR_TOOLS_SVG,
+      name: "SVG toolbar target",
+    },
+    {
+      kind: "chart",
+      chartType: "donut",
+      x: 3.62,
+      y: 3.1,
+      w: 2.35,
+      h: 1.38,
+      title: "Chart target",
+      color: BLUE_DK,
+      axisColor: MUTED_DK,
+      labelColor: MUTED,
+      showValues: true,
+      data: [
+        { label: "Edit", value: 46, color: BLUE_DK },
+        { label: "Inspect", value: 32, color: GOLD },
+        { label: "Export", value: 22, color: NAVY },
+      ],
+    },
+    {
+      kind: "table",
+      x: 6.2,
+      y: 3.05,
+      w: 3.0,
+      h: 1.42,
+      rows: [
+        ["Feature", "Target"],
+        ["Chart", "Toolbar"],
+        ["SVG", "Toolbar"],
+        ["Table", "Inline"],
+      ],
+      fontFace: SANS,
+      fontSize: 9,
+      textColor: INK,
+      headerFill: NAVY,
+      headerTextColor: "FFFFFF",
+      borderColor: "DDE5F0",
+      fill: PAPER,
+    },
+    ...footer(19, TOTAL, false),
+  ],
+};
+
+// ── Slide 20: Closing quote ─────────────────────────────────────────────
+const slide20Closing: Slide = {
   title: "Closing",
   background: OFF_WHITE,
   elements: [
@@ -1747,7 +1899,7 @@ const slide19Closing: Slide = {
       fontFace: SANS,
     },
 
-    ...footer(19, TOTAL, false),
+    ...footer(20, TOTAL, false),
   ],
 };
 
@@ -1779,6 +1931,7 @@ export const layoutKitDeck: Deck = {
     slide16KineticFlow,
     slide17CommandCenter,
     slide18Storyboard,
-    slide19Closing,
+    slide19EditorFeatureLab,
+    slide20Closing,
   ],
 };

@@ -17,6 +17,8 @@ type Bounds = { x: number; y: number; width: number; height: number };
 
 export function ElementLayer({
   editingBulletsIndex,
+  editingChartIndex,
+  editingSvgIndex,
   editingTableIndex,
   editingTextIndex,
   interactive,
@@ -28,7 +30,9 @@ export function ElementLayer({
   onChangeMany,
   onDelete,
   onEditBullets,
+  onEditChart,
   onEditImage,
+  onEditSvg,
   onEditTable,
   onEditText,
   onSelect,
@@ -44,6 +48,8 @@ export function ElementLayer({
   height,
 }: {
   editingBulletsIndex?: number | null;
+  editingChartIndex?: number | null;
+  editingSvgIndex?: number | null;
   editingTableIndex?: number | null;
   editingTextIndex?: number | null;
   interactive: boolean;
@@ -55,7 +61,9 @@ export function ElementLayer({
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   onDelete?: () => void;
   onEditBullets?: (index: number) => void;
+  onEditChart?: (index: number) => void;
   onEditImage?: (index: number) => void;
+  onEditSvg?: (index: number) => void;
   onEditTable?: (index: number) => void;
   onEditText?: (index: number) => void;
   onSelect?: (index: number, additive?: boolean) => void;
@@ -102,14 +110,18 @@ export function ElementLayer({
       if (
         el.kind !== "text" &&
         el.kind !== "bullets" &&
+        el.kind !== "chart" &&
         el.kind !== "image" &&
+        el.kind !== "svg" &&
         el.kind !== "table"
       ) return;
       event.cancelBubble = true;
       onSelect?.(index);
       if (el.kind === "text") onEditText?.(index);
       if (el.kind === "bullets") onEditBullets?.(index);
+      if (el.kind === "chart") onEditChart?.(index);
       if (el.kind === "image") onEditImage?.(index);
+      if (el.kind === "svg") onEditSvg?.(index);
       if (el.kind === "table") onEditTable?.(index);
     },
     onTap: () => onSelect?.(index),
@@ -169,6 +181,8 @@ export function ElementLayer({
           editing={
             editingTextIndex === index ||
             editingBulletsIndex === index ||
+            editingChartIndex === index ||
+            editingSvgIndex === index ||
             editingTableIndex === index
           }
           onTableCellClick={

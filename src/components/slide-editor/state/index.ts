@@ -12,6 +12,10 @@ export {
   editingBulletsDraftAtom,
   editingTableIndexAtom,
   editingTableDraftAtom,
+  editingChartIndexAtom,
+  editingChartDraftAtom,
+  editingSvgIndexAtom,
+  editingSvgDraftAtom,
   selectedTableCellAtom,
   activeSlideAtom,
   selectedIndexAtom,
@@ -25,6 +29,8 @@ export {
   editingTextElementAtom,
   editingBulletsElementAtom,
   editingTableElementAtom,
+  editingChartElementAtom,
+  editingSvgElementAtom,
   activeSlideOverflowIndicesAtom,
   selectedElementOverflowsAtom,
   type ExportMode,
@@ -33,6 +39,8 @@ export {
   type ImageSlideElement,
   type ShapeSlideElement,
   type TableSlideElement,
+  type ChartSlideElement,
+  type SvgSlideElement,
   type TableCellSelection,
 } from "./atoms";
 export {

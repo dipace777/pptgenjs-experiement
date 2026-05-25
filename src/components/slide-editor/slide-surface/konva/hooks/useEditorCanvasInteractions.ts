@@ -5,6 +5,10 @@ import {
   deleteSelectedAtom,
   editingBulletsDraftAtom,
   editingBulletsIndexAtom,
+  editingChartDraftAtom,
+  editingChartIndexAtom,
+  editingSvgDraftAtom,
+  editingSvgIndexAtom,
   editingTableDraftAtom,
   editingTableIndexAtom,
   editingTextIndexAtom,
@@ -16,6 +20,7 @@ import {
   updateElementAtom,
   updateElementsAtom,
 } from "../../../state";
+import { chartDraftFromElement, svgDraftFromElement } from "../../../inline";
 
 export function useEditorCanvasInteractions({
   onEditImage,
@@ -29,6 +34,8 @@ export function useEditorCanvasInteractions({
   const editingTextIndex = useAtomValue(editingTextIndexAtom);
   const editingBulletsIndex = useAtomValue(editingBulletsIndexAtom);
   const editingTableIndex = useAtomValue(editingTableIndexAtom);
+  const editingChartIndex = useAtomValue(editingChartIndexAtom);
+  const editingSvgIndex = useAtomValue(editingSvgIndexAtom);
   const selectElement = useSetAtom(selectElementAtom);
   const selectElements = useSetAtom(selectElementsAtom);
   const setSelectedTableCell = useSetAtom(selectedTableCellAtom);
@@ -38,6 +45,10 @@ export function useEditorCanvasInteractions({
   const setEditingBulletsDraft = useSetAtom(editingBulletsDraftAtom);
   const setEditingTableIndex = useSetAtom(editingTableIndexAtom);
   const setEditingTableDraft = useSetAtom(editingTableDraftAtom);
+  const setEditingChartIndex = useSetAtom(editingChartIndexAtom);
+  const setEditingChartDraft = useSetAtom(editingChartDraftAtom);
+  const setEditingSvgIndex = useSetAtom(editingSvgIndexAtom);
+  const setEditingSvgDraft = useSetAtom(editingSvgDraftAtom);
   const updateElement = useSetAtom(updateElementAtom);
   const updateElements = useSetAtom(updateElementsAtom);
 
@@ -45,9 +56,17 @@ export function useEditorCanvasInteractions({
     (index: number) => {
       setEditingBulletsIndex(null);
       setEditingTableIndex(null);
+      setEditingChartIndex(null);
+      setEditingSvgIndex(null);
       setEditingTextIndex(index);
     },
-    [setEditingBulletsIndex, setEditingTableIndex, setEditingTextIndex],
+    [
+      setEditingBulletsIndex,
+      setEditingChartIndex,
+      setEditingSvgIndex,
+      setEditingTableIndex,
+      setEditingTextIndex,
+    ],
   );
 
   const editBullets = useCallback(
@@ -57,12 +76,16 @@ export function useEditorCanvasInteractions({
         element?.kind === "bullets" ? element.items.join("\n") : "",
       );
       setEditingTableIndex(null);
+      setEditingChartIndex(null);
+      setEditingSvgIndex(null);
       setEditingTextIndex(null);
       setEditingBulletsIndex(index);
     },
     [
       setEditingBulletsDraft,
       setEditingBulletsIndex,
+      setEditingChartIndex,
+      setEditingSvgIndex,
       setEditingTableIndex,
       setEditingTextIndex,
       slide.elements,
@@ -79,11 +102,61 @@ export function useEditorCanvasInteractions({
       );
       setEditingTextIndex(null);
       setEditingBulletsIndex(null);
+      setEditingChartIndex(null);
+      setEditingSvgIndex(null);
       setEditingTableIndex(index);
     },
     [
       setEditingBulletsIndex,
+      setEditingChartIndex,
+      setEditingSvgIndex,
       setEditingTableDraft,
+      setEditingTableIndex,
+      setEditingTextIndex,
+      slide.elements,
+    ],
+  );
+
+  const editChart = useCallback(
+    (index: number) => {
+      const element = slide.elements[index];
+      setEditingChartDraft(
+        element?.kind === "chart" ? chartDraftFromElement(element) : "",
+      );
+      setEditingTextIndex(null);
+      setEditingBulletsIndex(null);
+      setEditingTableIndex(null);
+      setEditingSvgIndex(null);
+      setEditingChartIndex(index);
+    },
+    [
+      setEditingBulletsIndex,
+      setEditingChartDraft,
+      setEditingChartIndex,
+      setEditingSvgIndex,
+      setEditingTableIndex,
+      setEditingTextIndex,
+      slide.elements,
+    ],
+  );
+
+  const editSvg = useCallback(
+    (index: number) => {
+      const element = slide.elements[index];
+      setEditingSvgDraft(
+        element?.kind === "svg" ? svgDraftFromElement(element) : "",
+      );
+      setEditingTextIndex(null);
+      setEditingBulletsIndex(null);
+      setEditingTableIndex(null);
+      setEditingChartIndex(null);
+      setEditingSvgIndex(index);
+    },
+    [
+      setEditingBulletsIndex,
+      setEditingChartIndex,
+      setEditingSvgDraft,
+      setEditingSvgIndex,
       setEditingTableIndex,
       setEditingTextIndex,
       slide.elements,
@@ -92,6 +165,8 @@ export function useEditorCanvasInteractions({
 
   return {
     editingBulletsIndex,
+    editingChartIndex,
+    editingSvgIndex,
     editingTableIndex,
     editingTextIndex,
     onChange: (index: number, element: SlideElement) =>
@@ -99,7 +174,9 @@ export function useEditorCanvasInteractions({
     onChangeMany: updateElements,
     onDelete: deleteSelected,
     onEditBullets: editBullets,
+    onEditChart: editChart,
     onEditImage,
+    onEditSvg: editSvg,
     onEditTable: editTable,
     onEditText: editText,
     onSelect: (index: number, additive?: boolean) =>
