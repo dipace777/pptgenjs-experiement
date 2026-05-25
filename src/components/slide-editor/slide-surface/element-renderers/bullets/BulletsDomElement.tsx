@@ -1,5 +1,6 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import type { Slide } from "../../../../../lib/slide-schema";
+import { fitBulletsFontToBox } from "../../../../../lib/textMeasure";
 import {
   DomElementLayer,
   elementBoxStyle,
@@ -16,6 +17,19 @@ export function BulletsDomElement({
   scale: number;
   slide: Slide;
 }) {
+  // Pre-compute the effective fontSize for every bullets element on this
+  // slide. Same rationale as TextDomElement: the DOM overlay is what the
+  // user sees in the editor, so without shrinking here the preview
+  // overflows while presentation/export views auto-fit.
+  const effectiveFontSizes = useMemo(() => {
+    const sizes = new Map<number, number>();
+    slide.elements.forEach((element, index) => {
+      if (element.kind !== "bullets") return;
+      sizes.set(index, fitBulletsFontToBox(element));
+    });
+    return sizes;
+  }, [slide]);
+
   return (
     <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
@@ -25,6 +39,8 @@ export function BulletsDomElement({
         ) {
           return null;
         }
+        const effective =
+          effectiveFontSizes.get(elementIndex) ?? element.fontSize;
 
         return (
           <ul
@@ -34,6 +50,7 @@ export function BulletsDomElement({
               ...fontStyle(
                 {
                   ...element,
+                  fontSize: effective,
                   lineHeight: element.lineSpacingMultiple ?? 1.3,
                 },
                 scale,

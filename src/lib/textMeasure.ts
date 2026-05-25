@@ -4,7 +4,7 @@ import {
   prepare,
   prepareWithSegments,
 } from "@chenglou/pretext";
-import type { TextElement } from "./slide-schema";
+import type { BulletsElement, TextElement } from "./slide-schema";
 
 // Reference DPI used across the editor (`PX_PER_IN` in editorUtils). Keep
 // in sync — if that changes, this should too.
@@ -124,6 +124,63 @@ export function fitFontToBox(
   for (let i = 0; i < 8 && hi - lo > 0.5; i += 1) {
     const mid = (lo + hi) / 2;
     const h = measure(mid);
+    if (h == null) return mid;
+    if (h <= target) lo = mid;
+    else hi = mid;
+  }
+  return Math.max(6, lo);
+}
+
+/**
+ * Returns the total rendered height (inches) for a bullets element,
+ * summing each item's wrapped height + per-item gap. Pretext only sees
+ * the item text — we shave a bullet-marker gutter off the wrap width so
+ * the math matches the actual `<ul>` render (CSS list marker sits
+ * outside the text width). Returns `null` if Pretext can't run.
+ */
+function measureBulletsHeightInches(
+  el: BulletsElement,
+  fontSizePt: number,
+): number | null {
+  // Roughly 1em reserved for the marker glyph + a touch of breathing
+  // room. Mirrors `paddingLeft: "1.1em"` in BulletsDomElement.
+  const bulletGutterIn = (fontSizePt * 0.9) / 72;
+  const innerWidth = Math.max(0.1, el.w - bulletGutterIn);
+  const gap = el.itemGap ?? 0.05;
+  let total = 0;
+  for (let i = 0; i < el.items.length; i += 1) {
+    const h = measureTextHeightInches({
+      text: el.items[i],
+      fontFace: el.fontFace,
+      fontSize: fontSizePt,
+      lineHeight: el.lineSpacingMultiple,
+      charSpacing: null,
+      w: innerWidth,
+    });
+    if (h == null) return null;
+    total += h;
+    if (i < el.items.length - 1) total += gap;
+  }
+  return total;
+}
+
+/**
+ * Shrink-to-fit for bullets. Same idea as `fitFontToBox` but the height
+ * calculation includes per-item gaps and a bullet-marker gutter on the
+ * wrap width. Returns the authored `fontSize` if it already fits or if
+ * Pretext is unavailable. Never grows.
+ */
+export function fitBulletsFontToBox(el: BulletsElement): number {
+  if (typeof window === "undefined") return el.fontSize;
+  const target = Math.max(0.05, el.h - FIT_SAFETY_GAP_IN);
+  const startH = measureBulletsHeightInches(el, el.fontSize);
+  if (startH == null || startH <= target) return el.fontSize;
+
+  let lo = 6;
+  let hi = el.fontSize;
+  for (let i = 0; i < 8 && hi - lo > 0.5; i += 1) {
+    const mid = (lo + hi) / 2;
+    const h = measureBulletsHeightInches(el, mid);
     if (h == null) return mid;
     if (h <= target) lo = mid;
     else hi = mid;
