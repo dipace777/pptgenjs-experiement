@@ -43,7 +43,7 @@ export function EditorTopbar({
         </div>
         <div style={layoutStyles.meta}>
           {deck.description
-            ? truncateWords(deck.description, 15)
+            ? truncateWords(deck.description, 6)
             : "React + Konva live preview; JSON remains the source of truth."}
         </div>
       </div>
@@ -64,7 +64,7 @@ export function EditorTopbar({
           title="Start presentation (fullscreen)"
         >
           <span aria-hidden="true">▶</span>
-          Presentation Mode
+          Slide Show
         </button>
         <button
           type="button"
