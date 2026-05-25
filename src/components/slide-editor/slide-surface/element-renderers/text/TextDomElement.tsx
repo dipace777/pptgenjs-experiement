@@ -65,15 +65,7 @@ export function TextDomElement({
 }
 
 function computeEffectiveFontSize(element: TextElement): number {
-  return fitFontToBox(
-    element.text,
-    element.fontFace,
-    element.fontSize,
-    element.w,
-    element.h,
-    element.lineHeight,
-    element.charSpacing,
-  );
+  return fitFontToBox(element, element.h);
 }
 
 const textBoxStyle: CSSProperties = {
