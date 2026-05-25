@@ -1,0 +1,292 @@
+import {
+  SLIDE_H,
+  SLIDE_W,
+  type Deck,
+  type DeckTheme,
+  type Slide,
+  type SlideElement,
+} from "../lib/slide-schema";
+
+type SpecPoint = { x: number; y: number };
+type SpecSize = { width: number; height: number };
+type SpecPaint = { color: string; opacity?: number | null };
+type SpecStroke = SpecPaint & { width?: number | null; dash?: string | null };
+type SpecRadius = { tl?: number | null; tr?: number | null; bl?: number | null; br?: number | null };
+type SpecAlignment = {
+  horizontal?: "left" | "center" | "right" | null;
+  vertical?: "top" | "middle" | "bottom" | null;
+} | null;
+
+type SpecElementBase = {
+  position: SpecPoint;
+  size: SpecSize;
+  rotation?: number | null;
+  name?: string | null;
+  slot?: string;
+};
+
+type SpecTextElement = SpecElementBase & {
+  type: "text";
+  text: string;
+  font: {
+    family?: string | null;
+    size: number;
+    color: string;
+    bold?: boolean | null;
+    italic?: boolean | null;
+    lineHeight?: number | null;
+    letterSpacing?: number | null;
+  };
+  alignment?: SpecAlignment;
+};
+
+type SpecRectangleElement = SpecElementBase & {
+  type: "rectangle";
+  fill?: SpecPaint | null;
+  stroke?: SpecStroke | null;
+  borderRadius?: SpecRadius | null;
+};
+
+type SpecImageElement = SpecElementBase & {
+  type: "image";
+  data?: string | null;
+  fit?: "contain" | "cover" | "fill" | null;
+  is_icon?: boolean | null;
+};
+
+type SpecTableCell = {
+  fill?: SpecPaint | null;
+  stroke?: SpecStroke | null;
+  text: string;
+};
+
+type SpecTableElement = SpecElementBase & {
+  type: "table";
+  columns: SpecTableCell[];
+  rows: SpecTableCell[][];
+};
+
+export type DeckSpecElement =
+  | SpecTextElement
+  | SpecRectangleElement
+  | SpecImageElement
+  | SpecTableElement;
+
+export type DeckSpecComponent = {
+  id: string;
+  description?: string;
+  position?: SpecPoint;
+  size?: SpecSize;
+  elements: DeckSpecElement[];
+};
+
+export type DeckSpecComponentInstance = {
+  id?: string;
+  componentId?: string;
+  description?: string;
+  position?: SpecPoint;
+  size?: SpecSize;
+  elements?: DeckSpecElement[];
+  overrides?: Record<string, Partial<DeckSpecElement>>;
+};
+
+export type DeckSpecLayout = {
+  id: string;
+  title?: string;
+  description?: string;
+  background?: string;
+  components: DeckSpecComponentInstance[];
+};
+
+export type DeckSpec = {
+  title: string;
+  description?: string;
+  theme?: DeckTheme;
+  slideSize?: SpecSize;
+  components?: DeckSpecComponent[];
+  layouts: DeckSpecLayout[];
+};
+
+const DEFAULT_SPEC_SIZE: SpecSize = { width: 1280, height: 720 };
+
+export function createDeckFromSpec(spec: DeckSpec): Deck {
+  const sourceSize = spec.slideSize ?? DEFAULT_SPEC_SIZE;
+  const componentMap = new Map((spec.components ?? []).map((component) => [component.id, component]));
+
+  return {
+    title: spec.title,
+    description: spec.description,
+    theme: spec.theme,
+    slides: spec.layouts.map((layout): Slide => ({
+      title: layout.title ?? readableTitle(layout.id),
+      background: stripHash(layout.background ?? spec.theme?.background ?? "FFFFFF"),
+      elements: layout.components.flatMap((instance) =>
+        convertComponentInstance(instance, componentMap, sourceSize),
+      ),
+    })),
+  };
+}
+
+function convertComponentInstance(
+  instance: DeckSpecComponentInstance,
+  componentMap: Map<string, DeckSpecComponent>,
+  sourceSize: SpecSize,
+): SlideElement[] {
+  const component = instance.componentId ? componentMap.get(instance.componentId) : undefined;
+  const id = instance.componentId ?? instance.id;
+  const elements = instance.elements ?? component?.elements;
+
+  if (!elements) {
+    throw new Error(`Deck spec component "${id ?? "unknown"}" has no elements.`);
+  }
+
+  const componentPosition = instance.position ?? component?.position ?? { x: 0, y: 0 };
+
+  return elements
+    .map((element) => applyElementOverride(element, instance.overrides))
+    .map((element) => convertElement(element, componentPosition, sourceSize))
+    .filter((element): element is SlideElement => element != null);
+}
+
+function applyElementOverride(
+  element: DeckSpecElement,
+  overrides: DeckSpecComponentInstance["overrides"],
+): DeckSpecElement {
+  const key = element.slot ?? element.name ?? "";
+  if (!key || !overrides?.[key]) return element;
+  return { ...element, ...overrides[key] } as DeckSpecElement;
+}
+
+function convertElement(
+  element: DeckSpecElement,
+  componentPosition: SpecPoint,
+  sourceSize: SpecSize,
+): SlideElement | null {
+  const x = toSlideX(componentPosition.x + element.position.x, sourceSize);
+  const y = toSlideY(componentPosition.y + element.position.y, sourceSize);
+  const w = toSlideX(element.size.width, sourceSize);
+  const h = toSlideY(element.size.height, sourceSize);
+
+  if (element.type === "text") {
+    const fontSize = pxToPt(element.font.size, sourceSize);
+    return {
+      kind: "text",
+      x,
+      y,
+      w,
+      h,
+      text: element.text,
+      fontFace: element.font.family ?? "Poppins",
+      fontSize,
+      bold: element.font.bold ?? undefined,
+      italic: element.font.italic ?? undefined,
+      color: stripHash(element.font.color),
+      align: element.alignment?.horizontal ?? undefined,
+      valign: element.alignment?.vertical ?? undefined,
+      charSpacing:
+        element.font.letterSpacing != null
+          ? clamp(pxToPt(element.font.letterSpacing, sourceSize) * 100, -200, 600)
+          : undefined,
+      lineHeight:
+        element.font.lineHeight != null && element.font.size > 0
+          ? clamp(element.font.lineHeight / element.font.size, 0.8, 2.2)
+          : undefined,
+    };
+  }
+
+  if (element.type === "rectangle") {
+    return {
+      kind: "rect",
+      x,
+      y,
+      w,
+      h,
+      fill: stripHash(element.fill?.color ?? "FFFFFF"),
+      opacity: element.fill?.opacity ?? undefined,
+      line: element.stroke
+        ? {
+            color: stripHash(element.stroke.color),
+            width: element.stroke.width ?? 1,
+          }
+        : undefined,
+      rx: radiusToSlide(element.borderRadius, sourceSize),
+    };
+  }
+
+  if (element.type === "image") {
+    return {
+      kind: "image",
+      x,
+      y,
+      w,
+      h,
+      data: element.data ?? undefined,
+      name: element.name ?? undefined,
+      fit: element.fit ?? undefined,
+    };
+  }
+
+  if (element.type === "table") {
+    const header = element.columns.map((column) => column.text);
+    const rows = element.rows.map((row) => row.map((cell) => cell.text));
+    const firstHeader = element.columns[0];
+    const firstBodyCell = element.rows[0]?.[0];
+    return {
+      kind: "table",
+      x,
+      y,
+      w,
+      h,
+      rows: [header, ...rows],
+      fontFace: "Poppins",
+      fontSize: 12,
+      textColor: "111827",
+      headerFill: stripHash(firstHeader?.fill?.color ?? "F9FAFB"),
+      headerTextColor: "111827",
+      borderColor: stripHash(firstHeader?.stroke?.color ?? firstBodyCell?.stroke?.color ?? "E5E7EB"),
+      fill: stripHash(firstBodyCell?.fill?.color ?? "FFFFFF"),
+    };
+  }
+
+  return null;
+}
+
+function toSlideX(value: number, sourceSize: SpecSize) {
+  return round((value / sourceSize.width) * SLIDE_W);
+}
+
+function toSlideY(value: number, sourceSize: SpecSize) {
+  return round((value / sourceSize.height) * SLIDE_H);
+}
+
+function pxToPt(value: number, sourceSize: SpecSize) {
+  return round((value / sourceSize.width) * SLIDE_W * 72);
+}
+
+function radiusToSlide(radius: SpecRadius | null | undefined, sourceSize: SpecSize) {
+  if (!radius) return undefined;
+  const values = [radius.tl, radius.tr, radius.bl, radius.br].filter(
+    (value): value is number => typeof value === "number",
+  );
+  if (!values.length) return undefined;
+  return round(Math.min(0.5, toSlideX(values.reduce((sum, value) => sum + value, 0) / values.length, sourceSize)));
+}
+
+function stripHash(color: string) {
+  return color.replace("#", "").toUpperCase();
+}
+
+function readableTitle(id: string) {
+  return id
+    .replace(/^slide_?/i, "Slide ")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function round(value: number) {
+  return Number(value.toFixed(4));
+}

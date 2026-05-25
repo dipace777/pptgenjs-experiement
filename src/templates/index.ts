@@ -2,6 +2,7 @@ import type { Deck } from "../lib/slide-schema";
 import { coffeeMarketingDeck } from "./coffee-marketing";
 import { layoutKitDeck } from "./layout-kit";
 import { pitchDeck } from "./pitch-deck";
+import { tacoBellDeck } from "./taco-bell";
 
 export type TemplateDescriptor = {
   id: string;
@@ -29,6 +30,12 @@ export const TEMPLATES: ReadonlyArray<TemplateDescriptor> = [
     description: "A ten-slide narrative pitch from cover through ask.",
     deck: pitchDeck,
   },
+  {
+    id: "taco-bell",
+    label: "Taco Bell",
+    description: "A seven-slide restaurant brand deck generated from reusable specs.",
+    deck: tacoBellDeck,
+  },
 ];
 
-export { coffeeMarketingDeck, layoutKitDeck, pitchDeck };
+export { coffeeMarketingDeck, layoutKitDeck, pitchDeck, tacoBellDeck };
