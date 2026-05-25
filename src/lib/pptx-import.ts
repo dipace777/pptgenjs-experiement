@@ -1,12 +1,17 @@
 import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
 import {
+  DeckSchema,
   SLIDE_H,
   SLIDE_W,
   type Deck,
   type Slide,
   type SlideElement,
 } from "./slide-schema";
+import {
+  PPTY_DECK_SIDECAR_PATH,
+  PPTY_IMAGE_PLACEHOLDER_TAG,
+} from "./pptx-tags";
 import { fitFontToBox } from "./textMeasure";
 
 // PPTX uses English Metric Units. 1 inch = 914400 EMU. PowerPoint stores
@@ -66,6 +71,22 @@ export async function importPptxFile(file: File | Blob): Promise<PptxImportResul
 
 async function importFromZip(zip: JSZip, fallbackTitle: string): Promise<PptxImportResult> {
   const warnings: string[] = [];
+
+  // Fast path: PPTX files we produced carry a JSON sidecar with the
+  // original deck. Trust it for a lossless round-trip (charts, tables,
+  // image slots, anything PPTX can't natively express). For foreign
+  // decks the sidecar is absent and we fall through to OOXML parsing.
+  const sidecar = await readText(zip, PPTY_DECK_SIDECAR_PATH);
+  if (sidecar) {
+    try {
+      const parsed = DeckSchema.safeParse(JSON.parse(sidecar));
+      if (parsed.success) {
+        return { deck: parsed.data, warnings };
+      }
+    } catch {
+      // Malformed sidecar — fall through to OOXML parsing rather than fail.
+    }
+  }
 
   const presentationXml = await readText(zip, "ppt/presentation.xml");
   if (!presentationXml) {
@@ -218,6 +239,24 @@ async function spToElement(
   if (!xfrm) return null;
   const box = boxFromXfrm(xfrm, scale);
   if (!box) return null;
+
+  // Round-trip image placeholders: shapes tagged with our sentinel
+  // `objectName` come back as `image` elements with no `data`, so the
+  // editor renders the placeholder UI and double-click-to-upload works
+  // just like it does on the original template.
+  const nvSpPr = sp["p:nvSpPr"] as Record<string, unknown> | undefined;
+  const cNvPr = nvSpPr?.["p:cNvPr"] as Record<string, unknown> | undefined;
+  const objectName = cNvPr?.["@_name"];
+  if (objectName === PPTY_IMAGE_PLACEHOLDER_TAG) {
+    const nameAttr =
+      typeof cNvPr?.["@_descr"] === "string" ? (cNvPr["@_descr"] as string) : undefined;
+    return {
+      kind: "image",
+      ...box,
+      fit: "cover",
+      name: nameAttr,
+    };
+  }
 
   const txBody = sp["p:txBody"] as Record<string, unknown> | undefined;
   const spPr = sp["p:spPr"] as Record<string, unknown> | undefined;
