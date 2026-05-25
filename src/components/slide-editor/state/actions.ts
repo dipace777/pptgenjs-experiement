@@ -26,6 +26,7 @@ import { createDefaultElement } from "./createDefaultElement";
 import { pushHistoryAtom } from "./history";
 
 let componentInstanceCounter = 0;
+let slideInstanceCounter = 0;
 
 // --- Selection actions --------------------------------------------------
 
@@ -140,6 +141,25 @@ export const updateElementsAtom = atom(
     });
   },
 );
+
+export const insertSlideAtom = atom(null, (get, set, template: Slide) => {
+  const deck = get(deckAtom);
+  if (deck.slides.length >= 50) return;
+  const activeIdx = get(activeSlideIndexAtom);
+  const insertAt = Math.min(Math.max(activeIdx + 1, 0), deck.slides.length);
+  const slide = cloneSlide(template);
+  refreshSlideComponentInstances(slide);
+
+  set(pushHistoryAtom, { tag: `insertSlide:${insertAt}` });
+  set(deckAtom, (draft) => {
+    draft.slides.splice(insertAt, 0, slide);
+  });
+  set(activeSlideIndexAtom, insertAt);
+  set(selectedAtom, -1);
+  set(selectedItemsAtom, []);
+  set(selectedTableCellAtom, null);
+  set(editorOpenAtom, true);
+});
 
 // --- Element ops -------------------------------------------------------
 
@@ -315,6 +335,10 @@ function cloneElement(element: SlideElement): SlideElement {
   return JSON.parse(JSON.stringify(element)) as SlideElement;
 }
 
+function cloneSlide(slide: Slide): Slide {
+  return JSON.parse(JSON.stringify(slide)) as Slide;
+}
+
 function assignFreshComponentInstance(elements: SlideElement[]) {
   const componentId = elements[0]?.componentId;
   if (!componentId) return;
@@ -323,5 +347,19 @@ function assignFreshComponentInstance(elements: SlideElement[]) {
     if (element.componentId === componentId) {
       element.componentInstanceId = instanceId;
     }
+  }
+}
+
+function refreshSlideComponentInstances(slide: Slide) {
+  const remap = new Map<string, string>();
+  for (const element of slide.elements) {
+    if (!element.componentId) continue;
+    const key = element.componentInstanceId ?? element.componentId;
+    let next = remap.get(key);
+    if (!next) {
+      next = `${element.componentId}:slide:${Date.now().toString(36)}:${slideInstanceCounter++}`;
+      remap.set(key, next);
+    }
+    element.componentInstanceId = next;
   }
 }

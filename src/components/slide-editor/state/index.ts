@@ -55,6 +55,7 @@ export {
   updateElementsAtom,
   patchSelectedAtom,
   addElementAtom,
+  insertSlideAtom,
   insertElementAtom,
   insertElementsAtom,
   duplicateSelectedAtom,
