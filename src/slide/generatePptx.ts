@@ -14,7 +14,11 @@ import {
   PPTY_IMAGE_PLACEHOLDER_TAG,
 } from "../lib/pptx-tags";
 import { sanitizeSvgMarkup } from "../lib/svg-sanitize";
-import { fitFontToBox, wrapTextElementLines } from "../lib/textMeasure";
+import {
+  fitBulletsFontToBox,
+  fitFontToBox,
+  wrapTextElementLines,
+} from "../lib/textMeasure";
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
 export type PptxChartMode = "native" | "shapes";
@@ -652,6 +656,11 @@ function addElement(
 
   if (renderer !== "bullets" || el.kind !== "bullets") return;
 
+  // Same Pretext-measured shrink the editor preview applies, so bullet
+  // lists that fit visually in the editor also fit in the exported
+  // PPTX. Without this, PPT renders at the declared size and tall lists
+  // overflow the box.
+  const effectiveFontSize = fitBulletsFontToBox(el);
   const runs = el.items.map((t) => ({
     text: t,
     options: {
@@ -668,12 +677,12 @@ function addElement(
     w: el.w,
     h: el.h,
     fontFace: el.fontFace ?? "Arial",
-    fontSize: el.fontSize,
+    fontSize: effectiveFontSize,
     color: el.color,
     valign: "top",
     paraSpaceAfter: (el.itemGap ?? 0.05) * 72,
     paraSpaceBefore: 0,
-    lineSpacing: (el.lineSpacingMultiple ?? 1.3) * el.fontSize,
+    lineSpacing: (el.lineSpacingMultiple ?? 1.3) * effectiveFontSize,
     margin: 0,
   });
 }

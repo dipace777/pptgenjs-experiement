@@ -33,6 +33,12 @@ const PARSER = new XMLParser({
   attributeNamePrefix: "@_",
   textNodeName: "#text",
   parseAttributeValue: false,
+  // Keep tag values as strings. Without this, fast-xml-parser turns
+  // numeric-looking text content into actual numbers — so a slide with a
+  // big "1" / "2" / "3" run silently loses its text (the run becomes the
+  // number `1`, our string extractor returns "", and the importer falls
+  // through to the rect branch and renders an empty grey box).
+  parseTagValue: false,
   trimValues: false,
   // Preserve element order for siblings — relevant for paragraph runs.
   preserveOrder: false,
@@ -314,11 +320,38 @@ async function spToElement(
 
   // Geometry shape.
   const fill = extractFill(spPr) ?? "DDE5F0";
-  if (geomKind === "ellipse" || geomKind === "oval") {
+  if (isEllipseGeom(geomKind, box)) {
     return { kind: "ellipse", ...box, fill };
   }
   // Default to rect (covers rect, roundRect, and other rectilinear primitives).
   return { kind: "rect", ...box, fill };
+}
+
+// OOXML preset names PowerPoint and friends use for round shapes. The
+// canonical name is "ellipse"; Apple and some Office variants emit
+// "oval", and a few exporters use "circle". `wedgeEllipseCallout` is
+// included so call-out badges land as ellipses too.
+const ELLIPSE_GEOM_PRESETS = new Set([
+  "ellipse",
+  "oval",
+  "circle",
+  "wedgeEllipseCallout",
+]);
+
+function isEllipseGeom(
+  geomKind: unknown,
+  box: { w: number; h: number },
+): boolean {
+  if (typeof geomKind !== "string") return false;
+  if (ELLIPSE_GEOM_PRESETS.has(geomKind)) return true;
+  // `roundRect` with a near-square aspect is almost always a designer
+  // drawing a circular badge — promote to ellipse so it doesn't render
+  // as a chunky rounded rectangle.
+  if (geomKind === "roundRect") {
+    const aspect = box.w / box.h;
+    if (aspect > 0.92 && aspect < 1.08) return true;
+  }
+  return false;
 }
 
 // ── Picture → image ────────────────────────────────────────────────────
@@ -536,11 +569,17 @@ function extractTextBody(txBody: Record<string, unknown>): TextExtract {
 }
 
 function extractTextNode(t: unknown): string {
-  if (!t) return "";
+  if (t == null) return "";
   if (typeof t === "string") return t;
+  // Numeric/boolean runs are possible if any other parsing path leaves
+  // them un-stringified. Coerce so the text isn't silently dropped.
+  if (typeof t === "number" || typeof t === "boolean") return String(t);
   if (typeof t === "object") {
     const node = t as Record<string, unknown>;
-    if (typeof node["#text"] === "string") return node["#text"];
+    const inner = node["#text"];
+    if (typeof inner === "string") return inner;
+    if (typeof inner === "number" || typeof inner === "boolean")
+      return String(inner);
   }
   return "";
 }
