@@ -1,18 +1,60 @@
+import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
+import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import type { KeyboardEvent } from "react";
+import type { Slide } from "../../../lib/slide-schema";
 import { KonvaSlide } from "../slide-surface";
 import {
   activeSlideIndexAtom,
   deckAtom,
+  moveSlideAtom,
   setSelectionAtom,
   updateDeckTitleAtom,
 } from "../state";
 import { layoutStyles } from "./layoutStyles";
+
+const SLIDE_SORTABLE_GROUP = "slide-thumbnails";
+
+const slideIdMap = new WeakMap<Slide, string>();
+let nextSlideId = 0;
+function getSlideId(slide: Slide): string {
+  let id = slideIdMap.get(slide);
+  if (!id) {
+    id = `slide-${nextSlideId++}`;
+    slideIdMap.set(slide, id);
+  }
+  return id;
+}
 
 export function ThumbnailRail() {
   const deck = useAtomValue(deckAtom);
   const [active, setActive] = useAtom(activeSlideIndexAtom);
   const setSelection = useSetAtom(setSelectionAtom);
   const updateDeckTitle = useSetAtom(updateDeckTitleAtom);
+  const moveSlide = useSetAtom(moveSlideAtom);
+
+  const selectSlide = (index: number) => {
+    setActive(index);
+    setSelection(-1);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    if (event.canceled || !isSortableOperation(event.operation)) return;
+    const source = event.operation.source;
+    if (!source) return;
+    const from = deck.slides.findIndex((slide) => getSlideId(slide) === source.id);
+    const to = source.index;
+    if (
+      from < 0 ||
+      typeof to !== "number" ||
+      to < 0 ||
+      to >= deck.slides.length ||
+      from === to
+    ) {
+      return;
+    }
+    moveSlide({ from, to });
+  };
 
   return (
     <aside style={layoutStyles.sidebar}>
@@ -26,32 +68,80 @@ export function ThumbnailRail() {
         <div style={layoutStyles.meta}>{deck.slides.length} slides</div>
       </div>
 
-      <div style={layoutStyles.thumbs}>
-        {deck.slides.map((slide, index) => (
-          <button
-            key={index}
-            type="button"
-            onClick={() => {
-              setActive(index);
-              setSelection(-1);
-            }}
-            style={{
-              ...layoutStyles.thumbRow,
-              borderColor: index === active ? "#d4a24c" : "#242c3e",
-            }}
-          >
-            <span style={layoutStyles.thumbNumber}>
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <KonvaSlide
-              slide={slide}
-              width={160}
-              height={90}
-              interactive={false}
-            />
-          </button>
-        ))}
-      </div>
+      <DragDropProvider onDragEnd={handleDragEnd}>
+        <div style={layoutStyles.thumbs}>
+          {deck.slides.map((slide, index) => {
+            const id = getSlideId(slide);
+            return (
+              <SortableSlideThumbnail
+                key={id}
+                id={id}
+                slide={slide}
+                index={index}
+                active={index === active}
+                onSelect={selectSlide}
+              />
+            );
+          })}
+        </div>
+      </DragDropProvider>
     </aside>
+  );
+}
+
+function SortableSlideThumbnail({
+  id,
+  slide,
+  index,
+  active,
+  onSelect,
+}: {
+  id: string;
+  slide: Slide;
+  index: number;
+  active: boolean;
+  onSelect: (index: number) => void;
+}) {
+  const { ref, handleRef, isDragSource, isDropTarget } = useSortable({
+    id,
+    index,
+    group: SLIDE_SORTABLE_GROUP,
+    type: "slide",
+  });
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onSelect(index);
+  };
+
+  return (
+    <div
+      ref={ref}
+      role="button"
+      tabIndex={0}
+      aria-label={`Slide ${index + 1}`}
+      onClick={() => onSelect(index)}
+      onKeyDown={handleKeyDown}
+      style={{
+        ...layoutStyles.thumbRow,
+        borderColor: isDropTarget ? "#7dd3fc" : active ? "#d4a24c" : "#242c3e",
+        opacity: isDragSource ? 0.55 : 1,
+      }}
+    >
+      <span style={layoutStyles.thumbNumber}>
+        {String(index + 1).padStart(2, "0")}
+      </span>
+      <KonvaSlide slide={slide} width={160} height={90} interactive={false} />
+      <span
+        ref={handleRef}
+        aria-label={`Drag slide ${index + 1}`}
+        title="Drag slide"
+        style={layoutStyles.thumbDragHandle}
+        onClick={(event) => event.stopPropagation()}
+      >
+        ::
+      </span>
+    </div>
   );
 }

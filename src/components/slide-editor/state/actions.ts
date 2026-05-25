@@ -161,6 +161,33 @@ export const insertSlideAtom = atom(null, (get, set, template: Slide) => {
   set(editorOpenAtom, true);
 });
 
+export const moveSlideAtom = atom(
+  null,
+  (get, set, payload: { from: number; to: number }) => {
+    const deck = get(deckAtom);
+    const from = Math.trunc(payload.from);
+    const to = Math.trunc(payload.to);
+    if (
+      from === to ||
+      from < 0 ||
+      to < 0 ||
+      from >= deck.slides.length ||
+      to >= deck.slides.length
+    ) {
+      return;
+    }
+
+    const activeIdx = get(activeSlideIndexAtom);
+    const nextActiveIdx = getMovedActiveIndex(activeIdx, from, to);
+    set(pushHistoryAtom, { tag: `moveSlide:${from}:${to}` });
+    set(deckAtom, (draft) => {
+      const [slide] = draft.slides.splice(from, 1);
+      if (slide) draft.slides.splice(to, 0, slide);
+    });
+    set(activeSlideIndexAtom, nextActiveIdx);
+  },
+);
+
 // --- Element ops -------------------------------------------------------
 
 export const patchSelectedAtom = atom(
@@ -337,6 +364,13 @@ function cloneElement(element: SlideElement): SlideElement {
 
 function cloneSlide(slide: Slide): Slide {
   return JSON.parse(JSON.stringify(slide)) as Slide;
+}
+
+function getMovedActiveIndex(active: number, from: number, to: number) {
+  if (active === from) return to;
+  if (from < active && to >= active) return active - 1;
+  if (from > active && to <= active) return active + 1;
+  return active;
 }
 
 function assignFreshComponentInstance(elements: SlideElement[]) {
