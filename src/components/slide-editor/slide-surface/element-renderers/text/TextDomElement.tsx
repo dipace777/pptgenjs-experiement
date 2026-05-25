@@ -1,5 +1,6 @@
-import type { CSSProperties } from "react";
-import type { Slide } from "../../../../../lib/slide-schema";
+import { useMemo, type CSSProperties } from "react";
+import type { Slide, TextElement } from "../../../../../lib/slide-schema";
+import { fitFontToBox } from "../../../../../lib/textMeasure";
 import {
   DomElementLayer,
   elementBoxStyle,
@@ -16,6 +17,20 @@ export function TextDomElement({
   scale: number;
   slide: Slide;
 }) {
+  // Pre-compute the effective (post-shrink) fontSize for every text
+  // element on this slide. The DOM overlay is what the user actually sees
+  // in the interactive editor, so without shrinking here the preview
+  // overflows visibly while the export silently fits the text — diverging
+  // from PPTX export, PDF export, and presentation mode.
+  const effectiveFontSizes = useMemo(() => {
+    const sizes = new Map<number, number>();
+    slide.elements.forEach((element, index) => {
+      if (element.kind !== "text") return;
+      sizes.set(index, computeEffectiveFontSize(element));
+    });
+    return sizes;
+  }, [slide]);
+
   return (
     <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
@@ -24,12 +39,13 @@ export function TextDomElement({
         }
 
         const valign = element.valign ?? "top";
+        const effective = effectiveFontSizes.get(elementIndex) ?? element.fontSize;
         return (
           <div
             key={elementIndex}
             style={{
               ...elementBoxStyle(element, scale),
-              ...fontStyle(element, scale),
+              ...fontStyle({ ...element, fontSize: effective }, scale),
               ...textBoxStyle,
               alignItems:
                 valign === "middle"
@@ -45,6 +61,18 @@ export function TextDomElement({
         );
       })}
     </DomElementLayer>
+  );
+}
+
+function computeEffectiveFontSize(element: TextElement): number {
+  return fitFontToBox(
+    element.text,
+    element.fontFace,
+    element.fontSize,
+    element.w,
+    element.h,
+    element.lineHeight,
+    element.charSpacing,
   );
 }
 
