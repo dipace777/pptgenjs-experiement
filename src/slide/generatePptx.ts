@@ -4,6 +4,7 @@ import {
   SLIDE_W,
   type ChartElement,
   type Deck,
+  type Shadow,
   type Slide,
   type SlideElement,
 } from "../lib/slide-schema";
@@ -42,6 +43,27 @@ function svgDataUri(svg: string): string {
           ).join(""),
         );
   return `data:image/svg+xml;base64,${encoded}`;
+}
+
+function pptxShadow(shadow?: Shadow | null): PptxGenJS.ShadowProps | undefined {
+  if (!shadow) return undefined;
+  const offset = Math.sqrt(shadow.offsetX ** 2 + shadow.offsetY ** 2) * 72;
+  const angle = ((Math.atan2(shadow.offsetY, shadow.offsetX) * 180) / Math.PI + 360) % 360;
+  return {
+    type: "outer",
+    color: shadow.color,
+    opacity: shadow.opacity,
+    blur: shadow.blur,
+    offset,
+    angle,
+  };
+}
+
+function uniformRadius(element: { rx?: number | null; radius?: { tl?: number | null; tr?: number | null; bl?: number | null; br?: number | null } | null }) {
+  const radius = element.radius;
+  if (!radius) return element.rx ?? 0;
+  const values = [radius.tl, radius.tr, radius.bl, radius.br].map((value) => value ?? element.rx ?? 0);
+  return values.every((value) => value === values[0]) ? values[0] : 0;
 }
 
 // Blends `fg` over `bg` at the given opacity (Porter-Duff "over" with both
@@ -469,14 +491,15 @@ function addTableElement(
   const tableRows: PptxGenJS.TableRow[] = rows.map((row, rowIndex) =>
     Array.from({ length: cols }).map((_, colIndex) => {
       const isHeader = rowIndex === 0;
+      const cellStyle = el.cellStyles?.[rowIndex]?.[colIndex];
       return {
         text: row[colIndex] ?? "",
         options: {
-          bold: isHeader,
-          border: { color: el.borderColor, pt: 0.5 },
-          color: isHeader ? el.headerTextColor : el.textColor,
+          bold: cellStyle?.bold ?? isHeader,
+          border: { color: cellStyle?.borderColor ?? el.borderColor, pt: 0.5 },
+          color: cellStyle?.textColor ?? (isHeader ? el.headerTextColor : el.textColor),
           fill: {
-            color: isHeader ? el.headerFill : fill,
+            color: cellStyle?.fill ?? (isHeader ? el.headerFill : fill),
             transparency: transparencyPct(el.opacity ?? undefined),
           },
           fontFace: el.fontFace ?? "Arial",
@@ -490,11 +513,16 @@ function addTableElement(
     }),
   );
 
-  s.addTable(tableRows, {
+  const tableOptions: PptxGenJS.TableProps & {
+    rotate?: number;
+    shadow?: PptxGenJS.ShadowProps;
+  } = {
     x: el.x,
     y: el.y,
     w: el.w,
     h: el.h,
+    rotate: el.rotation ?? undefined,
+    shadow: pptxShadow(el.shadow),
     border: { color: el.borderColor, pt: 0.5 },
     colW: Array.from({ length: cols }, () => colW),
     fill: { color: fill, transparency: transparencyPct(el.opacity ?? undefined) },
@@ -502,7 +530,8 @@ function addTableElement(
     fontSize: el.fontSize,
     margin: [0.05, 0.08, 0.05, 0.08],
     rowH: Array.from({ length: rows.length }, () => rowH),
-  });
+  };
+  s.addTable(tableRows, tableOptions);
 }
 
 function addElement(
@@ -515,13 +544,16 @@ function addElement(
   const renderer = getElementDefinition(el.kind).export.pptx;
 
   if (renderer === "rect" && el.kind === "rect") {
-    const rounded = el.rx != null && el.rx > 0;
+    const rx = uniformRadius(el);
+    const rounded = rx > 0;
     const shape = rounded ? pptx.ShapeType.roundRect : pptx.ShapeType.rect;
     const opts: PptxGenJS.ShapeProps = {
       x: el.x,
       y: el.y,
       w: el.w,
       h: el.h,
+      rotate: el.rotation ?? undefined,
+      shadow: pptxShadow(el.shadow),
       fill: {
         color: el.fill,
         transparency: transparencyPct(el.opacity ?? undefined),
@@ -532,7 +564,7 @@ function addElement(
     };
     if (rounded) {
       // pptxgenjs rectRadius is a fraction of the shorter side / 2.
-      opts.rectRadius = Math.min(0.5, (el.rx as number) / Math.min(el.w, el.h));
+      opts.rectRadius = Math.min(0.5, rx / Math.min(el.w, el.h));
     }
     s.addShape(shape, opts);
     return;
@@ -544,6 +576,8 @@ function addElement(
       y: el.y,
       w: el.w,
       h: el.h,
+      rotate: el.rotation ?? undefined,
+      shadow: pptxShadow(el.shadow),
       fill: {
         color: el.fill,
         transparency: transparencyPct(el.opacity ?? undefined),
@@ -573,6 +607,8 @@ function addElement(
       y: el.y,
       w: el.w,
       h: el.h,
+      rotate: el.rotation ?? undefined,
+      shadow: pptxShadow(el.shadow),
       fontFace: el.fontFace ?? "Arial",
       fontSize: effectiveFontSize,
       bold: el.bold ?? undefined,
@@ -614,6 +650,8 @@ function addElement(
         y: el.y,
         w: el.w,
         h: el.h,
+        rotate: el.rotation ?? undefined,
+        shadow: pptxShadow(el.shadow),
         sizing:
           el.fit === "cover"
             ? { type: "cover", w: el.w, h: el.h }
@@ -634,6 +672,8 @@ function addElement(
         y: el.y,
         w: el.w,
         h: el.h,
+        rotate: el.rotation ?? undefined,
+        shadow: pptxShadow(el.shadow),
         fill: { type: "none" },
         line: { color: "7D89A3", width: 0.75, dashType: "dash" },
         objectName: PPTY_IMAGE_PLACEHOLDER_TAG,
@@ -649,6 +689,8 @@ function addElement(
       y: el.y,
       w: el.w,
       h: el.h,
+      rotate: el.rotation ?? undefined,
+      shadow: pptxShadow(el.shadow),
       transparency: transparencyPct(el.opacity ?? undefined),
     });
     return;

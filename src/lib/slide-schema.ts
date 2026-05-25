@@ -29,6 +29,21 @@ export const LineSchema = z.object({
   width: z.number().min(0).max(8),
 });
 
+export const CornerRadiusSchema = z.object({
+  tl: z.number().min(0).max(0.5).nullish(),
+  tr: z.number().min(0).max(0.5).nullish(),
+  bl: z.number().min(0).max(0.5).nullish(),
+  br: z.number().min(0).max(0.5).nullish(),
+});
+
+export const ShadowSchema = z.object({
+  color: HexColorSchema,
+  blur: z.number().min(0).max(100),
+  opacity: z.number().min(0).max(1),
+  offsetX: z.number().min(-2).max(2),
+  offsetY: z.number().min(-2).max(2),
+});
+
 export const BoxSchema = z.object({
   x: z.number().min(0).max(SLIDE_W),
   y: z.number().min(0).max(SLIDE_H),
@@ -39,6 +54,10 @@ export const BoxSchema = z.object({
 const baseElement = {
   ...BoxSchema.shape,
   opacity: z.number().min(0).max(1).nullish(),
+  rotation: z.number().min(-360).max(360).nullish(),
+  shadow: ShadowSchema.nullish(),
+  componentId: z.string().min(1).max(120).nullish(),
+  componentDescription: z.string().max(600).nullish(),
 };
 
 export const TextElementSchema = z.object({
@@ -67,6 +86,7 @@ export const RectElementSchema = z.object({
   line: LineSchema.nullish(),
   // Corner radius in inches; 0 / undefined = square corners.
   rx: z.number().min(0).max(0.5).nullish(),
+  radius: CornerRadiusSchema.nullish(),
 });
 
 export const EllipseElementSchema = z.object({
@@ -78,7 +98,7 @@ export const EllipseElementSchema = z.object({
 });
 
 export const BulletsElementSchema = z.object({
-  ...BoxSchema.shape,
+  ...baseElement,
   kind: z.literal("bullets"),
   items: z.array(z.string().min(1).max(180)).min(1).max(8),
   fontFace: z.string().min(1).max(80).nullish(),
@@ -117,6 +137,18 @@ export const TableElementSchema = z.object({
   ...baseElement,
   kind: z.literal("table"),
   rows: z.array(z.array(z.string().max(80)).min(1).max(6)).min(2).max(8),
+  cellStyles: z
+    .array(
+      z.array(
+        z.object({
+          fill: HexColorSchema.nullish(),
+          textColor: HexColorSchema.nullish(),
+          borderColor: HexColorSchema.nullish(),
+          bold: z.boolean().nullish(),
+        }),
+      ),
+    )
+    .nullish(),
   fontFace: z.string().min(1).max(80).nullish(),
   fontSize: z.number().min(6).max(28),
   textColor: HexColorSchema,
@@ -137,6 +169,8 @@ export const ImageElementSchema = z.object({
   data: z.string().nullish(),
   name: z.string().max(120).nullish(),
   fit: z.enum(["contain", "cover", "fill"]).nullish(),
+  rx: z.number().min(0).max(0.5).nullish(),
+  radius: CornerRadiusSchema.nullish(),
 });
 
 export const SvgElementSchema = z.object({
@@ -191,6 +225,8 @@ export const DeckSchema = z.object({
 
 export type Inches = number;
 export type Box = z.infer<typeof BoxSchema>;
+export type CornerRadius = z.infer<typeof CornerRadiusSchema>;
+export type Shadow = z.infer<typeof ShadowSchema>;
 export type TextElement = z.infer<typeof TextElementSchema>;
 export type RectElement = z.infer<typeof RectElementSchema>;
 export type EllipseElement = z.infer<typeof EllipseElementSchema>;

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { Shadow } from "../../../../../lib/slide-schema";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../../editorUtils";
 
 export function elementBoxStyle(
@@ -8,6 +9,8 @@ export function elementBoxStyle(
     w: number;
     h: number;
     opacity?: number | null;
+    rotation?: number | null;
+    shadow?: Shadow | null;
   },
   scale: number,
 ): CSSProperties {
@@ -18,6 +21,13 @@ export function elementBoxStyle(
     left: element.x * scale,
     opacity: element.opacity ?? 1,
     top: element.y * scale,
+    transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+    transformOrigin: "top left",
+    boxShadow: element.shadow
+      ? `${element.shadow.offsetX * scale}px ${element.shadow.offsetY * scale}px ${element.shadow.blur * scale}px rgba(${hexToRgb(
+          element.shadow.color,
+        )}, ${element.shadow.opacity})`
+      : undefined,
     width: element.w * scale,
   };
 }
@@ -50,3 +60,11 @@ export const wrappedTextStyle: CSSProperties = {
   overflow: "hidden",
   wordBreak: "break-word",
 };
+
+function hexToRgb(color: string) {
+  const hex = color.replace("#", "");
+  const red = parseInt(hex.slice(0, 2), 16);
+  const green = parseInt(hex.slice(2, 4), 16);
+  const blue = parseInt(hex.slice(4, 6), 16);
+  return `${red}, ${green}, ${blue}`;
+}

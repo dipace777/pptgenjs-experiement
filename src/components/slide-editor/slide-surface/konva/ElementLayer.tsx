@@ -161,6 +161,7 @@ export function ElementLayer({
         y: clamp(nextY, 0, SLIDE_H - nextH),
         w: clamp(nextW, 0.1, SLIDE_W),
         h: clamp(nextH, 0.1, SLIDE_H),
+        rotation: node.rotation(),
       } as SlideElement);
     },
   });
@@ -288,7 +289,7 @@ export function ElementLayer({
       {interactive && selectedIndexes.length > 0 ? (
         <Transformer
           ref={transformerRef}
-          rotateEnabled={false}
+          rotateEnabled
           anchorSize={8}
           borderStroke={SELECTION_STROKE}
           anchorFill="#f4f6fa"

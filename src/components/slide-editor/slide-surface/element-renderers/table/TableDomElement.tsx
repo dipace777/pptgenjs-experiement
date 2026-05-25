@@ -46,6 +46,10 @@ export function TableDomElement({
                       selectedCell?.elementIndex === elementIndex &&
                       selectedCell.rowIndex === rowIndex &&
                       selectedCell.colIndex === colIndex;
+                    const cellStyleOverride = element.cellStyles?.[rowIndex]?.[colIndex];
+                    const cellBorderColor = withHash(
+                      cellStyleOverride?.borderColor ?? element.borderColor,
+                    );
                     return (
                       <td
                         key={colIndex}
@@ -53,18 +57,16 @@ export function TableDomElement({
                           ...cellStyle,
                           width: `${100 / cols}%`,
                           height: `${100 / rows.length}%`,
-                          borderColor,
+                          borderColor: cellBorderColor,
                           background: withHash(
-                            isHeader
-                              ? element.headerFill
-                              : element.fill ?? "FFFFFF",
+                            cellStyleOverride?.fill ??
+                              (isHeader ? element.headerFill : element.fill ?? "FFFFFF"),
                           ),
                           color: withHash(
-                            isHeader
-                              ? element.headerTextColor
-                              : element.textColor,
+                            cellStyleOverride?.textColor ??
+                              (isHeader ? element.headerTextColor : element.textColor),
                           ),
-                          fontWeight: isHeader ? 700 : 400,
+                          fontWeight: (cellStyleOverride?.bold ?? isHeader) ? 700 : 400,
                           textAlign: colIndex === 0 ? "left" : "center",
                           boxShadow: isSelected
                             ? "inset 0 0 0 2px #6f93ff"

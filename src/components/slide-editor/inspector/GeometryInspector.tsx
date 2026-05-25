@@ -3,7 +3,7 @@ import { styles } from "../editorStyles";
 import { NumberField } from "./InspectorFields";
 
 type GeometryPatch = Pick<SlideElement, "x" | "y" | "w" | "h"> &
-  Partial<Pick<Extract<SlideElement, { opacity?: unknown }>, "opacity">>;
+  Partial<Pick<Extract<SlideElement, { opacity?: unknown }>, "opacity" | "rotation">>;
 
 type GeometryInspectorProps = {
   element: SlideElement;
@@ -23,14 +23,24 @@ export function GeometryInspector({ element, onPatch }: GeometryInspectorProps) 
       </div>
 
       {hasOpacity ? (
-        <NumberField
-          label="Opacity"
-          value={element.opacity ?? 1}
-          min={0}
-          max={1}
-          step={0.05}
-          onChange={(opacity) => onPatch({ opacity })}
-        />
+        <div style={styles.grid2}>
+          <NumberField
+            label="Opacity"
+            value={element.opacity ?? 1}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={(opacity) => onPatch({ opacity })}
+          />
+          <NumberField
+            label="Rotation"
+            value={element.rotation ?? 0}
+            min={-360}
+            max={360}
+            step={1}
+            onChange={(rotation) => onPatch({ rotation })}
+          />
+        </div>
       ) : null}
     </form>
   );
