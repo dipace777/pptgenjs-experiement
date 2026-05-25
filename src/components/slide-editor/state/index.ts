@@ -55,9 +55,13 @@ export {
   updateElementsAtom,
   patchSelectedAtom,
   addElementAtom,
+  insertSlideAtom,
   insertElementAtom,
+  insertElementsAtom,
   duplicateSelectedAtom,
+  deleteSelectedComponentRunAtom,
   deleteSelectedAtom,
 } from "./actions";
+export { getComponentRun, type ComponentRun } from "./componentGroups";
 export { createDefaultElement } from "./createDefaultElement";
 export { undoAtom, redoAtom, canUndoAtom, canRedoAtom } from "./history";

@@ -1,5 +1,7 @@
-import { useRef, type ChangeEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
+import type { SlideElement } from "../../../lib/slide-schema";
+import type { ComponentTemplate } from "../componentTemplates";
 import { styles } from "../editorStyles";
 import { kindLabel, withHash, withoutHash } from "../editorUtils";
 import { useSvgGeneration } from "../hooks";
@@ -10,7 +12,10 @@ import {
   activeSlideAtom,
   activeSlideIndexAtom,
   addElementAtom,
+  deleteSelectedComponentRunAtom,
   duplicateSelectedAtom,
+  getComponentRun,
+  insertElementsAtom,
   patchSelectedAtom,
   selectedElementAtom,
   selectedIndexAtom,
@@ -20,19 +25,27 @@ import {
 import { drawerStyles } from "./drawerStyles";
 
 type SlideEditorDrawerProps = {
+  componentTemplates?: ReadonlyArray<ComponentTemplate>;
   onClose: () => void;
 };
 
-export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
+export function SlideEditorDrawer({
+  componentTemplates = [],
+  onClose,
+}: SlideEditorDrawerProps) {
+  const [componentPickerOpen, setComponentPickerOpen] = useState(false);
   const active = useAtomValue(activeSlideIndexAtom);
   const activeSlide = useAtomValue(activeSlideAtom);
   const selectedElement = useAtomValue(selectedElementAtom);
   const selectedIndex = useAtomValue(selectedIndexAtom);
+  const selectedComponentRun = getComponentRun(activeSlide.elements, selectedIndex);
   const updateActiveSlide = useSetAtom(updateActiveSlideAtom);
   const updateElement = useSetAtom(updateElementAtom);
   const patchSelected = useSetAtom(patchSelectedAtom);
   const addElement = useSetAtom(addElementAtom);
+  const insertElements = useSetAtom(insertElementsAtom);
   const duplicateSelected = useSetAtom(duplicateSelectedAtom);
+  const deleteSelectedComponentRun = useSetAtom(deleteSelectedComponentRunAtom);
   const {
     svgPrompt,
     setSvgPrompt,
@@ -63,6 +76,11 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
     event.target.value = "";
   };
 
+  const insertComponent = (component: ComponentTemplate) => {
+    insertElements(component.elements);
+    setComponentPickerOpen(false);
+  };
+
   return (
     <div
       aria-modal="true"
@@ -72,6 +90,13 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
         if (event.target === event.currentTarget) onClose();
       }}
     >
+      {componentPickerOpen && componentTemplates.length > 0 ? (
+        <ComponentPickerDrawer
+          components={componentTemplates}
+          onClose={() => setComponentPickerOpen(false)}
+          onInsert={insertComponent}
+        />
+      ) : null}
       <aside style={drawerStyles.drawer}>
         <div style={drawerStyles.header}>
           <div>
@@ -109,6 +134,20 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
             ? "Select an object on the slide, then adjust it here."
             : "Adjust slide-level settings or add new elements."}
         </div>
+
+        {selectedComponentRun ? (
+          <div style={drawerStyles.componentPanel}>
+            <div style={drawerStyles.sectionTitle}>
+              {componentLabel(selectedComponentRun.componentId)}
+            </div>
+            <div style={drawerStyles.componentMeta}>
+              {selectedComponentRun.indexes.length} editable elements selected as one component.
+            </div>
+            <EditorButton onClick={() => deleteSelectedComponentRun()}>
+              Delete component
+            </EditorButton>
+          </div>
+        ) : null}
 
         <label style={styles.field}>
           <span>Slide background</span>
@@ -188,7 +227,20 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
               + {kindLabel(kind)}
             </EditorButton>
           ))}
+          {componentTemplates.length > 0 ? (
+            <EditorButton
+              onClick={() => setComponentPickerOpen(true)}
+            >
+              + Component
+            </EditorButton>
+          ) : null}
         </div>
+
+        {componentTemplates.length > 0 ? (
+          <div style={drawerStyles.componentHint}>
+            {componentTemplates.length} reusable component templates available.
+          </div>
+        ) : null}
 
         <div style={drawerStyles.generatorPanel}>
           <TextareaField
@@ -211,4 +263,178 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
       </aside>
     </div>
   );
+}
+
+function ComponentPickerDrawer({
+  components,
+  onClose,
+  onInsert,
+}: {
+  components: ReadonlyArray<ComponentTemplate>;
+  onClose: () => void;
+  onInsert: (component: ComponentTemplate) => void;
+}) {
+  return (
+    <aside style={drawerStyles.componentDrawer}>
+      <div style={drawerStyles.header}>
+        <div>
+          <div style={styles.eyebrow}>ADD COMPONENT</div>
+          <h2 style={drawerStyles.title}>Components</h2>
+        </div>
+        <button
+          type="button"
+          title="Close components"
+          onClick={onClose}
+          style={drawerStyles.iconButton}
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={drawerStyles.hint}>
+        Reusable grouped blocks for this template.
+      </div>
+
+      <div style={drawerStyles.componentPreviewGrid}>
+        {components.map((component) => (
+          <button
+            key={component.id}
+            type="button"
+            title={component.description ?? component.label}
+            onClick={() => onInsert(component)}
+            style={drawerStyles.componentPreviewCard}
+          >
+            <ComponentPreview elements={component.elements} />
+            <span style={drawerStyles.componentPreviewName}>{component.label}</span>
+            <span style={drawerStyles.componentPreviewMeta}>
+              {component.elements.length} elements
+            </span>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function ComponentPreview({ elements }: { elements: SlideElement[] }) {
+  const bounds = useMemo(() => boundsForElements(elements), [elements]);
+  return (
+    <span style={drawerStyles.componentPreviewFrame}>
+      <span style={drawerStyles.componentPreviewStage}>
+        {elements.map((element, index) => (
+          <span
+            key={index}
+            style={{
+              ...previewElementStyle(element, bounds),
+              zIndex: index + 1,
+            }}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
+type PreviewBounds = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+function boundsForElements(elements: SlideElement[]): PreviewBounds {
+  if (elements.length === 0) return { x: 0, y: 0, w: 1, h: 1 };
+  const minX = Math.min(...elements.map((element) => element.x));
+  const minY = Math.min(...elements.map((element) => element.y));
+  const maxX = Math.max(...elements.map((element) => element.x + element.w));
+  const maxY = Math.max(...elements.map((element) => element.y + element.h));
+  return {
+    x: minX,
+    y: minY,
+    w: Math.max(0.01, maxX - minX),
+    h: Math.max(0.01, maxY - minY),
+  };
+}
+
+function previewElementStyle(
+  element: SlideElement,
+  bounds: PreviewBounds,
+): CSSProperties {
+  const left = ((element.x - bounds.x) / bounds.w) * 100;
+  const top = ((element.y - bounds.y) / bounds.h) * 100;
+  const width = (element.w / bounds.w) * 100;
+  const height = (element.h / bounds.h) * 100;
+  const style: CSSProperties = {
+    position: "absolute",
+    left: `${left}%`,
+    top: `${top}%`,
+    width: `${width}%`,
+    height: `${height}%`,
+    boxSizing: "border-box",
+    opacity: element.opacity ?? 1,
+    transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+    transformOrigin: "center",
+  };
+
+  if (element.kind === "text" || element.kind === "bullets") {
+    return {
+      ...style,
+      borderRadius: 2,
+      background: withHash(element.kind === "text" ? element.color : element.color),
+      opacity: 0.75,
+    };
+  }
+
+  if (element.kind === "rect" || element.kind === "ellipse") {
+    return {
+      ...style,
+      borderRadius: element.kind === "ellipse" ? "999px" : 3,
+      background: withHash(element.fill),
+      border: element.line ? `1px solid ${withHash(element.line.color)}` : undefined,
+      boxShadow: element.shadow
+        ? `0 2px 8px rgba(0,0,0,${Math.min(0.35, element.shadow.opacity + 0.12)})`
+        : undefined,
+    };
+  }
+
+  if (element.kind === "image") {
+    return {
+      ...style,
+      borderRadius: 4,
+      background: element.data
+        ? `linear-gradient(135deg, #26334a, #111827)`
+        : "#20283a",
+      border: "1px dashed rgba(216,223,237,0.3)",
+    };
+  }
+
+  if (element.kind === "table") {
+    return {
+      ...style,
+      borderRadius: 3,
+      background: withHash(element.fill ?? "FFFFFF"),
+      border: `1px solid ${withHash(element.borderColor)}`,
+      backgroundImage: `linear-gradient(${withHash(element.headerFill)} 0 28%, transparent 28%)`,
+    };
+  }
+
+  if (element.kind === "chart") {
+    return {
+      ...style,
+      borderRadius: 4,
+      background: `linear-gradient(135deg, ${withHash(element.color)}, #20283a)`,
+    };
+  }
+
+  return {
+    ...style,
+    borderRadius: 4,
+    background: "#6a7894",
+  };
+}
+
+function componentLabel(componentId: string) {
+  return componentId
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

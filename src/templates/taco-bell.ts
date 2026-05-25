@@ -1,4 +1,9 @@
-import { createDeckFromSpec, type DeckSpec, type DeckSpecElement } from "./deck-spec-adapter";
+import {
+  createComponentTemplatesFromSpec,
+  createDeckFromSpec,
+  type DeckSpec,
+  type DeckSpecElement,
+} from "./deck-spec-adapter";
 
 const BG = "FFFFFF";
 const INK = "111827";
@@ -59,6 +64,30 @@ const images = {
   duoThumb: `${assetBase}/images/df187891-a14f-463d-8f6a-8fc7e9bd6291.png`,
 };
 
+const softShadow = {
+  color: "#000000",
+  blur: 2,
+  opacity: 0.05,
+  offsetX: 0,
+  offsetY: 1,
+};
+
+const cardShadow = {
+  color: "#000000",
+  blur: 6,
+  opacity: 0.1,
+  offsetX: 0,
+  offsetY: 4,
+};
+
+const tableShadow = {
+  color: "#000000",
+  blur: 30,
+  opacity: 0.08,
+  offsetX: 0,
+  offsetY: 8,
+};
+
 function text(
   slot: string,
   x: number,
@@ -91,6 +120,13 @@ function rect(
   color: string,
   radius = 0,
   opacity = 1,
+  shadow?: {
+    color: string;
+    blur: number;
+    opacity: number;
+    offsetX: number;
+    offsetY: number;
+  },
 ): DeckSpecElement {
   return {
     type: "rectangle",
@@ -98,6 +134,7 @@ function rect(
     size: { width, height },
     fill: { color, opacity },
     borderRadius: radius ? { tl: radius, tr: radius, bl: radius, br: radius } : null,
+    shadow,
   };
 }
 
@@ -124,8 +161,9 @@ function image(
 function iconBox(iconSlot = "icon", icon = icons.star, box = 48): DeckSpecElement[] {
   const inset = box === 72 ? 18 : box === 56 ? 14 : 12;
   const iconSize = box - inset * 2;
+  const shadow = box === 72 ? cardShadow : box === 56 ? softShadow : undefined;
   return [
-    rect(0, 0, box, box, PURPLE, 12),
+    rect(0, 0, box, box, PURPLE, 12, 1, shadow),
     image(iconSlot, inset, inset, iconSize, iconSize, icon, "fill"),
   ];
 }
@@ -156,7 +194,10 @@ const pitchDeckSpec: DeckSpec = {
       id: "cover_media_panel",
       position: { x: 84, y: 160 },
       size: { width: 512, height: 400 },
-      elements: [rect(0, 0, 512, 400, SURFACE, 16), image("cover-image", 0, 0, 512, 400, images.cover)],
+      elements: [
+        rect(0, 0, 512, 400, SURFACE, 16, 1, softShadow),
+        image("cover-image", 0, 0, 512, 400, images.cover),
+      ],
     },
     {
       id: "cover_text_block",
@@ -298,6 +339,7 @@ const pitchDeckSpec: DeckSpec = {
           fill: { color: BG, opacity: 1 },
           stroke: { color: "F3F4F6", opacity: 1, width: 1 },
           borderRadius: { tl: 16, tr: 16, bl: 16, br: 16 },
+          shadow: tableShadow,
         },
         {
           type: "table",
@@ -511,3 +553,4 @@ const pitchDeckSpec: DeckSpec = {
 };
 
 export const tacoBellDeck = createDeckFromSpec(pitchDeckSpec);
+export const tacoBellComponentTemplates = createComponentTemplatesFromSpec(pitchDeckSpec);

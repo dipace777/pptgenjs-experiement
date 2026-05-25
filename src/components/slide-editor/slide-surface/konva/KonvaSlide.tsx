@@ -152,6 +152,7 @@ export function KonvaSlide({
         onEditTable={resolvedOnEditTable}
         onEditText={resolvedOnEditText}
         onSelect={resolvedOnSelect}
+        onSelectMany={resolvedOnSelectMany}
         onSelectTableCell={resolvedOnSelectTableCell}
         scale={scale}
         selectedBounds={selectedBounds}

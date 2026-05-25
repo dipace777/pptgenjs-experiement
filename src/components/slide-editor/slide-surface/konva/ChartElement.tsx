@@ -1,6 +1,7 @@
 import { Arc, Ellipse, Group, Line, Rect, Text } from "react-konva";
 import type { ChartElement as ChartEl } from "../../../../lib/slide-schema";
 import { PX_PER_IN, withHash } from "../../editorUtils";
+import { rotationProps, shadowProps } from "./elementVisuals";
 import { geometry, type ElementCommonProps } from "./types";
 
 type ChartDatum = {
@@ -45,7 +46,9 @@ export function ChartElement({
       y={y}
       width={width}
       height={height}
+      {...rotationProps(element)}
       opacity={element.opacity ?? 1}
+      {...shadowProps(element.shadow, scale)}
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />

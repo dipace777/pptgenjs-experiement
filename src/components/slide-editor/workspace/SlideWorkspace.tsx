@@ -22,6 +22,8 @@ type SlideWorkspaceProps = {
   imageUploadInputRef: RefObject<HTMLInputElement | null>;
   onImageUploadChange: ChangeEventHandler<HTMLInputElement>;
   onEditImage: (index: number) => void;
+  canInsertSlide?: boolean;
+  onInsertSlide?: () => void;
 };
 
 export function SlideWorkspace({
@@ -30,6 +32,8 @@ export function SlideWorkspace({
   imageUploadInputRef,
   onImageUploadChange,
   onEditImage,
+  canInsertSlide = false,
+  onInsertSlide,
 }: SlideWorkspaceProps) {
   const activeSlide = useAtomValue(activeSlideAtom);
   const selectedTableCell = useAtomValue(selectedTableCellAtom);
@@ -82,6 +86,15 @@ export function SlideWorkspace({
             onEditImage={onEditImage}
           />
         </div>
+        {canInsertSlide ? (
+          <button
+            type="button"
+            onClick={onInsertSlide}
+            style={workspaceStyles.insertSlideButton}
+          >
+            Insert Slide
+          </button>
+        ) : null}
       </div>
     </section>
   );

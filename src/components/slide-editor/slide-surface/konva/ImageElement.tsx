@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Ellipse, Group, Image as KonvaImage, Line, Rect } from "react-konva";
 import type { ImageElement as ImageEl } from "../../../../lib/slide-schema";
+import { konvaCornerRadius, rotationProps, shadowProps } from "./elementVisuals";
 import { loadKonvaImage } from "./exportAssets";
 import { geometry, type ElementCommonProps } from "./types";
 
@@ -22,11 +23,13 @@ export function ImageElement({
       y={y}
       width={width}
       height={height}
+      {...rotationProps(element)}
       opacity={element.opacity ?? 1}
+      {...shadowProps(element.shadow, scale)}
       {...events}
     >
       {element.data ? (
-        <SlideImagePicture element={element} width={width} height={height} />
+        <SlideImagePicture element={element} scale={scale} width={width} height={height} />
       ) : (
         <ImagePlaceholder width={width} height={height} />
       )}
@@ -46,10 +49,12 @@ export function ImageElement({
 
 function SlideImagePicture({
   element,
+  scale,
   width,
   height,
 }: {
   element: ImageEl;
+  scale: number;
   width: number;
   height: number;
 }) {
@@ -101,7 +106,12 @@ function SlideImagePicture({
   }
 
   return (
-    <Group clipFunc={(ctx) => ctx.rect(0, 0, width, height)}>
+    <Group
+      clipFunc={(ctx) => {
+        const radius = konvaCornerRadius(element, scale);
+        roundedRectPath(ctx, 0, 0, width, height, radius);
+      }}
+    >
       <KonvaImage
         image={image}
         x={offsetX}
@@ -111,6 +121,38 @@ function SlideImagePicture({
       />
     </Group>
   );
+}
+
+function roundedRectPath(
+  ctx: {
+    beginPath: () => void;
+    moveTo: (x: number, y: number) => void;
+    lineTo: (x: number, y: number) => void;
+    quadraticCurveTo: (cpx: number, cpy: number, x: number, y: number) => void;
+    closePath: () => void;
+  },
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number | number[],
+) {
+  const [tl, tr, br, bl] = Array.isArray(radius)
+    ? radius
+    : [radius, radius, radius, radius];
+  const max = Math.min(width, height) / 2;
+  const r = [tl, tr, br, bl].map((value) => Math.min(max, Math.max(0, value)));
+  ctx.beginPath();
+  ctx.moveTo(x + r[0], y);
+  ctx.lineTo(x + width - r[1], y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r[1]);
+  ctx.lineTo(x + width, y + height - r[2]);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r[2], y + height);
+  ctx.lineTo(x + r[3], y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r[3]);
+  ctx.lineTo(x, y + r[0]);
+  ctx.quadraticCurveTo(x, y, x + r[0], y);
+  ctx.closePath();
 }
 
 function ImagePlaceholder({ width, height }: { width: number; height: number }) {

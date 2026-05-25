@@ -12,8 +12,10 @@ export const workspaceStyles = {
     minHeight: 0,
     padding: 28,
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
+    gap: 14,
   },
   slideFrame: {
     position: "relative",
@@ -37,6 +39,18 @@ export const workspaceStyles = {
   },
   hiddenInput: {
     display: "none",
+  },
+  insertSlideButton: {
+    height: 36,
+    padding: "0 16px",
+    borderRadius: 7,
+    border: "1px solid #2b3448",
+    background: "#161b27",
+    color: "#d8dfed",
+    boxShadow: "0 10px 28px rgba(0,0,0,0.22)",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
   },
   hiddenStages: {
     position: "fixed",

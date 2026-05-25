@@ -21,8 +21,12 @@ import {
   selectedItemsAtom,
   selectedTableCellAtom,
 } from "./atoms";
+import { arrangeRepeatableComponents, getComponentRun } from "./componentGroups";
 import { createDefaultElement } from "./createDefaultElement";
 import { pushHistoryAtom } from "./history";
+
+let componentInstanceCounter = 0;
+let slideInstanceCounter = 0;
 
 // --- Selection actions --------------------------------------------------
 
@@ -138,6 +142,25 @@ export const updateElementsAtom = atom(
   },
 );
 
+export const insertSlideAtom = atom(null, (get, set, template: Slide) => {
+  const deck = get(deckAtom);
+  if (deck.slides.length >= 50) return;
+  const activeIdx = get(activeSlideIndexAtom);
+  const insertAt = Math.min(Math.max(activeIdx + 1, 0), deck.slides.length);
+  const slide = cloneSlide(template);
+  refreshSlideComponentInstances(slide);
+
+  set(pushHistoryAtom, { tag: `insertSlide:${insertAt}` });
+  set(deckAtom, (draft) => {
+    draft.slides.splice(insertAt, 0, slide);
+  });
+  set(activeSlideIndexAtom, insertAt);
+  set(selectedAtom, -1);
+  set(selectedItemsAtom, []);
+  set(selectedTableCellAtom, null);
+  set(editorOpenAtom, true);
+});
+
 // --- Element ops -------------------------------------------------------
 
 export const patchSelectedAtom = atom(
@@ -192,15 +215,42 @@ export const insertElementAtom = atom(
   },
 );
 
+export const insertElementsAtom = atom(
+  null,
+  (get, set, elements: SlideElement[]) => {
+    const slide = get(activeSlideAtom);
+    if (!slide || elements.length === 0) return;
+    const activeIdx = get(activeSlideIndexAtom);
+    const startIndex = slide.elements.length;
+    const copies = elements.map(cloneElement);
+    assignFreshComponentInstance(copies);
+    set(pushHistoryAtom);
+    set(deckAtom, (draft) => {
+      const active = draft.slides[activeIdx];
+      active.elements.push(...copies);
+      const componentId = copies[0]?.componentId;
+      if (componentId) arrangeRepeatableComponents(active, componentId);
+    });
+    const indexes = copies.map((_, offset) => startIndex + offset);
+    set(selectedAtom, indexes.at(-1) ?? -1);
+    set(selectedItemsAtom, indexes);
+    set(selectedTableCellAtom, null);
+    set(editorOpenAtom, true);
+  },
+);
+
 export const duplicateSelectedAtom = atom(null, (get, set) => {
   const idx = get(selectedIndexAtom);
   const selected = get(activeSlideAtom)?.elements[idx];
   if (!selected) return;
-  const copy = {
-    ...selected,
+  const copy = cloneElement(selected);
+  delete copy.componentId;
+  delete copy.componentInstanceId;
+  delete copy.componentDescription;
+  Object.assign(copy, {
     x: clamp(selected.x + 0.2, 0, SLIDE_W - selected.w),
     y: clamp(selected.y + 0.2, 0, SLIDE_H - selected.h),
-  } as SlideElement;
+  });
   const activeIdx = get(activeSlideIndexAtom);
   set(pushHistoryAtom);
   set(deckAtom, (draft) => {
@@ -220,10 +270,22 @@ export const deleteSelectedAtom = atom(null, (get, set) => {
     .sort((a, b) => b - a);
   if (!slide || indexes.length === 0) return;
   const activeIdx = get(activeSlideIndexAtom);
+  const affectedComponentIds = [
+    ...new Set(
+      indexes.flatMap((index) => {
+        const componentId = slide.elements[index]?.componentId;
+        return componentId ? [componentId] : [];
+      }),
+    ),
+  ];
   set(pushHistoryAtom);
   set(deckAtom, (draft) => {
+    const active = draft.slides[activeIdx];
     for (const index of indexes) {
-      draft.slides[activeIdx].elements.splice(index, 1);
+      active.elements.splice(index, 1);
+    }
+    for (const componentId of affectedComponentIds) {
+      arrangeRepeatableComponents(active, componentId);
     }
   });
   const remainingCount = slide.elements.length - indexes.length;
@@ -238,3 +300,66 @@ export const deleteSelectedAtom = atom(null, (get, set) => {
   set(selectedItemsAtom, [nextSelected]);
   set(selectedTableCellAtom, null);
 });
+
+export const deleteSelectedComponentRunAtom = atom(null, (get, set) => {
+  const slide = get(activeSlideAtom);
+  const idx = get(selectedIndexAtom);
+  if (!slide || idx < 0) return;
+
+  const run = getComponentRun(slide.elements, idx);
+  if (!run) return;
+
+  const activeIdx = get(activeSlideIndexAtom);
+  set(pushHistoryAtom);
+  set(deckAtom, (draft) => {
+    const active = draft.slides[activeIdx];
+    active.elements.splice(run.start, run.end - run.start + 1);
+    arrangeRepeatableComponents(active, run.componentId);
+  });
+
+  const nextCount = slide.elements.length - run.indexes.length;
+  if (nextCount <= 0) {
+    set(selectedAtom, -1);
+    set(selectedItemsAtom, []);
+    set(selectedTableCellAtom, null);
+    return;
+  }
+
+  const nextIndex = Math.min(run.start, nextCount - 1);
+  set(selectedAtom, nextIndex);
+  set(selectedItemsAtom, [nextIndex]);
+  set(selectedTableCellAtom, null);
+});
+
+function cloneElement(element: SlideElement): SlideElement {
+  return JSON.parse(JSON.stringify(element)) as SlideElement;
+}
+
+function cloneSlide(slide: Slide): Slide {
+  return JSON.parse(JSON.stringify(slide)) as Slide;
+}
+
+function assignFreshComponentInstance(elements: SlideElement[]) {
+  const componentId = elements[0]?.componentId;
+  if (!componentId) return;
+  const instanceId = `${componentId}:${Date.now().toString(36)}:${componentInstanceCounter++}`;
+  for (const element of elements) {
+    if (element.componentId === componentId) {
+      element.componentInstanceId = instanceId;
+    }
+  }
+}
+
+function refreshSlideComponentInstances(slide: Slide) {
+  const remap = new Map<string, string>();
+  for (const element of slide.elements) {
+    if (!element.componentId) continue;
+    const key = element.componentInstanceId ?? element.componentId;
+    let next = remap.get(key);
+    if (!next) {
+      next = `${element.componentId}:slide:${Date.now().toString(36)}:${slideInstanceCounter++}`;
+      remap.set(key, next);
+    }
+    element.componentInstanceId = next;
+  }
+}

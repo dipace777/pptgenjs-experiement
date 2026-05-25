@@ -6,7 +6,7 @@ export { ImageToolbar } from "./ImageToolbar";
 export { ShapeToolbar } from "./ShapeToolbar";
 export { SvgInlineEditor, svgDraftFromElement } from "./SvgInlineEditor";
 export { SvgToolbar } from "./SvgToolbar";
-export { TableInlineEditor } from "./TableInlineEditor";
+export { TableInlineEditor, tableDraftFromElement } from "./TableInlineEditor";
 export { TableToolbar } from "./TableToolbar";
 export { TextInlineEditor } from "./TextInlineEditor";
 export { TextToolbar } from "./TextToolbar";

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Group, Image as KonvaImage, Rect } from "react-konva";
 import type { SvgElement as SvgEl } from "../../../../lib/slide-schema";
+import { rotationProps, shadowProps } from "./elementVisuals";
 import { loadKonvaImage, svgToDataUri } from "./exportAssets";
 import { geometry, type ElementCommonProps } from "./types";
 
@@ -39,7 +40,9 @@ export function SvgElement({
       y={y}
       width={width}
       height={height}
+      {...rotationProps(element)}
       opacity={element.opacity ?? 1}
+      {...shadowProps(element.shadow, scale)}
       {...events}
     >
       {image ? (

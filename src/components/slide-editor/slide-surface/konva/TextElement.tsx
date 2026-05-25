@@ -3,6 +3,7 @@ import { Group, Rect, Text } from "react-konva";
 import type { TextElement as TextEl } from "../../../../lib/slide-schema";
 import { fitFontToBox } from "../../../../lib/textMeasure";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
+import { rotationProps, shadowProps } from "./elementVisuals";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function TextElement({
@@ -39,7 +40,9 @@ export function TextElement({
       y={y}
       width={width}
       height={height}
+      {...rotationProps(element)}
       opacity={element.opacity ?? 1}
+      {...shadowProps(element.shadow, scale)}
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />

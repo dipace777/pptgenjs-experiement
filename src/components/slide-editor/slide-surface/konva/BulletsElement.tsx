@@ -3,6 +3,7 @@ import { Group, Rect, Text } from "react-konva";
 import type { BulletsElement as BulletsEl } from "../../../../lib/slide-schema";
 import { fitBulletsFontToBox } from "../../../../lib/textMeasure";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
+import { rotationProps, shadowProps } from "./elementVisuals";
 import { geometry, type ElementCommonProps } from "./types";
 
 export function BulletsElement({
@@ -49,6 +50,9 @@ export function BulletsElement({
       y={y}
       width={width}
       height={height}
+      {...rotationProps(element)}
+      opacity={element.opacity ?? 1}
+      {...shadowProps(element.shadow, scale)}
       {...events}
     >
       <Rect width={width} height={height} fill="rgba(0,0,0,0)" />

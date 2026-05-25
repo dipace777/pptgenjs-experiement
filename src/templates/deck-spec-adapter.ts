@@ -1,4 +1,5 @@
 import {
+  type CornerRadius,
   SLIDE_H,
   SLIDE_W,
   type Deck,
@@ -21,6 +22,13 @@ type SpecElementBase = {
   position: SpecPoint;
   size: SpecSize;
   rotation?: number | null;
+  shadow?: {
+    color: string;
+    blur: number;
+    opacity: number;
+    offsetX: number;
+    offsetY: number;
+  } | null;
   name?: string | null;
   slot?: string;
 };
@@ -52,6 +60,7 @@ type SpecImageElement = SpecElementBase & {
   data?: string | null;
   fit?: "contain" | "cover" | "fill" | null;
   is_icon?: boolean | null;
+  borderRadius?: SpecRadius | null;
 };
 
 type SpecTableCell = {
@@ -107,6 +116,13 @@ export type DeckSpec = {
   layouts: DeckSpecLayout[];
 };
 
+export type DeckComponentTemplate = {
+  id: string;
+  label: string;
+  description?: string;
+  elements: SlideElement[];
+};
+
 const DEFAULT_SPEC_SIZE: SpecSize = { width: 1280, height: 720 };
 
 export function createDeckFromSpec(spec: DeckSpec): Deck {
@@ -117,20 +133,45 @@ export function createDeckFromSpec(spec: DeckSpec): Deck {
     title: spec.title,
     description: spec.description,
     theme: spec.theme,
-    slides: spec.layouts.map((layout): Slide => ({
-      title: layout.title ?? readableTitle(layout.id),
-      background: stripHash(layout.background ?? spec.theme?.background ?? "FFFFFF"),
-      elements: layout.components.flatMap((instance) =>
-        convertComponentInstance(instance, componentMap, sourceSize),
-      ),
-    })),
+    slides: spec.layouts.map((layout): Slide => {
+      const componentCounts = new Map<string, number>();
+      return {
+        title: layout.title ?? readableTitle(layout.id),
+        background: stripHash(layout.background ?? spec.theme?.background ?? "FFFFFF"),
+        elements: layout.components.flatMap((instance) => {
+          const componentId = instance.componentId ?? instance.id ?? "component";
+          const count = componentCounts.get(componentId) ?? 0;
+          componentCounts.set(componentId, count + 1);
+          return convertComponentInstance(instance, componentMap, sourceSize, {
+            componentInstanceId: `${layout.id}:${componentId}:${count}`,
+          });
+        }),
+      };
+    }),
   };
+}
+
+export function createComponentTemplatesFromSpec(
+  spec: Pick<DeckSpec, "components" | "slideSize">,
+): DeckComponentTemplate[] {
+  const sourceSize = spec.slideSize ?? DEFAULT_SPEC_SIZE;
+  return (spec.components ?? []).map((component) => ({
+    id: component.id,
+    label: readableTitle(component.id),
+    description: component.description,
+    elements: convertComponentInstance(
+      { componentId: component.id },
+      new Map([[component.id, component]]),
+      sourceSize,
+    ),
+  }));
 }
 
 function convertComponentInstance(
   instance: DeckSpecComponentInstance,
   componentMap: Map<string, DeckSpecComponent>,
   sourceSize: SpecSize,
+  options: { componentInstanceId?: string } = {},
 ): SlideElement[] {
   const component = instance.componentId ? componentMap.get(instance.componentId) : undefined;
   const id = instance.componentId ?? instance.id;
@@ -141,10 +182,15 @@ function convertComponentInstance(
   }
 
   const componentPosition = instance.position ?? component?.position ?? { x: 0, y: 0 };
+  const metadata = {
+    componentId: id,
+    componentInstanceId: options.componentInstanceId,
+    componentDescription: instance.description ?? component?.description,
+  };
 
   return elements
     .map((element) => applyElementOverride(element, instance.overrides))
-    .map((element) => convertElement(element, componentPosition, sourceSize))
+    .map((element) => convertElement(element, componentPosition, sourceSize, metadata))
     .filter((element): element is SlideElement => element != null);
 }
 
@@ -161,6 +207,11 @@ function convertElement(
   element: DeckSpecElement,
   componentPosition: SpecPoint,
   sourceSize: SpecSize,
+  metadata: {
+    componentId?: string;
+    componentInstanceId?: string;
+    componentDescription?: string;
+  },
 ): SlideElement | null {
   const x = toSlideX(componentPosition.x + element.position.x, sourceSize);
   const y = toSlideY(componentPosition.y + element.position.y, sourceSize);
@@ -175,6 +226,7 @@ function convertElement(
       y,
       w,
       h,
+      ...commonElementProps(element, sourceSize, metadata),
       text: element.text,
       fontFace: element.font.family ?? "Poppins",
       fontSize,
@@ -201,6 +253,7 @@ function convertElement(
       y,
       w,
       h,
+      ...commonElementProps(element, sourceSize, metadata),
       fill: stripHash(element.fill?.color ?? "FFFFFF"),
       opacity: element.fill?.opacity ?? undefined,
       line: element.stroke
@@ -210,6 +263,7 @@ function convertElement(
           }
         : undefined,
       rx: radiusToSlide(element.borderRadius, sourceSize),
+      radius: cornerRadiusToSlide(element.borderRadius, sourceSize),
     };
   }
 
@@ -220,9 +274,12 @@ function convertElement(
       y,
       w,
       h,
+      ...commonElementProps(element, sourceSize, metadata),
       data: element.data ?? undefined,
       name: element.name ?? undefined,
       fit: element.fit ?? undefined,
+      rx: radiusToSlide(element.borderRadius, sourceSize),
+      radius: cornerRadiusToSlide(element.borderRadius, sourceSize),
     };
   }
 
@@ -237,7 +294,21 @@ function convertElement(
       y,
       w,
       h,
+      ...commonElementProps(element, sourceSize, metadata),
       rows: [header, ...rows],
+      cellStyles: [
+        element.columns.map((column) => ({
+          fill: column.fill?.color ? stripHash(column.fill.color) : undefined,
+          borderColor: column.stroke?.color ? stripHash(column.stroke.color) : undefined,
+          bold: true,
+        })),
+        ...element.rows.map((row) =>
+          row.map((cell) => ({
+            fill: cell.fill?.color ? stripHash(cell.fill.color) : undefined,
+            borderColor: cell.stroke?.color ? stripHash(cell.stroke.color) : undefined,
+          })),
+        ),
+      ],
       fontFace: "Poppins",
       fontSize: 12,
       textColor: "111827",
@@ -270,6 +341,46 @@ function radiusToSlide(radius: SpecRadius | null | undefined, sourceSize: SpecSi
   );
   if (!values.length) return undefined;
   return round(Math.min(0.5, toSlideX(values.reduce((sum, value) => sum + value, 0) / values.length, sourceSize)));
+}
+
+function cornerRadiusToSlide(
+  radius: SpecRadius | null | undefined,
+  sourceSize: SpecSize,
+): CornerRadius | undefined {
+  if (!radius) return undefined;
+  return {
+    tl: radius.tl != null ? toSlideX(radius.tl, sourceSize) : undefined,
+    tr: radius.tr != null ? toSlideX(radius.tr, sourceSize) : undefined,
+    bl: radius.bl != null ? toSlideX(radius.bl, sourceSize) : undefined,
+    br: radius.br != null ? toSlideX(radius.br, sourceSize) : undefined,
+  };
+}
+
+function commonElementProps(
+  element: DeckSpecElement,
+  sourceSize: SpecSize,
+  metadata: {
+    componentId?: string;
+    componentInstanceId?: string;
+    componentDescription?: string;
+  },
+) {
+  return {
+    rotation: element.rotation ?? undefined,
+    shadow:
+      "shadow" in element && element.shadow
+        ? {
+            color: stripHash(element.shadow.color),
+            blur: toSlideX(element.shadow.blur, sourceSize),
+            opacity: element.shadow.opacity,
+            offsetX: toSlideX(element.shadow.offsetX, sourceSize),
+            offsetY: toSlideY(element.shadow.offsetY, sourceSize),
+          }
+        : undefined,
+    componentId: metadata.componentId,
+    componentInstanceId: metadata.componentInstanceId,
+    componentDescription: metadata.componentDescription,
+  };
 }
 
 function stripHash(color: string) {

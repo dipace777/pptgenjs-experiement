@@ -1,10 +1,15 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { Provider, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Deck } from "../../lib/slide-schema";
 import { layoutKitDeck } from "../../templates/layout-kit";
-import { DeckThemeDrawer, SlideEditorDrawer } from "./panels";
+import {
+  createSlideTemplatesFromDeck,
+  type ComponentTemplate,
+  type SlideTemplate,
+} from "./componentTemplates";
+import { DeckThemeDrawer, SlideEditorDrawer, SlideLayoutDrawer } from "./panels";
 import { PresentationMode } from "./PresentationMode";
 import {
   EditorTopbar,
@@ -23,30 +28,49 @@ import {
   activeSlideIndexAtom,
   deckAtom,
   editorOpenAtom,
+  insertSlideAtom,
   presentingAtom,
   redoAtom,
   undoAtom,
 } from "./state";
 
 export function SlideEditor({
+  componentTemplates = [],
   initialDeck = layoutKitDeck,
+  slideTemplates,
   toolbarLeading,
 }: {
+  componentTemplates?: ReadonlyArray<ComponentTemplate>;
   initialDeck?: Deck;
+  slideTemplates?: ReadonlyArray<SlideTemplate>;
   toolbarLeading?: ReactNode;
 }) {
+  const resolvedSlideTemplates = useMemo(
+    () => slideTemplates ?? createSlideTemplatesFromDeck(initialDeck),
+    [initialDeck, slideTemplates],
+  );
+
   return (
     <Provider>
-      <SlideEditorBody initialDeck={initialDeck} toolbarLeading={toolbarLeading} />
+      <SlideEditorBody
+        componentTemplates={componentTemplates}
+        initialDeck={initialDeck}
+        slideTemplates={resolvedSlideTemplates}
+        toolbarLeading={toolbarLeading}
+      />
     </Provider>
   );
 }
 
 function SlideEditorBody({
+  componentTemplates,
   initialDeck,
+  slideTemplates,
   toolbarLeading,
 }: {
+  componentTemplates: ReadonlyArray<ComponentTemplate>;
   initialDeck: Deck;
+  slideTemplates: ReadonlyArray<SlideTemplate>;
   toolbarLeading?: ReactNode;
 }) {
   useHydrateAtoms([[deckAtom, initialDeck]]);
@@ -58,6 +82,8 @@ function SlideEditorBody({
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [presenting, setPresenting] = useAtom(presentingAtom);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [slideLayoutOpen, setSlideLayoutOpen] = useState(false);
+  const insertSlide = useSetAtom(insertSlideAtom);
   const { stageWidth, stageWrapRef } = useStageSize();
   const { exportStageRefs, exportingType, handleExport, handlePdfExport } =
     useDeckExport();
@@ -83,11 +109,29 @@ function SlideEditorBody({
           imageUploadInputRef={imageUploadInputRef}
           onImageUploadChange={handleImageUploadChange}
           onEditImage={openImageUpload}
+          canInsertSlide={slideTemplates.length > 0 && deck.slides.length < 50}
+          onInsertSlide={() => setSlideLayoutOpen(true)}
         />
       </main>
 
       {editorOpen ? (
-        <SlideEditorDrawer onClose={() => setEditorOpen(false)} />
+        <SlideEditorDrawer
+          componentTemplates={componentTemplates}
+          onClose={() => setEditorOpen(false)}
+        />
+      ) : null}
+
+      {slideLayoutOpen ? (
+        <SlideLayoutDrawer
+          anchorOffset={editorOpen ? 360 : 0}
+          insertAfterIndex={active}
+          slideTemplates={slideTemplates}
+          onClose={() => setSlideLayoutOpen(false)}
+          onInsert={(slide) => {
+            insertSlide(slide);
+            setSlideLayoutOpen(false);
+          }}
+        />
       ) : null}
 
       {themeOpen ? <DeckThemeDrawer onClose={() => setThemeOpen(false)} /> : null}
