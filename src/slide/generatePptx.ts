@@ -7,7 +7,12 @@ import {
   type Slide,
   type SlideElement,
 } from "../lib/slide-schema";
+import JSZip from "jszip";
 import { getElementDefinition } from "../lib/slide-elements";
+import {
+  PPTY_DECK_SIDECAR_PATH,
+  PPTY_IMAGE_PLACEHOLDER_TAG,
+} from "../lib/pptx-tags";
 import { sanitizeSvgMarkup } from "../lib/svg-sanitize";
 import { wrapTextElementLines } from "../lib/textMeasure";
 
@@ -612,13 +617,20 @@ function addElement(
         transparency: transparencyPct(el.opacity ?? undefined),
       });
     } else {
+      // Empty image slot. We tag the exported shape with a sentinel
+      // `objectName` so a round-trip back through our importer can restore
+      // it as an `image` element (with double-click-to-upload) instead of
+      // a plain rect. Fill explicitly set to none — pptxgenjs's
+      // `{ transparency: 100 }` writes a black srgbClr with alpha=0, which
+      // other readers (including ours, pre-fix) interpret as solid black.
       s.addShape(pptx.ShapeType.rect, {
         x: el.x,
         y: el.y,
         w: el.w,
         h: el.h,
-        fill: { transparency: 100 },
+        fill: { type: "none" },
         line: { color: "7D89A3", width: 0.75, dashType: "dash" },
+        objectName: PPTY_IMAGE_PLACEHOLDER_TAG,
       });
     }
     return;
@@ -726,5 +738,31 @@ export async function generatePptx(
 
   for (const slide of deck.slides) await addSlide(pptx, slide, resolvedOptions);
 
-  await pptx.writeFile({ fileName: filename });
+  // Build the PPTX in-memory, then reopen it as a zip and drop our deck
+  // JSON sidecar alongside `ppt/`. PowerPoint ignores files outside the
+  // Content Types manifest, so the file stays a valid `.pptx` for any
+  // reader — and our importer reads the sidecar first for a lossless
+  // round-trip (charts, tables, image slots, anything PPTX can't express
+  // natively).
+  const buffer = (await pptx.write({
+    outputType: "arraybuffer",
+  })) as ArrayBuffer;
+  const zip = await JSZip.loadAsync(buffer);
+  zip.file(PPTY_DECK_SIDECAR_PATH, JSON.stringify(deck));
+  const finalBlob = await zip.generateAsync({ type: "blob" });
+
+  triggerDownload(finalBlob, filename);
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Defer revoke a tick so the click has finished propagating in all
+  // browsers before the URL becomes invalid.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
