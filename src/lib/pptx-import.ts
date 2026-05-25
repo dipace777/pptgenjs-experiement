@@ -283,13 +283,17 @@ async function spToElement(
     // for every imported text element so the preview holds the shape the
     // source designer chose.
     const fittedSize = fitFontToBox(
-      trimmedText,
-      fontFace,
-      rawSize,
-      box.w,
+      {
+        text: trimmedText,
+        fontFace,
+        fontSize: rawSize,
+        bold: text.bold,
+        italic: text.italic,
+        lineHeight: text.lineHeight,
+        charSpacing,
+        w: box.w,
+      },
       box.h,
-      text.lineHeight ?? null,
-      charSpacing ?? null,
     );
     return {
       kind: "text",

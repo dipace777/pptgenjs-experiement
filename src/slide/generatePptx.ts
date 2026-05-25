@@ -562,15 +562,7 @@ function addElement(
     // Without this, PPT did its own shrinking via `fit: shrink` with its
     // own metrics, and the two views diverged. `wrap: false` keeps PPT
     // from rewrapping; `fit: shrink` stays as a sub-character safety net.
-    const effectiveFontSize = fitFontToBox(
-      el.text,
-      el.fontFace,
-      el.fontSize,
-      el.w,
-      el.h,
-      el.lineHeight,
-      el.charSpacing,
-    );
+    const effectiveFontSize = fitFontToBox(el, el.h);
     const lines = wrapTextElementLines({ ...el, fontSize: effectiveFontSize });
     s.addText(lines.join("\n"), {
       x: el.x,

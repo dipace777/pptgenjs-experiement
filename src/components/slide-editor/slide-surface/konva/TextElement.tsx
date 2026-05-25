@@ -25,25 +25,8 @@ export function TextElement({
   // tight — diverging from presentation/export. `fitFontToBox` never
   // grows, so authored sizes that fit are untouched.
   const effectiveFontSizePt = useMemo(
-    () =>
-      fitFontToBox(
-        element.text,
-        element.fontFace,
-        element.fontSize,
-        element.w,
-        element.h,
-        element.lineHeight,
-        element.charSpacing,
-      ),
-    [
-      element.text,
-      element.fontFace,
-      element.fontSize,
-      element.w,
-      element.h,
-      element.lineHeight,
-      element.charSpacing,
-    ],
+    () => fitFontToBox(element, element.h),
+    [element],
   );
   const fontSize = effectiveFontSizePt * PT_TO_PX * (scale / PX_PER_IN);
   const isTopAligned = (element.valign ?? "top") === "top";
