@@ -33,6 +33,12 @@ const PARSER = new XMLParser({
   attributeNamePrefix: "@_",
   textNodeName: "#text",
   parseAttributeValue: false,
+  // Keep tag values as strings. Without this, fast-xml-parser turns
+  // numeric-looking text content into actual numbers — so a slide with a
+  // big "1" / "2" / "3" run silently loses its text (the run becomes the
+  // number `1`, our string extractor returns "", and the importer falls
+  // through to the rect branch and renders an empty grey box).
+  parseTagValue: false,
   trimValues: false,
   // Preserve element order for siblings — relevant for paragraph runs.
   preserveOrder: false,
@@ -536,11 +542,17 @@ function extractTextBody(txBody: Record<string, unknown>): TextExtract {
 }
 
 function extractTextNode(t: unknown): string {
-  if (!t) return "";
+  if (t == null) return "";
   if (typeof t === "string") return t;
+  // Numeric/boolean runs are possible if any other parsing path leaves
+  // them un-stringified. Coerce so the text isn't silently dropped.
+  if (typeof t === "number" || typeof t === "boolean") return String(t);
   if (typeof t === "object") {
     const node = t as Record<string, unknown>;
-    if (typeof node["#text"] === "string") return node["#text"];
+    const inner = node["#text"];
+    if (typeof inner === "string") return inner;
+    if (typeof inner === "number" || typeof inner === "boolean")
+      return String(inner);
   }
   return "";
 }
