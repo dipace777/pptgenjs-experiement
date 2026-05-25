@@ -116,6 +116,13 @@ export type DeckSpec = {
   layouts: DeckSpecLayout[];
 };
 
+export type DeckComponentTemplate = {
+  id: string;
+  label: string;
+  description?: string;
+  elements: SlideElement[];
+};
+
 const DEFAULT_SPEC_SIZE: SpecSize = { width: 1280, height: 720 };
 
 export function createDeckFromSpec(spec: DeckSpec): Deck {
@@ -126,20 +133,45 @@ export function createDeckFromSpec(spec: DeckSpec): Deck {
     title: spec.title,
     description: spec.description,
     theme: spec.theme,
-    slides: spec.layouts.map((layout): Slide => ({
-      title: layout.title ?? readableTitle(layout.id),
-      background: stripHash(layout.background ?? spec.theme?.background ?? "FFFFFF"),
-      elements: layout.components.flatMap((instance) =>
-        convertComponentInstance(instance, componentMap, sourceSize),
-      ),
-    })),
+    slides: spec.layouts.map((layout): Slide => {
+      const componentCounts = new Map<string, number>();
+      return {
+        title: layout.title ?? readableTitle(layout.id),
+        background: stripHash(layout.background ?? spec.theme?.background ?? "FFFFFF"),
+        elements: layout.components.flatMap((instance) => {
+          const componentId = instance.componentId ?? instance.id ?? "component";
+          const count = componentCounts.get(componentId) ?? 0;
+          componentCounts.set(componentId, count + 1);
+          return convertComponentInstance(instance, componentMap, sourceSize, {
+            componentInstanceId: `${layout.id}:${componentId}:${count}`,
+          });
+        }),
+      };
+    }),
   };
+}
+
+export function createComponentTemplatesFromSpec(
+  spec: Pick<DeckSpec, "components" | "slideSize">,
+): DeckComponentTemplate[] {
+  const sourceSize = spec.slideSize ?? DEFAULT_SPEC_SIZE;
+  return (spec.components ?? []).map((component) => ({
+    id: component.id,
+    label: readableTitle(component.id),
+    description: component.description,
+    elements: convertComponentInstance(
+      { componentId: component.id },
+      new Map([[component.id, component]]),
+      sourceSize,
+    ),
+  }));
 }
 
 function convertComponentInstance(
   instance: DeckSpecComponentInstance,
   componentMap: Map<string, DeckSpecComponent>,
   sourceSize: SpecSize,
+  options: { componentInstanceId?: string } = {},
 ): SlideElement[] {
   const component = instance.componentId ? componentMap.get(instance.componentId) : undefined;
   const id = instance.componentId ?? instance.id;
@@ -152,6 +184,7 @@ function convertComponentInstance(
   const componentPosition = instance.position ?? component?.position ?? { x: 0, y: 0 };
   const metadata = {
     componentId: id,
+    componentInstanceId: options.componentInstanceId,
     componentDescription: instance.description ?? component?.description,
   };
 
@@ -176,6 +209,7 @@ function convertElement(
   sourceSize: SpecSize,
   metadata: {
     componentId?: string;
+    componentInstanceId?: string;
     componentDescription?: string;
   },
 ): SlideElement | null {
@@ -325,7 +359,11 @@ function cornerRadiusToSlide(
 function commonElementProps(
   element: DeckSpecElement,
   sourceSize: SpecSize,
-  metadata: { componentId?: string; componentDescription?: string },
+  metadata: {
+    componentId?: string;
+    componentInstanceId?: string;
+    componentDescription?: string;
+  },
 ) {
   return {
     rotation: element.rotation ?? undefined,
@@ -333,13 +371,14 @@ function commonElementProps(
       "shadow" in element && element.shadow
         ? {
             color: stripHash(element.shadow.color),
-            blur: pxToPt(element.shadow.blur, sourceSize),
+            blur: toSlideX(element.shadow.blur, sourceSize),
             opacity: element.shadow.opacity,
             offsetX: toSlideX(element.shadow.offsetX, sourceSize),
             offsetY: toSlideY(element.shadow.offsetY, sourceSize),
           }
         : undefined,
     componentId: metadata.componentId,
+    componentInstanceId: metadata.componentInstanceId,
     componentDescription: metadata.componentDescription,
   };
 }

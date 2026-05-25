@@ -67,11 +67,11 @@ export function TableElement({
                 strokeWidth={renderMode === "proxy" ? 0 : 1}
                 onClick={(event) => {
                   event.cancelBubble = true;
-                  events.onClick(event);
+                  if (!events.onClick(event)) return;
                   onTableCellClick?.(rowIndex, colIndex);
                 }}
-                onTap={() => {
-                  events.onTap();
+                onTap={(event) => {
+                  if (!events.onTap(event)) return;
                   onTableCellClick?.(rowIndex, colIndex);
                 }}
               />

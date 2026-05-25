@@ -5,6 +5,7 @@ import {
   SLIDE_H,
   SLIDE_W,
   type Deck,
+  type Shadow,
   type Slide,
   type SlideElement,
 } from "./slide-schema";
@@ -22,7 +23,7 @@ const emuToIn = (emu: number): number => emu / EMU_PER_INCH;
 
 // Caps so we never emit a deck that fails DeckSchema validation. The
 // schema constraints live in slide-schema.ts; if those move, update here.
-const MAX_SLIDES = 20;
+const MAX_SLIDES = 50;
 const MAX_ELEMENTS_PER_SLIDE = 60;
 const MAX_TEXT_LEN = 700;
 const MIN_FONT_SIZE = 6;
@@ -253,6 +254,8 @@ async function spToElement(
   const nvSpPr = sp["p:nvSpPr"] as Record<string, unknown> | undefined;
   const cNvPr = nvSpPr?.["p:cNvPr"] as Record<string, unknown> | undefined;
   const objectName = cNvPr?.["@_name"];
+  const spPr = sp["p:spPr"] as Record<string, unknown> | undefined;
+  const shadow = extractShadow(spPr, scale);
   if (objectName === PPTY_IMAGE_PLACEHOLDER_TAG) {
     const nameAttr =
       typeof cNvPr?.["@_descr"] === "string" ? (cNvPr["@_descr"] as string) : undefined;
@@ -261,11 +264,11 @@ async function spToElement(
       ...box,
       fit: "cover",
       name: nameAttr,
+      shadow,
     };
   }
 
   const txBody = sp["p:txBody"] as Record<string, unknown> | undefined;
-  const spPr = sp["p:spPr"] as Record<string, unknown> | undefined;
   const prstGeom = spPr?.["a:prstGeom"] as Record<string, unknown> | undefined;
   const geomKind = prstGeom?.["@_prst"];
 
@@ -307,6 +310,7 @@ async function spToElement(
       text: trimmedText,
       fontFace,
       fontSize: clampFontSize(fittedSize),
+      shadow,
       bold: text.bold || undefined,
       italic: text.italic || undefined,
       color: text.color ?? "1A1A1A",
@@ -321,10 +325,10 @@ async function spToElement(
   // Geometry shape.
   const fill = extractFill(spPr) ?? "DDE5F0";
   if (isEllipseGeom(geomKind, box)) {
-    return { kind: "ellipse", ...box, fill };
+    return { kind: "ellipse", ...box, fill, shadow };
   }
   // Default to rect (covers rect, roundRect, and other rectilinear primitives).
-  return { kind: "rect", ...box, fill };
+  return { kind: "rect", ...box, fill, shadow };
 }
 
 // OOXML preset names PowerPoint and friends use for round shapes. The
@@ -367,6 +371,8 @@ async function picToElement(
   if (!xfrm) return null;
   const box = boxFromXfrm(xfrm, scale);
   if (!box) return null;
+  const spPr = pic["p:spPr"] as Record<string, unknown> | undefined;
+  const shadow = extractShadow(spPr, scale);
 
   const blipFill = pic["p:blipFill"] as Record<string, unknown> | undefined;
   const blip = blipFill?.["a:blip"] as Record<string, unknown> | undefined;
@@ -386,6 +392,7 @@ async function picToElement(
     ...box,
     data: `data:${mime};base64,${bytes}`,
     name: nameFromNvProps(pic) ?? undefined,
+    shadow,
     fit: "cover",
   };
 }
@@ -441,6 +448,42 @@ function extractSolidColor(solid: unknown): string | null {
   }
   // Theme colors (scheme/sys) — not yet resolved against the slide master.
   return null;
+}
+
+function extractShadow(
+  spPr: Record<string, unknown> | undefined,
+  scale: number,
+): Shadow | undefined {
+  if (!spPr) return undefined;
+  const effectLst = spPr["a:effectLst"] as Record<string, unknown> | undefined;
+  const outer = effectLst?.["a:outerShdw"] as Record<string, unknown> | undefined;
+  if (!outer) return undefined;
+
+  const blurRaw = Number(outer["@_blurRad"] ?? 0);
+  const distRaw = Number(outer["@_dist"] ?? 0);
+  const dirRaw = Number(outer["@_dir"] ?? 2700000);
+  const degrees = Number.isFinite(dirRaw) ? dirRaw / 60000 : 45;
+  const radians = (degrees * Math.PI) / 180;
+  const dist = Number.isFinite(distRaw) ? emuToIn(distRaw) * scale : 0;
+
+  return {
+    color: extractSolidColor(outer) ?? "000000",
+    blur: clamp(Number.isFinite(blurRaw) ? emuToIn(blurRaw) * scale : 0, 0, 100),
+    opacity: clamp(extractColorAlpha(outer) ?? 0.35, 0, 1),
+    offsetX: clamp(Math.cos(radians) * dist, -2, 2),
+    offsetY: clamp(Math.sin(radians) * dist, -2, 2),
+  };
+}
+
+function extractColorAlpha(node: Record<string, unknown>): number | null {
+  const srgb = node["a:srgbClr"];
+  if (!srgb || typeof srgb !== "object") return null;
+  const alpha = (srgb as Record<string, unknown>)["a:alpha"];
+  if (!alpha || typeof alpha !== "object") return null;
+  const val = (alpha as Record<string, unknown>)["@_val"];
+  if (typeof val !== "string") return null;
+  const parsed = Number(val);
+  return Number.isFinite(parsed) ? parsed / 100000 : null;
 }
 
 // ── Helpers: text body ─────────────────────────────────────────────────

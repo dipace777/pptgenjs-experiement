@@ -1,5 +1,5 @@
 import Konva from "konva";
-import { useMemo, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Group, Line, Rect, Text, Transformer } from "react-konva";
 import {
   SLIDE_H,
@@ -9,11 +9,23 @@ import {
 } from "../../../../lib/slide-schema";
 import { textElementOverflows } from "../../../../lib/textMeasure";
 import { clamp } from "../../editorUtils";
+import { getComponentRun } from "../../state";
 import { useGroupDrag } from "./hooks/useGroupDrag";
 import { KonvaElement } from "./KonvaElement";
 import { SELECTION_STROKE } from "./types";
 
 type Bounds = { x: number; y: number; width: number; height: number };
+type PressPoint = { x: number; y: number };
+type ComponentPress = {
+  index: number;
+  indexes: number[];
+  point: PressPoint;
+  timer: ReturnType<typeof setTimeout>;
+};
+
+const COMPONENT_LONG_PRESS_MS = 550;
+const COMPONENT_LONG_PRESS_MOVE_TOLERANCE = 8;
+const SUPPRESS_SELECT_AFTER_LONG_PRESS_MS = 400;
 
 export function ElementLayer({
   editingBulletsIndex,
@@ -36,6 +48,7 @@ export function ElementLayer({
   onEditTable,
   onEditText,
   onSelect,
+  onSelectMany,
   onSelectTableCell,
   scale,
   selectedBounds,
@@ -67,6 +80,7 @@ export function ElementLayer({
   onEditTable?: (index: number) => void;
   onEditText?: (index: number) => void;
   onSelect?: (index: number, additive?: boolean) => void;
+  onSelectMany?: (indexes: number[]) => void;
   onSelectTableCell?: (index: number, rowIndex: number, colIndex: number) => void;
   scale: number;
   selectedBounds: Bounds | null;
@@ -101,11 +115,108 @@ export function ElementLayer({
   }, [interactive, slide]);
 
   const [hoveredOverflow, setHoveredOverflow] = useState<number | null>(null);
+  const componentPressRef = useRef<ComponentPress | null>(null);
+  const suppressSelectRef = useRef<Set<number> | null>(null);
+  const suppressSelectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const eventPoint = (
+    event: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ): PressPoint | null => {
+    const nativeEvent = event.evt;
+    if ("touches" in nativeEvent) {
+      const touch = nativeEvent.touches[0] ?? nativeEvent.changedTouches[0];
+      return touch ? { x: touch.clientX, y: touch.clientY } : null;
+    }
+    return { x: nativeEvent.clientX, y: nativeEvent.clientY };
+  };
+
+  const clearComponentPress = () => {
+    if (componentPressRef.current) {
+      clearTimeout(componentPressRef.current.timer);
+      componentPressRef.current = null;
+    }
+  };
+
+  useEffect(
+    () => () => {
+      clearComponentPress();
+      if (suppressSelectTimerRef.current) {
+        clearTimeout(suppressSelectTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const suppressNextSelect = (indexes: number[]) => {
+    if (suppressSelectTimerRef.current) {
+      clearTimeout(suppressSelectTimerRef.current);
+    }
+    suppressSelectRef.current = new Set(indexes);
+    suppressSelectTimerRef.current = setTimeout(() => {
+      suppressSelectRef.current = null;
+      suppressSelectTimerRef.current = null;
+    }, SUPPRESS_SELECT_AFTER_LONG_PRESS_MS);
+  };
+
+  const startComponentPress = (
+    index: number,
+    event: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    clearComponentPress();
+    const componentRun = getComponentRun(slide.elements, index);
+    if (!componentRun || componentRun.indexes.length <= 1) return;
+    const point = eventPoint(event);
+    if (!point) return;
+
+    componentPressRef.current = {
+      index,
+      indexes: componentRun.indexes,
+      point,
+      timer: setTimeout(() => {
+        const press = componentPressRef.current;
+        if (!press || press.index !== index) return;
+        componentPressRef.current = null;
+        suppressNextSelect(press.indexes);
+        onSelectMany?.(press.indexes);
+      }, COMPONENT_LONG_PRESS_MS),
+    };
+  };
+
+  const moveComponentPress = (
+    event: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    const press = componentPressRef.current;
+    if (!press) return;
+    const point = eventPoint(event);
+    if (!point) return;
+    const dx = point.x - press.point.x;
+    const dy = point.y - press.point.y;
+    if (Math.hypot(dx, dy) > COMPONENT_LONG_PRESS_MOVE_TOLERANCE) {
+      clearComponentPress();
+    }
+  };
+
+  const shouldSuppressSelect = (index: number) => {
+    const suppress = suppressSelectRef.current;
+    if (!suppress?.has(index)) return false;
+    if (suppressSelectTimerRef.current) {
+      clearTimeout(suppressSelectTimerRef.current);
+      suppressSelectTimerRef.current = null;
+    }
+    suppressSelectRef.current = null;
+    return true;
+  };
 
   const commonEvents = (index: number, el: SlideElement) => ({
     draggable: interactive,
-    onClick: (event: Konva.KonvaEventObject<MouseEvent>) =>
-      onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey),
+    onClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
+      if (shouldSuppressSelect(index)) {
+        event.cancelBubble = true;
+        return false;
+      }
+      onSelect?.(index, event.evt.shiftKey || event.evt.metaKey || event.evt.ctrlKey);
+      return true;
+    },
     onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
       if (
         el.kind !== "text" &&
@@ -124,8 +235,32 @@ export function ElementLayer({
       if (el.kind === "svg") onEditSvg?.(index);
       if (el.kind === "table") onEditTable?.(index);
     },
-    onTap: () => onSelect?.(index),
+    onTap: (event: Konva.KonvaEventObject<TouchEvent>) => {
+      if (shouldSuppressSelect(index)) {
+        event.cancelBubble = true;
+        return false;
+      }
+      onSelect?.(index);
+      return true;
+    },
+    onMouseDown: (event: Konva.KonvaEventObject<MouseEvent>) => {
+      startComponentPress(index, event);
+    },
+    onMouseMove: (event: Konva.KonvaEventObject<MouseEvent>) => {
+      moveComponentPress(event);
+    },
+    onMouseUp: clearComponentPress,
+    onMouseLeave: clearComponentPress,
+    onTouchStart: (event: Konva.KonvaEventObject<TouchEvent>) => {
+      startComponentPress(index, event);
+    },
+    onTouchMove: (event: Konva.KonvaEventObject<TouchEvent>) => {
+      moveComponentPress(event);
+    },
+    onTouchEnd: clearComponentPress,
+    onTouchCancel: clearComponentPress,
     onDragStart: () => {
+      clearComponentPress();
       startGroupDrag(index);
     },
     onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => {

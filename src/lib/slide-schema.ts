@@ -57,6 +57,7 @@ const baseElement = {
   rotation: z.number().min(-360).max(360).nullish(),
   shadow: ShadowSchema.nullish(),
   componentId: z.string().min(1).max(120).nullish(),
+  componentInstanceId: z.string().min(1).max(160).nullish(),
   componentDescription: z.string().max(600).nullish(),
 };
 
@@ -220,7 +221,7 @@ export const DeckSchema = z.object({
   title: z.string().min(1).max(90),
   description: z.string().max(1200).nullish(),
   theme: DeckThemeSchema.nullish(),
-  slides: z.array(SlideSchema).min(1).max(20),
+  slides: z.array(SlideSchema).min(1).max(50),
 });
 
 export type Inches = number;

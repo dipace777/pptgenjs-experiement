@@ -20,7 +20,11 @@ import {
   updateElementAtom,
   updateElementsAtom,
 } from "../../../state";
-import { chartDraftFromElement, svgDraftFromElement } from "../../../inline";
+import {
+  chartDraftFromElement,
+  svgDraftFromElement,
+  tableDraftFromElement,
+} from "../../../inline";
 
 export function useEditorCanvasInteractions({
   onEditImage,
@@ -96,9 +100,7 @@ export function useEditorCanvasInteractions({
     (index: number) => {
       const element = slide.elements[index];
       setEditingTableDraft(
-        element?.kind === "table"
-          ? element.rows.map((row) => row.join(", ")).join("\n")
-          : "",
+        element?.kind === "table" ? tableDraftFromElement(element) : "",
       );
       setEditingTextIndex(null);
       setEditingBulletsIndex(null);

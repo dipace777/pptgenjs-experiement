@@ -4,9 +4,17 @@ export const SELECTION_STROKE = "#d4a24c";
 
 export type ElementEvents = {
   draggable: boolean;
-  onClick: (event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onClick: (event: Konva.KonvaEventObject<MouseEvent>) => boolean;
   onDblClick?: (event: Konva.KonvaEventObject<MouseEvent>) => void;
-  onTap: () => void;
+  onTap: (event: Konva.KonvaEventObject<TouchEvent>) => boolean;
+  onMouseDown?: (event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onMouseMove?: (event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onMouseUp?: () => void;
+  onMouseLeave?: () => void;
+  onTouchStart?: (event: Konva.KonvaEventObject<TouchEvent>) => void;
+  onTouchMove?: (event: Konva.KonvaEventObject<TouchEvent>) => void;
+  onTouchEnd?: () => void;
+  onTouchCancel?: () => void;
   onDragStart: () => void;
   onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;
   onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;

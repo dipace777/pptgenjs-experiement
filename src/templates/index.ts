@@ -1,14 +1,16 @@
 import type { Deck } from "../lib/slide-schema";
 import { coffeeMarketingDeck } from "./coffee-marketing";
+import type { DeckComponentTemplate } from "./deck-spec-adapter";
 import { layoutKitDeck } from "./layout-kit";
 import { pitchDeck } from "./pitch-deck";
-import { tacoBellDeck } from "./taco-bell";
+import { tacoBellComponentTemplates, tacoBellDeck } from "./taco-bell";
 
 export type TemplateDescriptor = {
   id: string;
   label: string;
   description: string;
   deck: Deck;
+  componentTemplates?: ReadonlyArray<DeckComponentTemplate>;
 };
 
 export const TEMPLATES: ReadonlyArray<TemplateDescriptor> = [
@@ -35,7 +37,14 @@ export const TEMPLATES: ReadonlyArray<TemplateDescriptor> = [
     label: "Taco Bell",
     description: "A seven-slide restaurant brand deck generated from reusable specs.",
     deck: tacoBellDeck,
+    componentTemplates: tacoBellComponentTemplates,
   },
 ];
 
-export { coffeeMarketingDeck, layoutKitDeck, pitchDeck, tacoBellDeck };
+export {
+  coffeeMarketingDeck,
+  layoutKitDeck,
+  pitchDeck,
+  tacoBellComponentTemplates,
+  tacoBellDeck,
+};

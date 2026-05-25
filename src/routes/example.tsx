@@ -30,6 +30,7 @@ function ExamplePage() {
   return (
     <SlideEditor
       key={template.id}
+      componentTemplates={template.componentTemplates}
       initialDeck={template.deck}
       toolbarLeading={templatePicker}
     />

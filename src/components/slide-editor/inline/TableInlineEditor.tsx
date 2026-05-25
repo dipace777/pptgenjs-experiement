@@ -26,16 +26,7 @@ export function TableInlineEditor({
       onChange={(event) => {
         const nextDraft = event.target.value;
         onDraftChange(nextDraft);
-        const rows = nextDraft
-          .split("\n")
-          .map((line) =>
-            line
-              .split(",")
-              .map((cell) => cell.trim())
-              .slice(0, 6),
-          )
-          .filter((row) => row.some(Boolean))
-          .slice(0, 8);
+        const rows = tableRowsFromDraft(nextDraft);
         if (rows.length >= 2) onChange(index, { ...element, rows });
       }}
       onBlur={onClose}
@@ -55,4 +46,52 @@ export function TableInlineEditor({
       }}
     />
   );
+}
+
+export function tableDraftFromElement(element: TableSlideElement) {
+  return element.rows
+    .map((row) => row.map(formatTableCell).join(", "))
+    .join("\n");
+}
+
+export function tableRowsFromDraft(draft: string) {
+  return draft
+    .split(/\r?\n/)
+    .map(parseTableRow)
+    .filter((row) => row.some(Boolean))
+    .map((row) => row.slice(0, 6))
+    .slice(0, 8);
+}
+
+function formatTableCell(cell: string) {
+  if (!/[",\n\r]/.test(cell)) return cell;
+  return `"${cell.replace(/"/g, '""')}"`;
+}
+
+function parseTableRow(line: string) {
+  const cells: string[] = [];
+  let current = "";
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '"') {
+      if (quoted && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+    if (char === "," && !quoted) {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  cells.push(current.trim());
+  return cells;
 }

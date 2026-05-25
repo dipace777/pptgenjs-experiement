@@ -4,6 +4,7 @@ import { useHydrateAtoms } from "jotai/utils";
 import { useState, type ReactNode } from "react";
 import type { Deck } from "../../lib/slide-schema";
 import { layoutKitDeck } from "../../templates/layout-kit";
+import type { ComponentTemplate } from "./componentTemplates";
 import { DeckThemeDrawer, SlideEditorDrawer } from "./panels";
 import { PresentationMode } from "./PresentationMode";
 import {
@@ -29,23 +30,31 @@ import {
 } from "./state";
 
 export function SlideEditor({
+  componentTemplates = [],
   initialDeck = layoutKitDeck,
   toolbarLeading,
 }: {
+  componentTemplates?: ReadonlyArray<ComponentTemplate>;
   initialDeck?: Deck;
   toolbarLeading?: ReactNode;
 }) {
   return (
     <Provider>
-      <SlideEditorBody initialDeck={initialDeck} toolbarLeading={toolbarLeading} />
+      <SlideEditorBody
+        componentTemplates={componentTemplates}
+        initialDeck={initialDeck}
+        toolbarLeading={toolbarLeading}
+      />
     </Provider>
   );
 }
 
 function SlideEditorBody({
+  componentTemplates,
   initialDeck,
   toolbarLeading,
 }: {
+  componentTemplates: ReadonlyArray<ComponentTemplate>;
   initialDeck: Deck;
   toolbarLeading?: ReactNode;
 }) {
@@ -87,7 +96,10 @@ function SlideEditorBody({
       </main>
 
       {editorOpen ? (
-        <SlideEditorDrawer onClose={() => setEditorOpen(false)} />
+        <SlideEditorDrawer
+          componentTemplates={componentTemplates}
+          onClose={() => setEditorOpen(false)}
+        />
       ) : null}
 
       {themeOpen ? <DeckThemeDrawer onClose={() => setThemeOpen(false)} /> : null}

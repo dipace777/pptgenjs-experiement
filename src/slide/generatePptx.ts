@@ -53,7 +53,7 @@ function pptxShadow(shadow?: Shadow | null): PptxGenJS.ShadowProps | undefined {
     type: "outer",
     color: shadow.color,
     opacity: shadow.opacity,
-    blur: shadow.blur,
+    blur: shadow.blur * 72,
     offset,
     angle,
   };
