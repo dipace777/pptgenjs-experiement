@@ -1,7 +1,14 @@
 import type { SlideElement } from "./slide-schema";
 
 export type ElementKind = SlideElement["kind"];
-export type ElementToolbarKey = "text" | "bullets" | "image" | "shape" | "table";
+export type ElementToolbarKey =
+  | "text"
+  | "bullets"
+  | "image"
+  | "shape"
+  | "chart"
+  | "svg"
+  | "table";
 export type ElementInspectorKey =
   | "text"
   | "bullets"
@@ -55,7 +62,7 @@ export const ELEMENT_REGISTRY = {
   chart: {
     label: "Chart",
     addable: true,
-    toolbar: null,
+    toolbar: "chart",
     inspector: "chart",
     renderers: { konva: "chart", domOverlay: "chart", domOverlayOrder: 20 },
     export: { pptx: "chart", pdf: "raster" },
@@ -122,7 +129,7 @@ export const ELEMENT_REGISTRY = {
   svg: {
     label: "SVG",
     addable: false,
-    toolbar: null,
+    toolbar: "svg",
     inspector: "svg",
     renderers: { konva: "svg", domOverlay: "svg", domOverlayOrder: 10 },
     export: { pptx: "svg", pdf: "raster" },

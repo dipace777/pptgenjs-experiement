@@ -18,7 +18,9 @@ export function KonvaSlide({
   onDelete,
   onEditText,
   onEditBullets,
+  onEditChart,
   onEditImage,
+  onEditSvg,
   onEditTable,
   onSelectTableCell,
   onChange,
@@ -30,6 +32,8 @@ export function KonvaSlide({
   textRenderMode,
   editingTextIndex,
   editingBulletsIndex,
+  editingChartIndex,
+  editingSvgIndex,
   editingTableIndex,
 }: {
   slide: Slide;
@@ -43,7 +47,9 @@ export function KonvaSlide({
   onDelete?: () => void;
   onEditText?: (index: number) => void;
   onEditBullets?: (index: number) => void;
+  onEditChart?: (index: number) => void;
   onEditImage?: (index: number) => void;
+  onEditSvg?: (index: number) => void;
   onEditTable?: (index: number) => void;
   onSelectTableCell?: (index: number, rowIndex: number, colIndex: number) => void;
   onChange?: (index: number, element: SlideElement) => void;
@@ -55,6 +61,8 @@ export function KonvaSlide({
   textRenderMode?: "canvas" | "proxy";
   editingTextIndex?: number | null;
   editingBulletsIndex?: number | null;
+  editingChartIndex?: number | null;
+  editingSvgIndex?: number | null;
   editingTableIndex?: number | null;
 }) {
   const scale = width / SLIDE_W;
@@ -70,6 +78,10 @@ export function KonvaSlide({
   const resolvedEditingBulletsIndex =
     editingBulletsIndex ??
     (interactive ? editorInteractions.editingBulletsIndex : undefined);
+  const resolvedEditingChartIndex =
+    editingChartIndex ?? (interactive ? editorInteractions.editingChartIndex : undefined);
+  const resolvedEditingSvgIndex =
+    editingSvgIndex ?? (interactive ? editorInteractions.editingSvgIndex : undefined);
   const resolvedEditingTableIndex =
     editingTableIndex ?? (interactive ? editorInteractions.editingTableIndex : undefined);
   const resolvedOnSelect = onSelect ?? (interactive ? editorInteractions.onSelect : undefined);
@@ -80,8 +92,12 @@ export function KonvaSlide({
     onEditText ?? (interactive ? editorInteractions.onEditText : undefined);
   const resolvedOnEditBullets =
     onEditBullets ?? (interactive ? editorInteractions.onEditBullets : undefined);
+  const resolvedOnEditChart =
+    onEditChart ?? (interactive ? editorInteractions.onEditChart : undefined);
   const resolvedOnEditImage =
     onEditImage ?? (interactive ? editorInteractions.onEditImage : undefined);
+  const resolvedOnEditSvg =
+    onEditSvg ?? (interactive ? editorInteractions.onEditSvg : undefined);
   const resolvedOnEditTable =
     onEditTable ?? (interactive ? editorInteractions.onEditTable : undefined);
   const resolvedOnSelectTableCell =
@@ -117,6 +133,8 @@ export function KonvaSlide({
     >
       <ElementLayer
         editingBulletsIndex={resolvedEditingBulletsIndex}
+        editingChartIndex={resolvedEditingChartIndex}
+        editingSvgIndex={resolvedEditingSvgIndex}
         editingTableIndex={resolvedEditingTableIndex}
         editingTextIndex={resolvedEditingTextIndex}
         interactive={interactive}
@@ -128,7 +146,9 @@ export function KonvaSlide({
         onChangeMany={resolvedOnChangeMany}
         onDelete={resolvedOnDelete}
         onEditBullets={resolvedOnEditBullets}
+        onEditChart={resolvedOnEditChart}
         onEditImage={resolvedOnEditImage}
+        onEditSvg={resolvedOnEditSvg}
         onEditTable={resolvedOnEditTable}
         onEditText={resolvedOnEditText}
         onSelect={resolvedOnSelect}

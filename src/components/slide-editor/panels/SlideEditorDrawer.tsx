@@ -5,6 +5,7 @@ import { kindLabel, withHash, withoutHash } from "../editorUtils";
 import { useSvgGeneration } from "../hooks";
 import { ElementInspector } from "../inspector/ElementInspector";
 import { ADDABLE_ELEMENT_KINDS } from "../registry";
+import { EditorButton, TextareaField } from "../shared/FormControls";
 import {
   activeSlideAtom,
   activeSlideIndexAtom,
@@ -133,25 +134,19 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
             style={{ display: "none" }}
           />
           <div style={{ display: "grid", gridTemplateColumns: activeSlide.backgroundImage ? "1fr 1fr" : "1fr", gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => backgroundImageInputRef.current?.click()}
-              style={styles.secondaryButton}
-            >
+            <EditorButton onClick={() => backgroundImageInputRef.current?.click()}>
               {activeSlide.backgroundImage ? "Replace" : "Upload"}
-            </button>
+            </EditorButton>
             {activeSlide.backgroundImage ? (
-              <button
-                type="button"
+              <EditorButton
                 onClick={() =>
                   updateActiveSlide((slide) => {
                     slide.backgroundImage = null;
                   })
                 }
-                style={styles.secondaryButton}
               >
                 Remove
-              </button>
+              </EditorButton>
             ) : null}
           </div>
           {activeSlide.backgroundImage ? (
@@ -186,40 +181,29 @@ export function SlideEditorDrawer({ onClose }: SlideEditorDrawerProps) {
 
         <div style={drawerStyles.addGrid}>
           {ADDABLE_ELEMENT_KINDS.map((kind) => (
-            <button
+            <EditorButton
               key={kind}
-              type="button"
               onClick={() => addElement(kind)}
-              style={styles.secondaryButton}
             >
               + {kindLabel(kind)}
-            </button>
+            </EditorButton>
           ))}
         </div>
 
         <div style={drawerStyles.generatorPanel}>
-          <label style={styles.field}>
-            <span>Generate SVG from prompt</span>
-            <textarea
-              value={svgPrompt}
-              onChange={(event) => setSvgPrompt(event.target.value)}
-              rows={3}
-              style={styles.textarea}
-            />
-          </label>
-          <button
-            type="button"
+          <TextareaField
+            label="Generate SVG from prompt"
+            value={svgPrompt}
+            rows={3}
+            onChange={setSvgPrompt}
+          />
+          <EditorButton
+            variant="primary"
             onClick={generatePromptSvg}
             disabled={!svgPrompt.trim() || isGeneratingSvg}
-            style={{
-              ...styles.primaryButton,
-              opacity: svgPrompt.trim() && !isGeneratingSvg ? 1 : 0.55,
-              cursor:
-                svgPrompt.trim() && !isGeneratingSvg ? "pointer" : "not-allowed",
-            }}
           >
             {isGeneratingSvg ? "Generating..." : "Generate SVG"}
-          </button>
+          </EditorButton>
           {svgGenerationStatus ? (
             <div style={drawerStyles.hint}>{svgGenerationStatus}</div>
           ) : null}

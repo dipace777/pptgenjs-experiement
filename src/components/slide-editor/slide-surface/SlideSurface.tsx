@@ -6,6 +6,8 @@ import { KonvaSlide } from "./konva/KonvaSlide";
 
 export function SlideSurface({
   editingBulletsIndex,
+  editingChartIndex,
+  editingSvgIndex,
   editingTableIndex,
   editingTextIndex,
   height,
@@ -14,7 +16,9 @@ export function SlideSurface({
   onChangeMany,
   onDelete,
   onEditBullets,
+  onEditChart,
   onEditImage,
+  onEditSvg,
   onEditTable,
   onEditText,
   onSelect,
@@ -28,6 +32,8 @@ export function SlideSurface({
   width,
 }: {
   editingBulletsIndex?: number | null;
+  editingChartIndex?: number | null;
+  editingSvgIndex?: number | null;
   editingTableIndex?: number | null;
   editingTextIndex?: number | null;
   height: number;
@@ -36,7 +42,9 @@ export function SlideSurface({
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   onDelete?: () => void;
   onEditBullets?: (index: number) => void;
+  onEditChart?: (index: number) => void;
   onEditImage?: (index: number) => void;
+  onEditSvg?: (index: number) => void;
   onEditTable?: (index: number) => void;
   onEditText?: (index: number) => void;
   onSelect?: (index: number, additive?: boolean) => void;
@@ -55,6 +63,8 @@ export function SlideSurface({
     <>
       <KonvaSlide
         editingBulletsIndex={editingBulletsIndex}
+        editingChartIndex={editingChartIndex}
+        editingSvgIndex={editingSvgIndex}
         editingTableIndex={editingTableIndex}
         editingTextIndex={editingTextIndex}
         height={height}
@@ -63,7 +73,9 @@ export function SlideSurface({
         onChangeMany={onChangeMany}
         onDelete={onDelete}
         onEditBullets={onEditBullets}
+        onEditChart={onEditChart}
         onEditImage={onEditImage}
+        onEditSvg={onEditSvg}
         onEditTable={onEditTable}
         onEditText={onEditText}
         onSelect={onSelect}

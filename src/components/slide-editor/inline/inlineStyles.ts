@@ -50,6 +50,18 @@ export const inlineStyles = {
     font: `12px ${baseFont}`,
     outline: "none",
   },
+  textInput: {
+    width: 112,
+    height: 28,
+    boxSizing: "border-box",
+    borderRadius: 5,
+    border: "1px solid #30384b",
+    background: "#0a0d14",
+    color: "#f4f6fa",
+    padding: "0 7px",
+    font: `12px ${baseFont}`,
+    outline: "none",
+  },
   colorInput: {
     width: 30,
     height: 28,

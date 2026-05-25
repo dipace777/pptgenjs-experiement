@@ -5,6 +5,8 @@ import { SlideSurface } from "../slide-surface";
 import {
   activeSlideAtom,
   editingBulletsIndexAtom,
+  editingChartIndexAtom,
+  editingSvgIndexAtom,
   editingTableIndexAtom,
   editingTextIndexAtom,
   editorOpenAtom,
@@ -33,6 +35,8 @@ export function SlideWorkspace({
   const selectedTableCell = useAtomValue(selectedTableCellAtom);
   const editingTextIndex = useAtomValue(editingTextIndexAtom);
   const editingBulletsIndex = useAtomValue(editingBulletsIndexAtom);
+  const editingChartIndex = useAtomValue(editingChartIndexAtom);
+  const editingSvgIndex = useAtomValue(editingSvgIndexAtom);
   const editingTableIndex = useAtomValue(editingTableIndexAtom);
   const setEditorOpen = useSetAtom(editorOpenAtom);
   const stageScale = stageWidth / SLIDE_W;
@@ -66,6 +70,8 @@ export function SlideWorkspace({
           <WorkspaceInlineEditors scale={stageScale} />
           <SlideSurface
             editingBulletsIndex={editingBulletsIndex}
+            editingChartIndex={editingChartIndex}
+            editingSvgIndex={editingSvgIndex}
             editingTableIndex={editingTableIndex}
             editingTextIndex={editingTextIndex}
             selectedTableCell={selectedTableCell}

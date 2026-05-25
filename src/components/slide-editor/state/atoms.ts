@@ -12,6 +12,7 @@ export type ImageSlideElement = Extract<SlideElement, { kind: "image" }>;
 export type ShapeSlideElement = Extract<SlideElement, { kind: "rect" | "ellipse" }>;
 export type TableSlideElement = Extract<SlideElement, { kind: "table" }>;
 export type ChartSlideElement = Extract<SlideElement, { kind: "chart" }>;
+export type SvgSlideElement = Extract<SlideElement, { kind: "svg" }>;
 export type TableCellSelection = { elementIndex: number; rowIndex: number; colIndex: number };
 
 // --- Primitive atoms ----------------------------------------------------
@@ -31,6 +32,10 @@ export const editingBulletsIndexAtom = atom<number | null>(null);
 export const editingBulletsDraftAtom = atom("");
 export const editingTableIndexAtom = atom<number | null>(null);
 export const editingTableDraftAtom = atom("");
+export const editingChartIndexAtom = atom<number | null>(null);
+export const editingChartDraftAtom = atom("");
+export const editingSvgIndexAtom = atom<number | null>(null);
+export const editingSvgDraftAtom = atom("");
 export const selectedTableCellAtom = atom<TableCellSelection | null>(null);
 
 // --- Derived atoms ------------------------------------------------------
@@ -107,6 +112,20 @@ export const editingTableElementAtom = atom<TableSlideElement | null>((get) => {
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
   return element?.kind === "table" ? element : null;
+});
+
+export const editingChartElementAtom = atom<ChartSlideElement | null>((get) => {
+  const index = get(editingChartIndexAtom);
+  if (index == null) return null;
+  const element = get(activeSlideAtom).elements[index];
+  return element?.kind === "chart" ? element : null;
+});
+
+export const editingSvgElementAtom = atom<SvgSlideElement | null>((get) => {
+  const index = get(editingSvgIndexAtom);
+  if (index == null) return null;
+  const element = get(activeSlideAtom).elements[index];
+  return element?.kind === "svg" ? element : null;
 });
 
 // Set of element indices on the active slide whose declared `h` is too small

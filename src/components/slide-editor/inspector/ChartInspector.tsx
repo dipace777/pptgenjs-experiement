@@ -1,7 +1,14 @@
-import type { ReactNode } from "react";
 import type { ChartElement, SlideElement } from "../../../lib/slide-schema";
 import { styles } from "../editorStyles";
-import { withHash, withoutHash } from "../editorUtils";
+import { withoutHash } from "../editorUtils";
+import { GeometryInspector } from "./GeometryInspector";
+import {
+  CheckboxField,
+  ColorField,
+  SelectField,
+  TextField,
+  TextareaField,
+} from "./InspectorFields";
 
 export function ChartInspector({
   element,
@@ -13,45 +20,33 @@ export function ChartInspector({
   onReplace: (next: ChartElement) => void;
 }) {
   return (
-    <form onSubmit={(event) => event.preventDefault()} style={styles.form}>
-      <div style={styles.grid2}>
-        <NumberField label="X" value={element.x} onChange={(x) => onPatch({ x })} />
-        <NumberField label="Y" value={element.y} onChange={(y) => onPatch({ y })} />
-        <NumberField label="W" value={element.w} onChange={(w) => onPatch({ w })} />
-        <NumberField label="H" value={element.h} onChange={(h) => onPatch({ h })} />
-      </div>
-
-      <div style={styles.grid2}>
-        <Field label="Chart type">
-          <select
+    <>
+      <GeometryInspector element={element} onPatch={onPatch} />
+      <form onSubmit={(event) => event.preventDefault()} style={styles.form}>
+        <div style={styles.grid2}>
+          <SelectField
+            label="Chart type"
             value={element.chartType}
-            onChange={(event) =>
-              onPatch({
-                chartType: event.target.value as "bar" | "line" | "donut",
-              })
-            }
-            style={styles.input}
-          >
-            <option value="bar">Bar</option>
-            <option value="line">Line</option>
-            <option value="donut">Donut</option>
-          </select>
-        </Field>
-        <ColorField
-          label="Color"
-          value={element.color}
-          onChange={(color) => onPatch({ color })}
-        />
-      </div>
-      <Field label="Title">
-        <input
+            options={[
+              { label: "Bar", value: "bar" },
+              { label: "Line", value: "line" },
+              { label: "Donut", value: "donut" },
+            ]}
+            onChange={(chartType) => onPatch({ chartType })}
+          />
+          <ColorField
+            label="Color"
+            value={element.color}
+            onChange={(color) => onPatch({ color })}
+          />
+        </div>
+        <TextField
+          label="Title"
           value={element.title ?? ""}
-          onChange={(event) => onPatch({ title: event.target.value })}
-          style={styles.input}
+          onChange={(title) => onPatch({ title })}
         />
-      </Field>
-      <Field label="Data">
-        <textarea
+        <TextareaField
+          label="Data"
           value={element.data
             .map(
               (datum) =>
@@ -59,8 +54,8 @@ export function ChartInspector({
             )
             .join("\n")}
           rows={5}
-          onChange={(event) => {
-            const data = event.target.value
+          onChange={(value) => {
+            const data = value
               .split("\n")
               .map((line) => {
                 const [label, value, color] = line
@@ -76,88 +71,13 @@ export function ChartInspector({
               .slice(0, 8);
             if (data.length > 0) onReplace({ ...element, data });
           }}
-          style={styles.textarea}
         />
-      </Field>
-      <label style={styles.checkLabel}>
-        <input
-          type="checkbox"
+        <CheckboxField
+          label="Show values"
           checked={element.showValues ?? false}
-          onChange={(event) => onPatch({ showValues: event.target.checked })}
+          onChange={(showValues) => onPatch({ showValues })}
         />
-        Show values
-      </label>
-
-      <NumberField
-        label="Opacity"
-        value={element.opacity ?? 1}
-        min={0}
-        max={1}
-        step={0.05}
-        onChange={(opacity) => onPatch({ opacity })}
-      />
-    </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label style={styles.field}>
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  min = 0,
-  max = 99,
-  step = 0.05,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label style={styles.field}>
-      <span>{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        style={styles.input}
-      />
-    </label>
-  );
-}
-
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label style={styles.field}>
-      <span>{label}</span>
-      <input
-        type="color"
-        value={withHash(value)}
-        onChange={(event) => onChange(withoutHash(event.target.value))}
-        style={styles.colorInput}
-      />
-    </label>
+      </form>
+    </>
   );
 }
