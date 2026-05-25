@@ -14,7 +14,7 @@ import {
   PPTY_IMAGE_PLACEHOLDER_TAG,
 } from "../lib/pptx-tags";
 import { sanitizeSvgMarkup } from "../lib/svg-sanitize";
-import { wrapTextElementLines } from "../lib/textMeasure";
+import { fitFontToBox, wrapTextElementLines } from "../lib/textMeasure";
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
 export type PptxChartMode = "native" | "shapes";
@@ -556,19 +556,29 @@ function addElement(
       el.opacity != null && el.opacity < 1
         ? blendHex(el.color, bg, el.opacity)
         : el.color;
-    // Pre-wrap on our side using Pretext so PowerPoint can't rewrap with
-    // its own (subtly different) font metrics and push a word into a new
-    // line. We then hand PPT the broken lines with `wrap: false` so it
-    // renders exactly what the preview showed. `fit: shrink` is a safety
-    // net for sub-character residual drift between Chrome and PPT metrics.
-    const lines = wrapTextElementLines(el);
+    // Pre-fit fontSize and pre-wrap lines on our side. Same Pretext-based
+    // computation the editor preview uses, so a 36pt headline that gets
+    // shrunk to 29pt in the preview also lands at 29pt in the export.
+    // Without this, PPT did its own shrinking via `fit: shrink` with its
+    // own metrics, and the two views diverged. `wrap: false` keeps PPT
+    // from rewrapping; `fit: shrink` stays as a sub-character safety net.
+    const effectiveFontSize = fitFontToBox(
+      el.text,
+      el.fontFace,
+      el.fontSize,
+      el.w,
+      el.h,
+      el.lineHeight,
+      el.charSpacing,
+    );
+    const lines = wrapTextElementLines({ ...el, fontSize: effectiveFontSize });
     s.addText(lines.join("\n"), {
       x: el.x,
       y: el.y,
       w: el.w,
       h: el.h,
       fontFace: el.fontFace ?? "Arial",
-      fontSize: el.fontSize,
+      fontSize: effectiveFontSize,
       bold: el.bold ?? undefined,
       italic: el.italic ?? undefined,
       color,
@@ -579,7 +589,7 @@ function addElement(
       charSpacing: el.charSpacing != null ? el.charSpacing / 100 : undefined,
       // Use absolute line height in points (= multiplier × fontSize) so PPTX
       // matches CSS's `line-height: X` (also a multiplier of fontSize).
-      lineSpacing: (el.lineHeight ?? 1.15) * el.fontSize,
+      lineSpacing: (el.lineHeight ?? 1.15) * effectiveFontSize,
       // Zero the text-frame inset so coordinates match the React preview
       // (which has no padding inside its boxes).
       margin: 0,

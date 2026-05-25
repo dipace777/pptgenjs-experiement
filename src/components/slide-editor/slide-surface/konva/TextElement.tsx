@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { Group, Rect, Text } from "react-konva";
 import type { TextElement as TextEl } from "../../../../lib/slide-schema";
+import { fitFontToBox } from "../../../../lib/textMeasure";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { geometry, type ElementCommonProps } from "./types";
 
@@ -17,7 +19,33 @@ export function TextElement({
   renderMode?: "canvas" | "proxy";
 }) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
-  const fontSize = element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
+  // Shrink-to-fit at render time. The PPTX export uses `fit: shrink`
+  // which silently scales text down to fit the box. Without doing the
+  // same here, the preview overflows visibly while the export looks
+  // tight — diverging from presentation/export. `fitFontToBox` never
+  // grows, so authored sizes that fit are untouched.
+  const effectiveFontSizePt = useMemo(
+    () =>
+      fitFontToBox(
+        element.text,
+        element.fontFace,
+        element.fontSize,
+        element.w,
+        element.h,
+        element.lineHeight,
+        element.charSpacing,
+      ),
+    [
+      element.text,
+      element.fontFace,
+      element.fontSize,
+      element.w,
+      element.h,
+      element.lineHeight,
+      element.charSpacing,
+    ],
+  );
+  const fontSize = effectiveFontSizePt * PT_TO_PX * (scale / PX_PER_IN);
   const isTopAligned = (element.valign ?? "top") === "top";
 
   return (
