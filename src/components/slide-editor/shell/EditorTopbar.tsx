@@ -34,6 +34,9 @@ export function EditorTopbar({
   const isExporting = useAtomValue(isExportingAtom);
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
   const [, setPresenting] = useAtom(presentingAtom);
+  const handleSave = () => {
+    console.log(JSON.stringify(deck, null, 2));
+  };
 
   return (
     <div style={layoutStyles.topbar}>
@@ -49,6 +52,14 @@ export function EditorTopbar({
       </div>
       <div style={layoutStyles.toolbar}>
         {toolbarLeading}
+        <button
+          type="button"
+          onClick={handleSave}
+          style={styles.primaryButton}
+          title="Log current deck JSON"
+        >
+          Save
+        </button>
         <button
           type="button"
           onClick={onOpenTheme}
