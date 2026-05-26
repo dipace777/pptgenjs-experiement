@@ -2,6 +2,7 @@ import type { Deck } from "../lib/slide-schema";
 import { coffeeMarketingDeck } from "./coffee-marketing";
 import type { DeckComponentTemplate } from "./deck-spec-adapter";
 import { layoutKitDeck } from "./layout-kit";
+import { neoGeneralDeck } from "./neo-general";
 import { pitchDeck } from "./pitch-deck";
 import { tacoBellComponentTemplates, tacoBellDeck } from "./taco-bell";
 
@@ -39,11 +40,18 @@ export const TEMPLATES: ReadonlyArray<TemplateDescriptor> = [
     deck: tacoBellDeck,
     componentTemplates: tacoBellComponentTemplates,
   },
+  {
+    id: "neo-general",
+    label: "Neo General",
+    description: "A converted 28-slide HTML deck rendered as editable editor elements.",
+    deck: neoGeneralDeck,
+  },
 ];
 
 export {
   coffeeMarketingDeck,
   layoutKitDeck,
+  neoGeneralDeck,
   pitchDeck,
   tacoBellComponentTemplates,
   tacoBellDeck,
