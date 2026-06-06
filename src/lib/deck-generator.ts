@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   DeckSchema,
+  SLIDE_H,
   type Deck,
   type Slide,
   type SlideElement,
@@ -54,6 +55,10 @@ export type DeckGenerationInput = z.infer<typeof DeckGenerationInputSchema>;
 export type SlideOutline = z.infer<typeof SlideOutlineSchema>;
 
 const SANS = "Arial";
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
 function cleanHex(value: string, fallback: string): string {
   const stripped = value.trim().replace(/^#/, "");
@@ -283,6 +288,23 @@ function titleSlide(outline: SlideOutline, colors: ReturnType<typeof palette>, t
 }
 
 function agendaSlide(outline: SlideOutline, colors: ReturnType<typeof palette>, total: number): Slide {
+  const sectionCount = outline.sections.length;
+  const isDense = sectionCount > 14;
+  const columns = sectionCount > 8 ? 3 : 2;
+  const rows = Math.ceil(sectionCount / columns);
+  const startX = 0.65;
+  const startY = 1.25;
+  const gridW = 8.75;
+  const bottomY = SLIDE_H - 0.75;
+  const colGap = 0.18;
+  const rowGap = 0.1;
+  const cardW = (gridW - colGap * (columns - 1)) / columns;
+  const cardH = clampNumber(
+    (bottomY - startY - rowGap * (rows - 1)) / rows,
+    0.42,
+    1.52,
+  );
+
   return {
     title: "Outline",
     background: colors.background,
@@ -300,57 +322,92 @@ function agendaSlide(outline: SlideOutline, colors: ReturnType<typeof palette>, 
         color: colors.text,
       },
       ...outline.sections.flatMap((section, sectionIndex) => {
-        const col = sectionIndex % 2;
-        const row = Math.floor(sectionIndex / 2);
-        const x = 0.65 + col * 4.43;
-        const y = 1.35 + row * 1.7;
+        const col = sectionIndex % columns;
+        const row = Math.floor(sectionIndex / columns);
+        const x = startX + col * (cardW + colGap);
+        const y = startY + row * (cardH + rowGap);
+        const number = String(sectionIndex + 1).padStart(2, "0");
+        const card = {
+          kind: "rect" as const,
+          x,
+          y,
+          w: cardW,
+          h: cardH,
+          fill: colors.white,
+          line: { color: colors.line, width: 0.75 },
+          rx: 0.08,
+        };
+
+        if (isDense) {
+          return [
+            card,
+            {
+              kind: "text" as const,
+              x: x + 0.16,
+              y: y + 0.12,
+              w: cardW - 0.32,
+              h: 0.18,
+              text: `${number}  ${section.title.toUpperCase()}`,
+              fontFace: SANS,
+              fontSize: 7,
+              bold: true,
+              color: colors.muted,
+              charSpacing: 50,
+            },
+            {
+              kind: "text" as const,
+              x: x + 0.16,
+              y: y + 0.3,
+              w: cardW - 0.32,
+              h: Math.max(0.14, cardH - 0.36),
+              text: section.summary,
+              fontFace: SANS,
+              fontSize: 6,
+              color: colors.text,
+              lineHeight: 1.05,
+            },
+          ];
+        }
+
+        const summaryY = y + Math.min(0.68, cardH * 0.62);
         return [
-          {
-            kind: "rect" as const,
-            x,
-            y,
-            w: 4.25,
-            h: 1.52,
-            fill: colors.white,
-            line: { color: colors.line, width: 0.75 },
-            rx: 0.08,
-          },
+          card,
           {
             kind: "text" as const,
             x: x + 0.2,
-            y: y + 0.2,
-            w: 0.75,
-            h: 0.4,
-            text: String(sectionIndex + 1).padStart(2, "0"),
+            y: y + 0.16,
+            w: 0.62,
+            h: 0.32,
+            text: number,
             fontFace: SANS,
-            fontSize: 25,
+            fontSize: cardH < 0.9 ? 16 : 25,
             bold: true,
             color: colors.primary,
           },
           {
             kind: "text" as const,
-            x: x + 1.05,
-            y: y + 0.25,
-            w: 2.85,
-            h: 0.32,
+            x: x + 0.9,
+            y: y + 0.22,
+            w: cardW - 1.18,
+            h: 0.24,
             text: section.title.toUpperCase(),
             fontFace: SANS,
-            fontSize: 9,
+            fontSize: cardH < 0.9 ? 7 : 9,
             bold: true,
             color: colors.muted,
-            charSpacing: 120,
+            charSpacing: cardH < 0.9 ? 70 : 120,
           },
           {
             kind: "text" as const,
-            x: x + 1.05,
-            y: y + 0.68,
-            w: 2.85,
-            h: 0.45,
+            x: x + 0.9,
+            y: summaryY,
+            w: cardW - 1.18,
+            h: Math.max(0.16, cardH - (summaryY - y) - 0.12),
             text: section.summary,
             fontFace: SANS,
-            fontSize: 9,
+            fontSize: cardH < 0.9 ? 7 : 9,
             color: colors.text,
-            lineHeight: 1.18,
+            lineHeight: cardH < 0.9 ? 1.05 : 1.18,
           },
         ];
       }),

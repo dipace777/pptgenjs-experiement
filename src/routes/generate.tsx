@@ -23,6 +23,8 @@ const MODE_OPTIONS: Array<{ value: GenerateMode; label: string }> = [
   { value: "pptx", label: "Import from PPTX" },
 ];
 
+const AI_GENERATION_TIMEOUT_MS = 20_000;
+
 const defaultInput: DeckGenerationInput = {
   title: "AI Operating Plan",
   description:
@@ -51,24 +53,45 @@ const generateDeck = createServerFn({ method: "POST" })
         (process.env.OPENAI_MODEL ?? "gpt-4.1-mini") as Parameters<typeof openaiText>[0],
       );
       const sectionCount = data.slideCount - 2;
-      const outline = await chat({
-        adapter,
-        outputSchema: SlideOutlineSchema,
-        systemPrompts: [
-          "You create tight executive slide outlines. Return concrete, non-generic slide structure only.",
-        ],
-        messages: [
-          {
-            role: "user",
-            content: [
-              `Title: ${data.title}`,
-              `Description: ${data.description}`,
-              `Create exactly ${sectionCount} sections. Mix visual types across bullets, chart, and table.`,
-              "Each section should have practical bullets that can be rendered directly on a slide.",
-            ].join("\n"),
-          },
-        ],
-      });
+      const abortController = new AbortController();
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        abortController.abort();
+      }, AI_GENERATION_TIMEOUT_MS);
+
+      const outline = await (async () => {
+        try {
+          return await chat({
+            adapter,
+            outputSchema: SlideOutlineSchema,
+            abortController,
+            systemPrompts: [
+              "You create tight executive slide outlines. Return concrete, non-generic slide structure only.",
+            ],
+            messages: [
+              {
+                role: "user",
+                content: [
+                  `Title: ${data.title}`,
+                  `Description: ${data.description}`,
+                  `Create exactly ${sectionCount} sections. Mix visual types across bullets, chart, and table.`,
+                  "Each section should have practical bullets that can be rendered directly on a slide.",
+                ].join("\n"),
+              },
+            ],
+          });
+        } catch (error) {
+          if (timedOut) {
+            throw new Error(
+              `AI generation timed out after ${AI_GENERATION_TIMEOUT_MS / 1000} seconds`,
+            );
+          }
+          throw error;
+        } finally {
+          clearTimeout(timeout);
+        }
+      })();
 
       return {
         deck: deckFromOutline(data, outline),
@@ -182,6 +205,12 @@ function GeneratePage() {
           : `Using local fallback. ${result.message ?? ""}`,
       );
       await saveAndPreview(result.deck);
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? `Generation failed: ${error.message}`
+          : "Generation failed.",
+      );
     } finally {
       setIsGenerating(false);
     }
