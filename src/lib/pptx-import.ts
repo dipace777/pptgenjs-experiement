@@ -28,6 +28,8 @@ const MAX_ELEMENTS_PER_SLIDE = 60;
 const MAX_TEXT_LEN = 700;
 const MIN_FONT_SIZE = 6;
 const MAX_FONT_SIZE = 360;
+const MIN_CHAR_SPACING = -200;
+const MAX_CHAR_SPACING = 600;
 
 const PARSER = new XMLParser({
   ignoreAttributes: false,
@@ -282,10 +284,12 @@ async function spToElement(
     // at 18pt that PPT actually renders at 9pt overflows our preview).
     const fontMul = scale * text.fontScale;
     const fontFace = text.fontFace ?? "Arial";
-    const rawSize = (text.fontSize ?? 14) * fontMul;
+    const rawSize = finiteOrDefault(text.fontSize, 14) * fontMul;
     const trimmedText = text.text.slice(0, MAX_TEXT_LEN);
     const charSpacing =
-      text.charSpacing != null ? text.charSpacing * fontMul : undefined;
+      text.charSpacing != null
+        ? clampCharSpacing(text.charSpacing * fontMul)
+        : undefined;
     // Final shrink-to-fit. PPT measures glyphs with its own metrics; our
     // preview uses the browser's. Even after scaling, a label authored to
     // fit can still wrap or overflow here. Mirror PPT's autofit behavior
@@ -575,7 +579,8 @@ function extractTextBody(txBody: Record<string, unknown>): TextExtract {
         if (typeof typeface === "string") fontFace = typeface;
       }
       if (fontSize == null && rPr?.["@_sz"] != null) {
-        fontSize = Number(rPr["@_sz"]) / 100;
+        const parsed = Number(rPr["@_sz"]) / 100;
+        if (Number.isFinite(parsed)) fontSize = parsed;
       }
       if (bold == null && rPr?.["@_b"] != null) {
         bold = rPr["@_b"] === "1" || rPr["@_b"] === "true";
@@ -589,7 +594,8 @@ function extractTextBody(txBody: Record<string, unknown>): TextExtract {
         if (extracted) color = extracted;
       }
       if (charSpacing == null && rPr?.["@_spc"] != null) {
-        charSpacing = Number(rPr["@_spc"]);
+        const parsed = Number(rPr["@_spc"]);
+        if (Number.isFinite(parsed)) charSpacing = parsed;
       }
     }
     // Honor empty paragraphs (`<a:br/>` or empty `<a:p/>`) as blank lines.
@@ -680,6 +686,15 @@ function clamp(n: number, min: number, max: number): number {
 
 function clampFontSize(n: number): number {
   return clamp(Math.round(n), MIN_FONT_SIZE, MAX_FONT_SIZE);
+}
+
+function clampCharSpacing(n: number): number | undefined {
+  if (!Number.isFinite(n)) return undefined;
+  return clamp(n, MIN_CHAR_SPACING, MAX_CHAR_SPACING);
+}
+
+function finiteOrDefault(n: number | undefined, fallback: number): number {
+  return n != null && Number.isFinite(n) ? n : fallback;
 }
 
 function mimeForExt(ext: string): string {

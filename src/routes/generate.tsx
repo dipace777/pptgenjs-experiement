@@ -12,6 +12,7 @@ import {
   generateFallbackDeck,
   type DeckGenerationInput,
 } from "../lib/deck-generator";
+import { savePreviewDeck } from "../lib/deck-storage";
 import { DECK_THEME_PRESETS, type DeckTheme } from "../lib/deck-theme";
 import { DeckSchema, type Deck } from "../lib/slide-schema";
 
@@ -120,8 +121,9 @@ function GeneratePage() {
     }));
   };
 
-  const saveAndPreview = (deck: Deck) => {
-    window.sessionStorage.setItem("ppty:generatedDeck", JSON.stringify(deck));
+  const saveAndPreview = async (deck: Deck) => {
+    setStatus("Opening preview...");
+    await savePreviewDeck(deck);
     window.location.href = "/preview";
   };
 
@@ -159,7 +161,7 @@ function GeneratePage() {
           warnings.length > 0 ? ` (${warnings.length} warnings)` : ""
         }.`,
       );
-      saveAndPreview(validated.data);
+      await saveAndPreview(validated.data);
     } catch (error) {
       setStatus(
         error instanceof Error ? `Import failed: ${error.message}` : "Import failed.",
@@ -179,7 +181,7 @@ function GeneratePage() {
           ? "Generated with TanStack AI."
           : `Using local fallback. ${result.message ?? ""}`,
       );
-      saveAndPreview(result.deck);
+      await saveAndPreview(result.deck);
     } finally {
       setIsGenerating(false);
     }
