@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 import type { Slide, TextElement } from "../../../../../lib/slide-schema";
+import { elementFont, textContent } from "../../../../../lib/element-model";
 import { fitFontToBox } from "../../../../../lib/textMeasure";
 import {
   DomElementLayer,
@@ -25,7 +26,7 @@ export function TextDomElement({
   const effectiveFontSizes = useMemo(() => {
     const sizes = new Map<number, number>();
     slide.elements.forEach((element, index) => {
-      if (element.kind !== "text") return;
+      if (element.type !== "text") return;
       sizes.set(index, computeEffectiveFontSize(element));
     });
     return sizes;
@@ -34,18 +35,19 @@ export function TextDomElement({
   return (
     <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
-        if (element.kind !== "text" || editingTextIndex === elementIndex) {
+        if (element.type !== "text" || editingTextIndex === elementIndex) {
           return null;
         }
 
-        const valign = element.valign ?? "top";
-        const effective = effectiveFontSizes.get(elementIndex) ?? element.fontSize;
+        const font = elementFont(element);
+        const valign = element.alignment?.vertical ?? "top";
+        const effective = effectiveFontSizes.get(elementIndex) ?? font.size;
         return (
           <div
             key={elementIndex}
             style={{
               ...elementBoxStyle(element, scale),
-              ...fontStyle({ ...element, fontSize: effective }, scale),
+              ...fontStyle(element, scale, effective),
               ...textBoxStyle,
               alignItems:
                 valign === "middle"
@@ -53,10 +55,10 @@ export function TextDomElement({
                   : valign === "bottom"
                     ? "flex-end"
                     : "flex-start",
-              textAlign: element.align ?? "left",
+              textAlign: element.alignment?.horizontal ?? "left",
             }}
           >
-            <div style={textContentStyle}>{element.text}</div>
+            <div style={textContentStyle}>{textContent(element)}</div>
           </div>
         );
       })}
@@ -65,7 +67,7 @@ export function TextDomElement({
 }
 
 function computeEffectiveFontSize(element: TextElement): number {
-  return fitFontToBox(element, element.h);
+  return fitFontToBox(element);
 }
 
 const textBoxStyle: CSSProperties = {

@@ -46,7 +46,9 @@ const defaultInput: DeckGenerationInput = {
 };
 
 const generateDeck = createServerFn({ method: "POST" })
-  .inputValidator((data: DeckGenerationInput) => DeckGenerationInputSchema.parse(data))
+  .inputValidator((data: DeckGenerationInput) =>
+    DeckGenerationInputSchema.parse(data),
+  )
   .handler(async ({ data }) => {
     try {
       const [{ chat }, { openaiText }] = await Promise.all([
@@ -54,7 +56,9 @@ const generateDeck = createServerFn({ method: "POST" })
         import("@tanstack/ai-openai"),
       ]);
       const adapter = openaiText(
-        (process.env.OPENAI_MODEL ?? "gpt-4.1-mini") as Parameters<typeof openaiText>[0],
+        (process.env.OPENAI_MODEL ?? "gpt-4.1-mini") as Parameters<
+          typeof openaiText
+        >[0],
       );
       const sectionCount = data.slideCount - 2;
       const abortController = new AbortController();
@@ -108,7 +112,8 @@ const generateDeck = createServerFn({ method: "POST" })
         deck: generateFallbackDeck(data),
         outline,
         source: "fallback" as const,
-        message: error instanceof Error ? error.message : "AI generation failed",
+        message:
+          error instanceof Error ? error.message : "AI generation failed",
       };
     }
   });
@@ -126,7 +131,10 @@ function GeneratePage() {
   const [pptxFile, setPptxFile] = useState<File | null>(null);
   const pptxInputRef = useRef<HTMLInputElement | null>(null);
 
-  const patchTheme = (key: keyof DeckGenerationInput["theme"], value: string) => {
+  const patchTheme = (
+    key: keyof DeckGenerationInput["theme"],
+    value: string,
+  ) => {
     setInput((current) => ({
       ...current,
       theme: { ...current.theme, [key]: value },
@@ -171,9 +179,11 @@ function GeneratePage() {
     setIsGenerating(true);
     setStatus("Parsing PPTX...");
     try {
-      const { importPptxFile } = await import("../lib/pptx-import");
-      const { deck, warnings } = await importPptxFile(pptxFile);
-      const validated = DeckSchema.safeParse(deck);
+      const { importPptxFile } = await import("../lib/pptx-import-v2");
+      const { deck: importedDeck, warnings } = await importPptxFile(pptxFile, {
+        preferSidecar: false,
+      });
+      const validated = DeckSchema.safeParse(importedDeck);
       if (!validated.success) {
         setStatus(
           `Imported deck didn't validate: ${validated.error.issues[0]?.message ?? "unknown reason"}`,
@@ -199,7 +209,9 @@ function GeneratePage() {
       await saveAndPreview(validated.data, componentTemplates);
     } catch (error) {
       setStatus(
-        error instanceof Error ? `Import failed: ${error.message}` : "Import failed.",
+        error instanceof Error
+          ? `Import failed: ${error.message}`
+          : "Import failed.",
       );
     } finally {
       setIsGenerating(false);
@@ -265,13 +277,22 @@ function GeneratePage() {
 
         {mode === "prompt" ? (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 120px",
+                gap: 12,
+              }}
+            >
               <label style={fieldStyle}>
                 <span>Title</span>
                 <input
                   value={input.title}
                   onChange={(event) =>
-                    setInput((current) => ({ ...current, title: event.target.value }))
+                    setInput((current) => ({
+                      ...current,
+                      title: event.target.value,
+                    }))
                   }
                   style={inputStyle}
                 />
@@ -291,7 +312,10 @@ function GeneratePage() {
                       MIN_SLIDE_COUNT,
                       Math.min(MAX_SLIDE_COUNT, next),
                     );
-                    setInput((current) => ({ ...current, slideCount: clamped }));
+                    setInput((current) => ({
+                      ...current,
+                      slideCount: clamped,
+                    }));
                   }}
                   style={inputStyle}
                 />
@@ -304,7 +328,10 @@ function GeneratePage() {
                 value={input.description}
                 rows={7}
                 onChange={(event) =>
-                  setInput((current) => ({ ...current, description: event.target.value }))
+                  setInput((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
                 }
                 style={{ ...inputStyle, resize: "vertical", lineHeight: 1.45 }}
               />
@@ -314,7 +341,10 @@ function GeneratePage() {
               <span>Theme preset</span>
               <div style={presetRowStyle}>
                 {DECK_THEME_PRESETS.map((preset) => {
-                  const isActive = isThemePresetActive(preset.theme, input.theme);
+                  const isActive = isThemePresetActive(
+                    preset.theme,
+                    input.theme,
+                  );
                   return (
                     <button
                       key={preset.id}
@@ -386,7 +416,14 @@ function GeneratePage() {
               onChange={onPptxFile}
               style={{ display: "none" }}
             />
-            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr",
+                gap: 10,
+                alignItems: "center",
+              }}
+            >
               <button
                 type="button"
                 onClick={() => pptxInputRef.current?.click()}
@@ -399,13 +436,14 @@ function GeneratePage() {
               >
                 {pptxFile ? "Choose another" : "Choose file"}
               </button>
-              <span style={{ color: pptxFile ? "#e6ebf5" : "#7d89a3", fontWeight: 600 }}>
+              <span
+                style={{
+                  color: pptxFile ? "#e6ebf5" : "#7d89a3",
+                  fontWeight: 600,
+                }}
+              >
                 {pptxFile?.name ?? "No file selected"}
               </span>
-            </div>
-            <div style={hintStyle}>
-              Text, shapes, images, and slide backgrounds will be imported. Charts,
-              tables, and grouped shapes are skipped for now.
             </div>
           </div>
         )}
@@ -471,7 +509,10 @@ function PresetSwatch({ theme }: { theme: DeckTheme }) {
       {stops.map((key) => (
         <span
           key={key}
-          style={{ ...swatchStopStyle, background: hashed(theme[key] ?? "FFFFFF") }}
+          style={{
+            ...swatchStopStyle,
+            background: hashed(theme[key] ?? "FFFFFF"),
+          }}
         />
       ))}
     </div>
@@ -625,11 +666,4 @@ const secondaryLinkStyle = {
 const statusStyle = {
   color: "#a8b3c7",
   fontSize: 13,
-} as const;
-
-const hintStyle = {
-  color: "#7d89a3",
-  fontSize: 11,
-  fontWeight: 600,
-  lineHeight: 1.5,
 } as const;

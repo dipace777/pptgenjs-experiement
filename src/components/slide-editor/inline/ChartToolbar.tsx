@@ -16,6 +16,7 @@ export function ChartToolbar({
 }) {
   const canAddDatum = element.data.length < 8;
   const canRemoveDatum = element.data.length > 1;
+  const color = element.color ?? "D4A24C";
 
   const addDatum = () => {
     if (!canAddDatum) return;
@@ -28,7 +29,7 @@ export function ChartToolbar({
         {
           label: `Item ${nextIndex}`,
           value: Math.max(1, Math.round(averageValue(element.data))),
-          color: element.color,
+          color,
         },
       ],
     });
@@ -79,7 +80,7 @@ export function ChartToolbar({
         aria-label="Chart color"
         title="Series color"
         type="color"
-        value={withHash(element.color)}
+        value={withHash(color)}
         onChange={(event) =>
           onChange(index, { ...element, color: withoutHash(event.target.value) })
         }

@@ -25,68 +25,22 @@ const TOTAL = 10;
 function footer(num: number, total: number, onDeep: boolean): SlideElement[] {
   const c = onDeep ? WHISPER : MUTED;
   return [
-    {
-      kind: "text",
-      x: 0.5,
-      y: 5.25,
-      w: 4,
-      h: 0.3,
-      text: "Starship",
-      fontSize: 11,
-      italic: true,
-      color: c,
-      fontFace: SERIF,
-    },
-    {
-      kind: "text",
-      x: 8.5,
-      y: 5.25,
-      w: 1.0,
-      h: 0.3,
-      text: `${num} / ${total}`,
-      fontSize: 10,
-      italic: true,
-      color: c,
-      align: "right",
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 0.5, y: 5.25 }, size: { width: 4, height: 0.3 }, font: { family: SERIF, size: 11, color: c, italic: true }, runs: [{ text: "Starship" }] },
+    { type: "text", position: { x: 8.5, y: 5.25 }, size: { width: 1.0, height: 0.3 }, font: { family: SERIF, size: 10, color: c, italic: true }, alignment: { horizontal: "right" }, runs: [{ text: `${num} / ${total}` }] },
   ];
 }
 
 function eyebrow(text: string, color: string = CORAL): SlideElement {
-  return {
-    kind: "text",
-    x: 0.6,
-    y: 0.65,
-    w: 6,
-    h: 0.28,
-    text,
-    fontSize: 10,
-    bold: true,
-    color,
-    charSpacing: 340,
-    fontFace: SANS,
-  };
+  return { type: "text", position: { x: 0.6, y: 0.65 }, size: { width: 6, height: 0.28 }, font: { family: SANS, size: 10, color: color, bold: true, letterSpacing: 340 }, runs: [{ text: text }] };
 }
 
 function headline(text: string): SlideElement {
-  return {
-    kind: "text",
-    x: 0.6,
-    y: 1.0,
-    w: 8.8,
-    h: 0.85,
-    text,
-    fontSize: 36,
-    color: INK,
-    lineHeight: 1.05,
-    fontFace: SERIF,
-  };
+  return { type: "text", position: { x: 0.6, y: 1.0 }, size: { width: 8.8, height: 0.85 }, font: { family: SERIF, size: 36, color: INK, lineHeight: 1.05 }, runs: [{ text: text }] };
 }
 
 // Coral hairline under headlines — replaces layout-kit's gold accent rect.
 function rule(y: number, w = 0.7, color = CORAL): SlideElement {
-  return { kind: "rect", x: 0.6, y, w, h: 0.025, fill: color };
+  return { type: "rectangle", position: { x: 0.6, y: y }, size: { width: w, height: 0.025 }, fill: { color: color } };
 }
 
 // ── Slide 1: Cover ──────────────────────────────────────────────────────
@@ -96,106 +50,29 @@ const slide1Cover: Slide = {
   elements: [
     // Right-margin marker — a hairline rule with a coral pin, the kind of
     // confident single flourish you'd see on a magazine cover.
-    { kind: "rect", x: 9.4, y: 0.6, w: 0.04, h: 4.4, fill: CORAL },
-    { kind: "ellipse", x: 9.22, y: 0.42, w: 0.4, h: 0.4, fill: CORAL },
+    { type: "rectangle", position: { x: 9.4, y: 0.6 }, size: { width: 0.04, height: 4.4 }, fill: { color: CORAL } },
+    { type: "ellipse", position: { x: 9.22, y: 0.42 }, size: { width: 0.4, height: 0.4 }, fill: { color: CORAL } },
 
-    {
-      kind: "text",
-      x: 0.6,
-      y: 0.65,
-      w: 6,
-      h: 0.28,
-      text: "SERIES A · SPRING 2026",
-      fontSize: 10,
-      bold: true,
-      color: CORAL,
-      charSpacing: 340,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 0.6, y: 0.65 }, size: { width: 6, height: 0.28 }, font: { family: SANS, size: 10, color: CORAL, bold: true, letterSpacing: 340 }, runs: [{ text: "SERIES A · SPRING 2026" }] },
 
     // Massive serif wordmark — left-aligned, hero of the slide.
-    {
-      kind: "text",
-      x: 0.55,
-      y: 1.55,
-      w: 7,
-      h: 2.0,
-      text: "Starship.",
-      fontSize: 110,
-      color: INK,
-      lineHeight: 1.0,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 0.55, y: 1.55 }, size: { width: 7, height: 2.0 }, font: { family: SERIF, size: 110, color: INK, lineHeight: 1.0 }, runs: [{ text: "Starship." }] },
 
     rule(3.55, 0.6, CORAL),
 
-    {
-      kind: "text",
-      x: 0.6,
-      y: 3.75,
-      w: 6.2,
-      h: 0.9,
-      text: "An operating system for the next generation of small teams.",
-      fontSize: 18,
-      italic: true,
-      color: INK,
-      lineHeight: 1.4,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 0.6, y: 3.75 }, size: { width: 6.2, height: 0.9 }, font: { family: SERIF, size: 18, color: INK, italic: true, lineHeight: 1.4 }, runs: [{ text: "An operating system for the next generation of small teams." }] },
 
-    {
-      kind: "text",
-      x: 0.6,
-      y: 4.78,
-      w: 5,
-      h: 0.28,
-      text: "Jane Founder — CEO",
-      fontSize: 12,
-      color: INK,
-      fontFace: SANS,
-    },
-    {
-      kind: "text",
-      x: 0.6,
-      y: 5.05,
-      w: 5,
-      h: 0.25,
-      text: "jane@starship.example",
-      fontSize: 11,
-      color: MUTED,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 0.6, y: 4.78 }, size: { width: 5, height: 0.28 }, font: { family: SANS, size: 12, color: INK }, runs: [{ text: "Jane Founder — CEO" }] },
+    { type: "text", position: { x: 0.6, y: 5.05 }, size: { width: 5, height: 0.25 }, font: { family: SANS, size: 11, color: MUTED }, runs: [{ text: "jane@starship.example" }] },
   ],
 };
 
 // ── Slide 2: Problem ────────────────────────────────────────────────────
 function problemStat(x: number, big: string, label: string): SlideElement[] {
   return [
-    {
-      kind: "text",
-      x,
-      y: 3.5,
-      w: 2.8,
-      h: 1.0,
-      text: big,
-      fontSize: 56,
-      color: CORAL,
-      lineHeight: 1.0,
-      fontFace: SERIF,
-    },
-    { kind: "rect", x, y: 4.5, w: 0.35, h: 0.025, fill: INK },
-    {
-      kind: "text",
-      x,
-      y: 4.6,
-      w: 2.8,
-      h: 0.5,
-      text: label,
-      fontSize: 11,
-      color: INK,
-      lineHeight: 1.4,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: x, y: 3.5 }, size: { width: 2.8, height: 1.0 }, font: { family: SERIF, size: 56, color: CORAL, lineHeight: 1.0 }, runs: [{ text: big }] },
+    { type: "rectangle", position: { x: x, y: 4.5 }, size: { width: 0.35, height: 0.025 }, fill: { color: INK } },
+    { type: "text", position: { x: x, y: 4.6 }, size: { width: 2.8, height: 0.5 }, font: { family: SANS, size: 11, color: INK, lineHeight: 1.4 }, runs: [{ text: label }] },
   ];
 }
 
@@ -204,20 +81,8 @@ const slide2Problem: Slide = {
   background: PAPER,
   elements: [
     eyebrow("THE PROBLEM"),
-    {
-      kind: "text",
-      x: 0.6,
-      y: 1.05,
-      w: 8.8,
-      h: 2.1,
-      text:
-        "Small teams ship a dozen tools to do the work of one — and pay the\n" +
-        "spreadsheet tax every Friday afternoon.",
-      fontSize: 32,
-      color: INK,
-      lineHeight: 1.2,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 0.6, y: 1.05 }, size: { width: 8.8, height: 2.1 }, font: { family: SERIF, size: 32, color: INK, lineHeight: 1.2 }, runs: [{ text: "Small teams ship a dozen tools to do the work of one — and pay the\n" +
+        "spreadsheet tax every Friday afternoon." }] },
     rule(3.3, 0.6),
     ...problemStat(0.6, "11", "tools in the average operations stack"),
     ...problemStat(3.7, "62%", "of week lost stitching context across tools"),
@@ -235,48 +100,16 @@ const slide3Solution: Slide = {
     headline("One workspace.\nThe work, the data, the decision."),
     rule(2.0, 0.6),
 
-    {
-      kind: "text",
-      x: 0.6,
-      y: 2.3,
-      w: 4.3,
-      h: 2.2,
-      text:
-        "Starship unifies the operating layer — projects, customers, " +
+    { type: "text", position: { x: 0.6, y: 2.3 }, size: { width: 4.3, height: 2.2 }, font: { family: SANS, size: 13, color: INK, lineHeight: 1.55 }, runs: [{ text: "Starship unifies the operating layer — projects, customers, " +
         "contracts, and finance — into a single editable surface. " +
         "Replaces the spreadsheet tax with a model your team can " +
-        "actually trust.",
-      fontSize: 13,
-      color: INK,
-      lineHeight: 1.55,
-      fontFace: SANS,
-    },
+        "actually trust." }] },
 
-    {
-      kind: "text",
-      x: 0.6,
-      y: 4.65,
-      w: 4.3,
-      h: 0.25,
-      text: "BUILT FOR TEAMS OF 5 TO 50",
-      fontSize: 9,
-      bold: true,
-      color: CORAL,
-      charSpacing: 280,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 0.6, y: 4.65 }, size: { width: 4.3, height: 0.25 }, font: { family: SANS, size: 9, color: CORAL, bold: true, letterSpacing: 280 }, runs: [{ text: "BUILT FOR TEAMS OF 5 TO 50" }] },
 
     // Image with a coral rule above it — editorial caption treatment.
-    { kind: "rect", x: 5.25, y: 2.25, w: 0.5, h: 0.04, fill: CORAL },
-    {
-      kind: "image",
-      x: 5.25,
-      y: 2.4,
-      w: 4.15,
-      h: 2.6,
-      fit: "cover",
-      name: "Product screenshot placeholder",
-    },
+    { type: "rectangle", position: { x: 5.25, y: 2.25 }, size: { width: 0.5, height: 0.04 }, fill: { color: CORAL } },
+    { type: "image", position: { x: 5.25, y: 2.4 }, size: { width: 4.15, height: 2.6 }, name: "Product screenshot placeholder", fit: "cover" },
     ...footer(3, TOTAL, false),
   ],
 };
@@ -285,46 +118,13 @@ const slide3Solution: Slide = {
 function whyNowItem(y: number, num: string, title: string, body: string): SlideElement[] {
   return [
     // Big serif number on the left
-    {
-      kind: "text",
-      x: 0.6,
-      y,
-      w: 0.9,
-      h: 0.7,
-      text: num,
-      fontSize: 38,
-      italic: true,
-      color: CORAL,
-      lineHeight: 1.0,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 0.6, y: y }, size: { width: 0.9, height: 0.7 }, font: { family: SERIF, size: 38, color: CORAL, italic: true, lineHeight: 1.0 }, runs: [{ text: num }] },
     // Title in serif
-    {
-      kind: "text",
-      x: 1.7,
-      y: y + 0.05,
-      w: 7.6,
-      h: 0.45,
-      text: title,
-      fontSize: 18,
-      color: INK,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 1.7, y: y + 0.05 }, size: { width: 7.6, height: 0.45 }, font: { family: SERIF, size: 18, color: INK }, runs: [{ text: title }] },
     // Body in sans
-    {
-      kind: "text",
-      x: 1.7,
-      y: y + 0.55,
-      w: 7.6,
-      h: 0.4,
-      text: body,
-      fontSize: 12,
-      color: MUTED,
-      lineHeight: 1.4,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 1.7, y: y + 0.55 }, size: { width: 7.6, height: 0.4 }, font: { family: SANS, size: 12, color: MUTED, lineHeight: 1.4 }, runs: [{ text: body }] },
     // Hairline separator below
-    { kind: "rect", x: 1.7, y: y + 1.05, w: 7.6, h: 0.01, fill: LINE },
+    { type: "rectangle", position: { x: 1.7, y: y + 1.05 }, size: { width: 7.6, height: 0.01 }, fill: { color: LINE } },
   ];
 }
 
@@ -378,40 +178,11 @@ const slide5Product: Slide = {
       const y = 2.25 + row * 1.35;
       return [
         // Subtle card — only a hairline border + paper-white fill.
-        {
-          kind: "rect",
-          x,
-          y,
-          w: 4.15,
-          h: 1.15,
-          fill: SURFACE,
-          line: { color: LINE, width: 0.5 },
-        },
+        { type: "rectangle", position: { x: x, y: y }, size: { width: 4.15, height: 1.15 }, fill: { color: SURFACE }, stroke: { color: LINE, width: 0.5 } },
         // Coral hairline above the feature name — replaces the gold stripe.
-        { kind: "rect", x: x + 0.3, y: y + 0.22, w: 0.32, h: 0.025, fill: CORAL },
-        {
-          kind: "text",
-          x: x + 0.3,
-          y: y + 0.3,
-          w: 3.6,
-          h: 0.36,
-          text: label,
-          fontSize: 18,
-          color: INK,
-          fontFace: SERIF,
-        },
-        {
-          kind: "text",
-          x: x + 0.3,
-          y: y + 0.7,
-          w: 3.6,
-          h: 0.4,
-          text: body,
-          fontSize: 11,
-          color: MUTED,
-          lineHeight: 1.4,
-          fontFace: SANS,
-        },
+        { type: "rectangle", position: { x: x + 0.3, y: y + 0.22 }, size: { width: 0.32, height: 0.025 }, fill: { color: CORAL } },
+        { type: "text", position: { x: x + 0.3, y: y + 0.3 }, size: { width: 3.6, height: 0.36 }, font: { family: SERIF, size: 18, color: INK }, runs: [{ text: label }] },
+        { type: "text", position: { x: x + 0.3, y: y + 0.7 }, size: { width: 3.6, height: 0.4 }, font: { family: SANS, size: 11, color: MUTED, lineHeight: 1.4 }, runs: [{ text: body }] },
       ];
     }),
     ...footer(5, TOTAL, false),
@@ -421,32 +192,9 @@ const slide5Product: Slide = {
 // ── Slide 6: Traction ───────────────────────────────────────────────────
 function tractionStat(x: number, big: string, label: string): SlideElement[] {
   return [
-    {
-      kind: "text",
-      x,
-      y: 3.85,
-      w: 2.8,
-      h: 0.85,
-      text: big,
-      fontSize: 44,
-      color: CORAL,
-      lineHeight: 1.0,
-      fontFace: SERIF,
-    },
-    { kind: "rect", x, y: 4.7, w: 0.32, h: 0.025, fill: INK },
-    {
-      kind: "text",
-      x,
-      y: 4.8,
-      w: 2.8,
-      h: 0.28,
-      text: label,
-      fontSize: 9,
-      bold: true,
-      color: INK,
-      charSpacing: 280,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: x, y: 3.85 }, size: { width: 2.8, height: 0.85 }, font: { family: SERIF, size: 44, color: CORAL, lineHeight: 1.0 }, runs: [{ text: big }] },
+    { type: "rectangle", position: { x: x, y: 4.7 }, size: { width: 0.32, height: 0.025 }, fill: { color: INK } },
+    { type: "text", position: { x: x, y: 4.8 }, size: { width: 2.8, height: 0.28 }, font: { family: SANS, size: 9, color: INK, bold: true, letterSpacing: 280 }, runs: [{ text: label }] },
   ];
 }
 
@@ -457,27 +205,14 @@ const slide6Traction: Slide = {
     eyebrow("TRACTION"),
     headline("Eighteen months. Compounding revenue."),
     rule(2.0, 0.6),
-    {
-      kind: "chart",
-      chartType: "line",
-      x: 0.6,
-      y: 2.3,
-      w: 8.8,
-      h: 1.45,
-      title: "ARR ($k) · trailing 6 quarters",
-      color: CORAL,
-      axisColor: WHISPER,
-      labelColor: MUTED,
-      showValues: true,
-      data: [
+    { type: "chart", position: { x: 0.6, y: 2.3 }, size: { width: 8.8, height: 1.45 }, chartType: "line", data: [
         { label: "Q1", value: 42 },
         { label: "Q2", value: 88 },
         { label: "Q3", value: 162 },
         { label: "Q4", value: 240 },
         { label: "Q5", value: 358 },
         { label: "Q6", value: 510 },
-      ],
-    },
+      ], title: "ARR ($k) · trailing 6 quarters", color: CORAL, axisColor: WHISPER, labelColor: MUTED, showValues: true },
     ...tractionStat(0.6, "$510k", "ARR"),
     ...tractionStat(3.7, "118%", "NET RETENTION"),
     ...tractionStat(6.8, "1.4×", "QUARTERLY GROWTH"),
@@ -493,41 +228,8 @@ const slide7Model: Slide = {
     eyebrow("BUSINESS MODEL"),
     headline("Per-seat pricing with usage-based add-ons."),
     rule(2.0, 0.6),
-    {
-      kind: "table",
-      x: 0.6,
-      y: 2.3,
-      w: 8.8,
-      h: 2.5,
-      rows: [
-        ["Tier", "Seats", "Monthly", "Includes"],
-        ["Starter", "1 – 5", "$24 / seat", "Operate + Decide"],
-        ["Team", "6 – 25", "$36 / seat", "+ Automate"],
-        ["Scale", "26 – 100", "$48 / seat", "+ Report, SSO, audit"],
-        ["Enterprise", "100+", "Talk to us", "Dedicated infra, SLAs"],
-      ],
-      fontFace: SANS,
-      fontSize: 11,
-      textColor: INK,
-      headerFill: CORAL,
-      headerTextColor: "FFFFFF",
-      borderColor: LINE,
-      fill: SURFACE,
-      opacity: 1,
-    },
-    {
-      kind: "text",
-      x: 0.6,
-      y: 4.95,
-      w: 8.8,
-      h: 0.25,
-      text:
-        "Gross margin holds at 82%; payback under 9 months on Team and above.",
-      fontSize: 11,
-      italic: true,
-      color: MUTED,
-      fontFace: SERIF,
-    },
+    { type: "table", position: { x: 0.6, y: 2.3 }, size: { width: 8.8, height: 2.5 }, opacity: 1, font: { family: SANS, size: 11, color: INK }, columns: [{ text: "Tier", fill: { color: CORAL }, font: { color: "FFFFFF", bold: true }, stroke: { color: LINE, width: 1 } }, { text: "Seats", fill: { color: CORAL }, font: { color: "FFFFFF", bold: true }, stroke: { color: LINE, width: 1 } }, { text: "Monthly", fill: { color: CORAL }, font: { color: "FFFFFF", bold: true }, stroke: { color: LINE, width: 1 } }, { text: "Includes", fill: { color: CORAL }, font: { color: "FFFFFF", bold: true }, stroke: { color: LINE, width: 1 } }], rows: [[{ text: "Starter", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "1 – 5", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "$24 / seat", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "Operate + Decide", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }], [{ text: "Team", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "6 – 25", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "$36 / seat", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "+ Automate", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }], [{ text: "Scale", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "26 – 100", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "$48 / seat", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "+ Report, SSO, audit", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }], [{ text: "Enterprise", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "100+", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "Talk to us", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }, { text: "Dedicated infra, SLAs", fill: { color: SURFACE }, stroke: { color: LINE, width: 1 } }]] },
+    { type: "text", position: { x: 0.6, y: 4.95 }, size: { width: 8.8, height: 0.25 }, font: { family: SERIF, size: 11, color: MUTED, italic: true }, runs: [{ text: "Gross margin holds at 82%; payback under 9 months on Team and above." }] },
     ...footer(7, TOTAL, false),
   ],
 };
@@ -542,126 +244,30 @@ const slide8Competition: Slide = {
     rule(2.0, 0.6),
 
     // Quadrant card — pure white surface with hairline border.
-    {
-      kind: "rect",
-      x: 0.6,
-      y: 2.3,
-      w: 5.0,
-      h: 2.8,
-      fill: SURFACE,
-      line: { color: LINE, width: 0.5 },
-    },
+    { type: "rectangle", position: { x: 0.6, y: 2.3 }, size: { width: 5.0, height: 2.8 }, fill: { color: SURFACE }, stroke: { color: LINE, width: 0.5 } },
     // Axes
-    { kind: "rect", x: 0.6, y: 3.7, w: 5.0, h: 0.01, fill: WHISPER },
-    { kind: "rect", x: 3.1, y: 2.3, w: 0.01, h: 2.8, fill: WHISPER },
+    { type: "rectangle", position: { x: 0.6, y: 3.7 }, size: { width: 5.0, height: 0.01 }, fill: { color: WHISPER } },
+    { type: "rectangle", position: { x: 3.1, y: 2.3 }, size: { width: 0.01, height: 2.8 }, fill: { color: WHISPER } },
 
     // Axis labels — serif italic for an editorial feel.
-    {
-      kind: "text",
-      x: 0.7,
-      y: 2.4,
-      w: 2.2,
-      h: 0.22,
-      text: "AI-native",
-      fontSize: 10,
-      italic: true,
-      color: MUTED,
-      fontFace: SERIF,
-    },
-    {
-      kind: "text",
-      x: 0.7,
-      y: 4.85,
-      w: 2.2,
-      h: 0.22,
-      text: "Legacy",
-      fontSize: 10,
-      italic: true,
-      color: MUTED,
-      fontFace: SERIF,
-    },
-    {
-      kind: "text",
-      x: 0.7,
-      y: 5.13,
-      w: 5,
-      h: 0.22,
-      text: "single tool        BREADTH        all-in-one",
-      fontSize: 9,
-      bold: true,
-      color: MUTED,
-      charSpacing: 180,
-      align: "center",
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 0.7, y: 2.4 }, size: { width: 2.2, height: 0.22 }, font: { family: SERIF, size: 10, color: MUTED, italic: true }, runs: [{ text: "AI-native" }] },
+    { type: "text", position: { x: 0.7, y: 4.85 }, size: { width: 2.2, height: 0.22 }, font: { family: SERIF, size: 10, color: MUTED, italic: true }, runs: [{ text: "Legacy" }] },
+    { type: "text", position: { x: 0.7, y: 5.13 }, size: { width: 5, height: 0.22 }, font: { family: SANS, size: 9, color: MUTED, bold: true, letterSpacing: 180 }, alignment: { horizontal: "center" }, runs: [{ text: "single tool        BREADTH        all-in-one" }] },
 
     // Quadrant dots
-    { kind: "ellipse", x: 1.0, y: 4.25, w: 0.22, h: 0.22, fill: INK },
-    {
-      kind: "text",
-      x: 1.3,
-      y: 4.23,
-      w: 1.6,
-      h: 0.26,
-      text: "Spreadsheet",
-      fontSize: 10,
-      color: INK,
-      fontFace: SERIF,
-    },
-    { kind: "ellipse", x: 4.1, y: 4.2, w: 0.22, h: 0.22, fill: INK },
-    {
-      kind: "text",
-      x: 4.4,
-      y: 4.18,
-      w: 1.3,
-      h: 0.26,
-      text: "Legacy ERP",
-      fontSize: 10,
-      color: INK,
-      fontFace: SERIF,
-    },
-    { kind: "ellipse", x: 1.55, y: 2.85, w: 0.22, h: 0.22, fill: INK },
-    {
-      kind: "text",
-      x: 1.85,
-      y: 2.83,
-      w: 1.4,
-      h: 0.26,
-      text: "AI point tool",
-      fontSize: 10,
-      color: INK,
-      fontFace: SERIF,
-    },
+    { type: "ellipse", position: { x: 1.0, y: 4.25 }, size: { width: 0.22, height: 0.22 }, fill: { color: INK } },
+    { type: "text", position: { x: 1.3, y: 4.23 }, size: { width: 1.6, height: 0.26 }, font: { family: SERIF, size: 10, color: INK }, runs: [{ text: "Spreadsheet" }] },
+    { type: "ellipse", position: { x: 4.1, y: 4.2 }, size: { width: 0.22, height: 0.22 }, fill: { color: INK } },
+    { type: "text", position: { x: 4.4, y: 4.18 }, size: { width: 1.3, height: 0.26 }, font: { family: SERIF, size: 10, color: INK }, runs: [{ text: "Legacy ERP" }] },
+    { type: "ellipse", position: { x: 1.55, y: 2.85 }, size: { width: 0.22, height: 0.22 }, fill: { color: INK } },
+    { type: "text", position: { x: 1.85, y: 2.83 }, size: { width: 1.4, height: 0.26 }, font: { family: SERIF, size: 10, color: INK }, runs: [{ text: "AI point tool" }] },
     // Starship — bigger, coral, the hero dot.
-    { kind: "ellipse", x: 4.55, y: 2.7, w: 0.36, h: 0.36, fill: CORAL },
-    {
-      kind: "text",
-      x: 4.95,
-      y: 2.75,
-      w: 1.4,
-      h: 0.28,
-      text: "Starship",
-      fontSize: 12,
-      italic: true,
-      color: CORAL,
-      fontFace: SERIF,
-    },
+    { type: "ellipse", position: { x: 4.55, y: 2.7 }, size: { width: 0.36, height: 0.36 }, fill: { color: CORAL } },
+    { type: "text", position: { x: 4.95, y: 2.75 }, size: { width: 1.4, height: 0.28 }, font: { family: SERIF, size: 12, color: CORAL, italic: true }, runs: [{ text: "Starship" }] },
 
     // Right column — editorial wedge list with serif markers.
-    {
-      kind: "text",
-      x: 5.95,
-      y: 2.3,
-      w: 3.45,
-      h: 0.3,
-      text: "OUR WEDGE",
-      fontSize: 9,
-      bold: true,
-      color: CORAL,
-      charSpacing: 280,
-      fontFace: SANS,
-    },
-    { kind: "rect", x: 5.95, y: 2.6, w: 0.5, h: 0.025, fill: CORAL },
+    { type: "text", position: { x: 5.95, y: 2.3 }, size: { width: 3.45, height: 0.3 }, font: { family: SANS, size: 9, color: CORAL, bold: true, letterSpacing: 280 }, runs: [{ text: "OUR WEDGE" }] },
+    { type: "rectangle", position: { x: 5.95, y: 2.6 }, size: { width: 0.5, height: 0.025 }, fill: { color: CORAL } },
     ...[
       "Built model-first, not feature-first.",
       "Replaces four incumbents on average.",
@@ -670,29 +276,8 @@ const slide8Competition: Slide = {
     ].flatMap((text, index): SlideElement[] => {
       const y = 2.85 + index * 0.55;
       return [
-        {
-          kind: "text",
-          x: 5.95,
-          y,
-          w: 0.3,
-          h: 0.3,
-          text: "—",
-          fontSize: 14,
-          color: CORAL,
-          fontFace: SERIF,
-        },
-        {
-          kind: "text",
-          x: 6.3,
-          y,
-          w: 3.1,
-          h: 0.45,
-          text,
-          fontSize: 12,
-          color: INK,
-          lineHeight: 1.35,
-          fontFace: SERIF,
-        },
+        { type: "text", position: { x: 5.95, y: y }, size: { width: 0.3, height: 0.3 }, font: { family: SERIF, size: 14, color: CORAL }, runs: [{ text: "—" }] },
+        { type: "text", position: { x: 6.3, y: y }, size: { width: 3.1, height: 0.45 }, font: { family: SERIF, size: 12, color: INK, lineHeight: 1.35 }, runs: [{ text: text }] },
       ];
     }),
     ...footer(8, TOTAL, false),
@@ -702,76 +287,19 @@ const slide8Competition: Slide = {
 // ── Slide 9: Team ───────────────────────────────────────────────────────
 function teamCard(x: number, name: string, role: string, bio: string): SlideElement[] {
   return [
-    {
-      kind: "rect",
-      x,
-      y: 2.3,
-      w: 2.85,
-      h: 2.6,
-      fill: SURFACE,
-      line: { color: LINE, width: 0.5 },
-    },
+    { type: "rectangle", position: { x: x, y: 2.3 }, size: { width: 2.85, height: 2.6 }, fill: { color: SURFACE }, stroke: { color: LINE, width: 0.5 } },
     // Coral-ringed initial — editorial portrait stand-in.
-    { kind: "ellipse", x: x + 0.95, y: 2.55, w: 0.95, h: 0.95, fill: PAPER },
-    { kind: "ellipse", x: x + 1.0, y: 2.6, w: 0.85, h: 0.85, fill: SURFACE },
-    {
-      kind: "text",
-      x: x + 0.95,
-      y: 2.55,
-      w: 0.95,
-      h: 0.95,
-      text: name
+    { type: "ellipse", position: { x: x + 0.95, y: 2.55 }, size: { width: 0.95, height: 0.95 }, fill: { color: PAPER } },
+    { type: "ellipse", position: { x: x + 1.0, y: 2.6 }, size: { width: 0.85, height: 0.85 }, fill: { color: SURFACE } },
+    { type: "text", position: { x: x + 0.95, y: 2.55 }, size: { width: 0.95, height: 0.95 }, font: { family: SERIF, size: 26, color: CORAL }, alignment: { horizontal: "center", vertical: "middle" }, runs: [{ text: name
         .split(" ")
         .map((part) => part[0])
-        .join(""),
-      fontSize: 26,
-      color: CORAL,
-      align: "center",
-      valign: "middle",
-      fontFace: SERIF,
-    },
+        .join("") }] },
 
-    {
-      kind: "text",
-      x: x + 0.2,
-      y: 3.7,
-      w: 2.45,
-      h: 0.32,
-      text: name,
-      fontSize: 17,
-      color: INK,
-      align: "center",
-      fontFace: SERIF,
-    },
-    { kind: "rect", x: x + 1.25, y: 4.02, w: 0.3, h: 0.02, fill: CORAL },
-    {
-      kind: "text",
-      x: x + 0.2,
-      y: 4.1,
-      w: 2.45,
-      h: 0.24,
-      text: role,
-      fontSize: 9,
-      bold: true,
-      color: MUTED,
-      charSpacing: 280,
-      align: "center",
-      fontFace: SANS,
-    },
-    {
-      kind: "text",
-      x: x + 0.2,
-      y: 4.4,
-      w: 2.45,
-      h: 0.5,
-      text: bio,
-      fontSize: 10,
-      italic: true,
-      color: INK,
-      align: "center",
-      lineHeight: 1.4,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: x + 0.2, y: 3.7 }, size: { width: 2.45, height: 0.32 }, font: { family: SERIF, size: 17, color: INK }, alignment: { horizontal: "center" }, runs: [{ text: name }] },
+    { type: "rectangle", position: { x: x + 1.25, y: 4.02 }, size: { width: 0.3, height: 0.02 }, fill: { color: CORAL } },
+    { type: "text", position: { x: x + 0.2, y: 4.1 }, size: { width: 2.45, height: 0.24 }, font: { family: SANS, size: 9, color: MUTED, bold: true, letterSpacing: 280 }, alignment: { horizontal: "center" }, runs: [{ text: role }] },
+    { type: "text", position: { x: x + 0.2, y: 4.4 }, size: { width: 2.45, height: 0.5 }, font: { family: SERIF, size: 10, color: INK, italic: true, lineHeight: 1.4 }, alignment: { horizontal: "center" }, runs: [{ text: bio }] },
   ];
 }
 
@@ -807,44 +335,9 @@ const slide9Team: Slide = {
 // ── Slide 10: Ask ───────────────────────────────────────────────────────
 function fundsRow(y: number, percent: string, label: string, body: string): SlideElement[] {
   return [
-    {
-      kind: "text",
-      x: 5.3,
-      y,
-      w: 1.2,
-      h: 0.5,
-      text: percent,
-      fontSize: 28,
-      color: AMBER,
-      lineHeight: 1.0,
-      fontFace: SERIF,
-    },
-    {
-      kind: "text",
-      x: 6.65,
-      y,
-      w: 2.85,
-      h: 0.3,
-      text: label,
-      fontSize: 10,
-      bold: true,
-      color: PAPER,
-      charSpacing: 280,
-      fontFace: SANS,
-    },
-    {
-      kind: "text",
-      x: 6.65,
-      y: y + 0.32,
-      w: 2.85,
-      h: 0.5,
-      text: body,
-      fontSize: 11,
-      italic: true,
-      color: WHISPER,
-      lineHeight: 1.4,
-      fontFace: SERIF,
-    },
+    { type: "text", position: { x: 5.3, y: y }, size: { width: 1.2, height: 0.5 }, font: { family: SERIF, size: 28, color: AMBER, lineHeight: 1.0 }, runs: [{ text: percent }] },
+    { type: "text", position: { x: 6.65, y: y }, size: { width: 2.85, height: 0.3 }, font: { family: SANS, size: 10, color: PAPER, bold: true, letterSpacing: 280 }, runs: [{ text: label }] },
+    { type: "text", position: { x: 6.65, y: y + 0.32 }, size: { width: 2.85, height: 0.5 }, font: { family: SERIF, size: 11, color: WHISPER, italic: true, lineHeight: 1.4 }, runs: [{ text: body }] },
   ];
 }
 
@@ -853,75 +346,17 @@ const slide10Ask: Slide = {
   background: DEEP,
   elements: [
     // Inverted slide — deep burgundy paper-flip for the closing moment.
-    {
-      kind: "text",
-      x: 0.6,
-      y: 0.65,
-      w: 4,
-      h: 0.28,
-      text: "THE ASK",
-      fontSize: 10,
-      bold: true,
-      color: AMBER,
-      charSpacing: 340,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 0.6, y: 0.65 }, size: { width: 4, height: 0.28 }, font: { family: SANS, size: 10, color: AMBER, bold: true, letterSpacing: 340 }, runs: [{ text: "THE ASK" }] },
 
-    {
-      kind: "text",
-      x: 0.55,
-      y: 1.4,
-      w: 4.5,
-      h: 2.0,
-      text: "$8M",
-      fontSize: 140,
-      color: PAPER,
-      lineHeight: 1.0,
-      fontFace: SERIF,
-    },
-    { kind: "rect", x: 0.6, y: 3.4, w: 0.6, h: 0.04, fill: CORAL },
-    {
-      kind: "text",
-      x: 0.6,
-      y: 3.55,
-      w: 4.2,
-      h: 0.45,
-      text: "Series A · 24-month runway",
-      fontSize: 17,
-      italic: true,
-      color: PAPER,
-      fontFace: SERIF,
-    },
-    {
-      kind: "text",
-      x: 0.6,
-      y: 4.15,
-      w: 4.2,
-      h: 0.95,
-      text:
-        "Leading the round with a strategic partner. Target close: Q3 2026. " +
-        "Welcoming follow-on from existing investors.",
-      fontSize: 12,
-      color: WHISPER,
-      lineHeight: 1.5,
-      fontFace: SANS,
-    },
+    { type: "text", position: { x: 0.55, y: 1.4 }, size: { width: 4.5, height: 2.0 }, font: { family: SERIF, size: 140, color: PAPER, lineHeight: 1.0 }, runs: [{ text: "$8M" }] },
+    { type: "rectangle", position: { x: 0.6, y: 3.4 }, size: { width: 0.6, height: 0.04 }, fill: { color: CORAL } },
+    { type: "text", position: { x: 0.6, y: 3.55 }, size: { width: 4.2, height: 0.45 }, font: { family: SERIF, size: 17, color: PAPER, italic: true }, runs: [{ text: "Series A · 24-month runway" }] },
+    { type: "text", position: { x: 0.6, y: 4.15 }, size: { width: 4.2, height: 0.95 }, font: { family: SANS, size: 12, color: WHISPER, lineHeight: 1.5 }, runs: [{ text: "Leading the round with a strategic partner. Target close: Q3 2026. " +
+        "Welcoming follow-on from existing investors." }] },
 
     // Right column: use of funds
-    {
-      kind: "text",
-      x: 5.3,
-      y: 0.65,
-      w: 4,
-      h: 0.28,
-      text: "USE OF FUNDS",
-      fontSize: 10,
-      bold: true,
-      color: AMBER,
-      charSpacing: 340,
-      fontFace: SANS,
-    },
-    { kind: "rect", x: 5.3, y: 1.0, w: 4.1, h: 0.015, fill: WHISPER, opacity: 0.3 },
+    { type: "text", position: { x: 5.3, y: 0.65 }, size: { width: 4, height: 0.28 }, font: { family: SANS, size: 10, color: AMBER, bold: true, letterSpacing: 340 }, runs: [{ text: "USE OF FUNDS" }] },
+    { type: "rectangle", position: { x: 5.3, y: 1.0 }, size: { width: 4.1, height: 0.015 }, opacity: 0.3, fill: { color: WHISPER } },
     ...fundsRow(1.25, "45%", "PRODUCT & ENGINEERING", "Ship Automate; double the platform team."),
     ...fundsRow(2.25, "30%", "GO TO MARKET", "Build outbound; mid-market sales motion."),
     ...fundsRow(3.25, "15%", "CUSTOMER SUCCESS", "White-glove onboarding for top quartile."),

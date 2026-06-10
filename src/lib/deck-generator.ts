@@ -100,43 +100,6 @@ function roleForColor(
 function applyGeneratedThemeRoles(deck: Deck, colors: ReturnType<typeof palette>) {
   for (const slide of deck.slides) {
     slide.backgroundRole = roleForColor(slide.background, colors);
-    for (const element of slide.elements) applyElementThemeRoles(element, colors);
-  }
-}
-
-function applyElementThemeRoles(
-  element: SlideElement,
-  colors: ReturnType<typeof palette>,
-) {
-  if (element.kind === "text") {
-    element.colorRole = roleForColor(element.color, colors);
-    return;
-  }
-  if (element.kind === "rect" || element.kind === "ellipse") {
-    element.fillRole = roleForColor(element.fill, colors);
-    if (element.line) element.line.colorRole = roleForColor(element.line.color, colors);
-    return;
-  }
-  if (element.kind === "bullets") {
-    element.colorRole = roleForColor(element.color, colors);
-    element.bulletColorRole = roleForColor(element.bulletColor, colors);
-    return;
-  }
-  if (element.kind === "chart") {
-    element.colorRole = roleForColor(element.color, colors);
-    element.axisColorRole = roleForColor(element.axisColor, colors);
-    element.labelColorRole = roleForColor(element.labelColor, colors);
-    element.data.forEach((datum) => {
-      datum.colorRole = roleForColor(datum.color, colors);
-    });
-    return;
-  }
-  if (element.kind === "table") {
-    element.textColorRole = roleForColor(element.textColor, colors);
-    element.headerFillRole = roleForColor(element.headerFill, colors);
-    element.headerTextColorRole = roleForColor(element.headerTextColor, colors);
-    element.borderColorRole = roleForColor(element.borderColor, colors);
-    element.fillRole = roleForColor(element.fill, colors);
   }
 }
 
@@ -215,30 +178,8 @@ export function fallbackOutline(input: DeckGenerationInput): SlideOutline {
 
 function footer(index: number, total: number, color: string): SlideElement[] {
   return [
-    {
-      kind: "text",
-      x: 0.55,
-      y: 5.22,
-      w: 4,
-      h: 0.25,
-      text: "GENERATED DECK",
-      fontFace: SANS,
-      fontSize: 8,
-      color,
-      charSpacing: 180,
-    },
-    {
-      kind: "text",
-      x: 8.35,
-      y: 5.22,
-      w: 1.1,
-      h: 0.25,
-      text: `${String(index).padStart(2, "0")} / ${String(total).padStart(2, "0")}`,
-      fontFace: SANS,
-      fontSize: 8,
-      color,
-      align: "right",
-    },
+    { type: "text", position: { x: 0.55, y: 5.22 }, size: { width: 4, height: 0.25 }, font: { family: SANS, size: 8, color: color, letterSpacing: 180 }, runs: [{ text: "GENERATED DECK" }] },
+    { type: "text", position: { x: 8.35, y: 5.22 }, size: { width: 1.1, height: 0.25 }, font: { family: SANS, size: 8, color: color }, alignment: { horizontal: "right" }, runs: [{ text: `${String(index).padStart(2, "0")} / ${String(total).padStart(2, "0")}` }] },
   ];
 }
 
@@ -247,41 +188,10 @@ function titleSlide(outline: SlideOutline, colors: ReturnType<typeof palette>, t
     title: "Title",
     background: colors.primary,
     elements: [
-      { kind: "rect", x: 0.65, y: 0.7, w: 0.72, h: 0.06, fill: colors.accent },
-      {
-        kind: "text",
-        x: 0.65,
-        y: 1.35,
-        w: 8.1,
-        h: 1.35,
-        text: outline.title,
-        fontFace: SANS,
-        fontSize: 44,
-        bold: true,
-        color: colors.white,
-        lineHeight: 0.95,
-      },
-      {
-        kind: "text",
-        x: 0.7,
-        y: 3.05,
-        w: 6.8,
-        h: 0.72,
-        text: outline.subtitle,
-        fontFace: SANS,
-        fontSize: 17,
-        color: "DCE6F2",
-        lineHeight: 1.2,
-      },
-      {
-        kind: "ellipse",
-        x: 7.25,
-        y: 0.75,
-        w: 2.4,
-        h: 2.4,
-        fill: colors.accent,
-        opacity: 0.18,
-      },
+      { type: "rectangle", position: { x: 0.65, y: 0.7 }, size: { width: 0.72, height: 0.06 }, fill: { color: colors.accent } },
+      { type: "text", position: { x: 0.65, y: 1.35 }, size: { width: 8.1, height: 1.35 }, font: { family: SANS, size: 44, color: colors.white, bold: true, lineHeight: 0.95 }, runs: [{ text: outline.title }] },
+      { type: "text", position: { x: 0.7, y: 3.05 }, size: { width: 6.8, height: 0.72 }, font: { family: SANS, size: 17, color: "DCE6F2", lineHeight: 1.2 }, runs: [{ text: outline.subtitle }] },
+      { type: "ellipse", position: { x: 7.25, y: 0.75 }, size: { width: 2.4, height: 2.4 }, opacity: 0.18, fill: { color: colors.accent } },
       ...footer(1, total, "9FB0C8"),
     ],
   };
@@ -309,107 +219,30 @@ function agendaSlide(outline: SlideOutline, colors: ReturnType<typeof palette>, 
     title: "Outline",
     background: colors.background,
     elements: [
-      {
-        kind: "text",
-        x: 0.65,
-        y: 0.55,
-        w: 6.8,
-        h: 0.48,
-        text: "Deck outline",
-        fontFace: SANS,
-        fontSize: 26,
-        bold: true,
-        color: colors.text,
-      },
+      { type: "text", position: { x: 0.65, y: 0.55 }, size: { width: 6.8, height: 0.48 }, font: { family: SANS, size: 26, color: colors.text, bold: true }, runs: [{ text: "Deck outline" }] },
       ...outline.sections.flatMap((section, sectionIndex) => {
         const col = sectionIndex % columns;
         const row = Math.floor(sectionIndex / columns);
         const x = startX + col * (cardW + colGap);
         const y = startY + row * (cardH + rowGap);
         const number = String(sectionIndex + 1).padStart(2, "0");
-        const card = {
-          kind: "rect" as const,
-          x,
-          y,
-          w: cardW,
-          h: cardH,
-          fill: colors.white,
-          line: { color: colors.line, width: 0.75 },
-          rx: 0.08,
-        };
+        const card = { type: "rectangle", position: { x: x, y: y }, size: { width: cardW, height: cardH }, fill: { color: colors.white }, stroke: { color: colors.line, width: 0.75 }, borderRadius: { tl: 0.08, tr: 0.08, bl: 0.08, br: 0.08 } } satisfies SlideElement;
 
         if (isDense) {
           return [
             card,
-            {
-              kind: "text" as const,
-              x: x + 0.16,
-              y: y + 0.12,
-              w: cardW - 0.32,
-              h: 0.18,
-              text: `${number}  ${section.title.toUpperCase()}`,
-              fontFace: SANS,
-              fontSize: 7,
-              bold: true,
-              color: colors.muted,
-              charSpacing: 50,
-            },
-            {
-              kind: "text" as const,
-              x: x + 0.16,
-              y: y + 0.3,
-              w: cardW - 0.32,
-              h: Math.max(0.14, cardH - 0.36),
-              text: section.summary,
-              fontFace: SANS,
-              fontSize: 6,
-              color: colors.text,
-              lineHeight: 1.05,
-            },
-          ];
+            { type: "text", position: { x: x + 0.16, y: y + 0.12 }, size: { width: cardW - 0.32, height: 0.18 }, font: { family: SANS, size: 7, color: colors.muted, bold: true, letterSpacing: 50 }, runs: [{ text: `${number}  ${section.title.toUpperCase()}` }] },
+            { type: "text", position: { x: x + 0.16, y: y + 0.3 }, size: { width: cardW - 0.32, height: Math.max(0.14, cardH - 0.36) }, font: { family: SANS, size: 6, color: colors.text, lineHeight: 1.05 }, runs: [{ text: section.summary }] },
+          ] satisfies SlideElement[];
         }
 
         const summaryY = y + Math.min(0.68, cardH * 0.62);
         return [
           card,
-          {
-            kind: "text" as const,
-            x: x + 0.2,
-            y: y + 0.16,
-            w: 0.62,
-            h: 0.32,
-            text: number,
-            fontFace: SANS,
-            fontSize: cardH < 0.9 ? 16 : 25,
-            bold: true,
-            color: colors.primary,
-          },
-          {
-            kind: "text" as const,
-            x: x + 0.9,
-            y: y + 0.22,
-            w: cardW - 1.18,
-            h: 0.24,
-            text: section.title.toUpperCase(),
-            fontFace: SANS,
-            fontSize: cardH < 0.9 ? 7 : 9,
-            bold: true,
-            color: colors.muted,
-            charSpacing: cardH < 0.9 ? 70 : 120,
-          },
-          {
-            kind: "text" as const,
-            x: x + 0.9,
-            y: summaryY,
-            w: cardW - 1.18,
-            h: Math.max(0.16, cardH - (summaryY - y) - 0.12),
-            text: section.summary,
-            fontFace: SANS,
-            fontSize: cardH < 0.9 ? 7 : 9,
-            color: colors.text,
-            lineHeight: cardH < 0.9 ? 1.05 : 1.18,
-          },
-        ];
+          { type: "text", position: { x: x + 0.2, y: y + 0.16 }, size: { width: 0.62, height: 0.32 }, font: { family: SANS, size: cardH < 0.9 ? 16 : 25, color: colors.primary, bold: true }, runs: [{ text: number }] },
+          { type: "text", position: { x: x + 0.9, y: y + 0.22 }, size: { width: cardW - 1.18, height: 0.24 }, font: { family: SANS, size: cardH < 0.9 ? 7 : 9, color: colors.muted, bold: true, letterSpacing: cardH < 0.9 ? 70 : 120 }, runs: [{ text: section.title.toUpperCase() }] },
+          { type: "text", position: { x: x + 0.9, y: summaryY }, size: { width: cardW - 1.18, height: Math.max(0.16, cardH - (summaryY - y) - 0.12) }, font: { family: SANS, size: cardH < 0.9 ? 7 : 9, color: colors.text, lineHeight: cardH < 0.9 ? 1.05 : 1.18 }, runs: [{ text: section.summary }] },
+        ] satisfies SlideElement[];
       }),
       ...footer(2, total, colors.muted),
     ],
@@ -431,91 +264,25 @@ function sectionSlide(
   const visualY = Math.max(1.05, 0.82 + titleHeight + 0.18);
   const visualH = Math.max(2.2, 4.35 - visualY);
   const base: SlideElement[] = [
-    { kind: "rect", x: 0.65, y: 0.62, w: 0.55, h: 0.06, fill: colors.accent },
-    {
-      kind: "text",
-      x: 0.65,
-      y: 0.82,
-      w: titleWidth,
-      h: titleHeight,
-      text: section.title,
-      fontFace: SANS,
-      fontSize: 26,
-      bold: true,
-      color: colors.text,
-      lineHeight: 1.05,
-    },
-    {
-      kind: "text",
-      x: 0.68,
-      y: summaryY,
-      w: leftColumnWidth,
-      h: 0.78,
-      text: section.summary,
-      fontFace: SANS,
-      fontSize: 14,
-      color: colors.muted,
-      lineHeight: 1.25,
-    },
+    { type: "rectangle", position: { x: 0.65, y: 0.62 }, size: { width: 0.55, height: 0.06 }, fill: { color: colors.accent } },
+    { type: "text", position: { x: 0.65, y: 0.82 }, size: { width: titleWidth, height: titleHeight }, font: { family: SANS, size: 26, color: colors.text, bold: true, lineHeight: 1.05 }, runs: [{ text: section.title }] },
+    { type: "text", position: { x: 0.68, y: summaryY }, size: { width: leftColumnWidth, height: 0.78 }, font: { family: SANS, size: 14, color: colors.muted, lineHeight: 1.25 }, runs: [{ text: section.summary }] },
   ];
 
   const visual: SlideElement =
     section.visual === "chart"
-      ? {
-          kind: "chart",
-          x: 5.25,
-          y: visualY,
-          w: 3.9,
-          h: visualH,
-          chartType: "bar",
-          title: "Signal strength",
-          data: section.bullets.slice(0, 4).map((label, itemIndex) => ({
+      ? ({ type: "chart", position: { x: 5.25, y: visualY }, size: { width: 3.9, height: visualH }, chartType: "bar", data: section.bullets.slice(0, 4).map((label, itemIndex) => ({
             label: label.slice(0, 14),
             value: 35 + itemIndex * 17,
             color: itemIndex % 2 === 0 ? colors.accent : colors.primary,
-          })),
-          color: colors.accent,
-          axisColor: "AEB8C7",
-          labelColor: colors.muted,
-          showValues: true,
-        }
+          })), title: "Signal strength", color: colors.accent, axisColor: "AEB8C7", labelColor: colors.muted, showValues: true } satisfies SlideElement)
       : section.visual === "table"
-          ? {
-              kind: "table",
-              x: 5.05,
-              y: visualY,
-              w: 4.1,
-              h: visualH,
-              rows: [
-                ["Phase", "Focus", "Output"],
-                ...section.bullets.slice(0, 4).map((item, itemIndex) => [
+          ? ({ type: "table", position: { x: 5.05, y: visualY }, size: { width: 4.1, height: visualH }, font: { family: SANS, size: 10, color: colors.text }, columns: [{ text: "Phase", fill: { color: colors.primary }, font: { color: colors.white, bold: true }, stroke: { color: colors.line, width: 1 } }, { text: "Focus", fill: { color: colors.primary }, font: { color: colors.white, bold: true }, stroke: { color: colors.line, width: 1 } }, { text: "Output", fill: { color: colors.primary }, font: { color: colors.white, bold: true }, stroke: { color: colors.line, width: 1 } }], rows: [...(section.bullets.slice(0, 4).map((item, itemIndex) => [
                   `${itemIndex + 1}`,
                   item.slice(0, 18),
                   itemIndex === 0 ? "Learn" : itemIndex === 1 ? "Build" : "Ship",
-                ]),
-              ],
-              fontFace: SANS,
-              fontSize: 10,
-              textColor: colors.text,
-              headerFill: colors.primary,
-              headerTextColor: colors.white,
-              borderColor: colors.line,
-              fill: colors.white,
-            }
-          : {
-              kind: "bullets",
-              x: 5.05,
-              y: visualY,
-              w: 3.95,
-              h: visualH,
-              items: section.bullets,
-              fontFace: SANS,
-              fontSize: 17,
-              color: colors.text,
-              bulletColor: colors.accent,
-              lineSpacingMultiple: 1.35,
-              itemGap: 0.08,
-            };
+                ])).map((row) => row.map((text) => ({ text: text, fill: { color: colors.white }, stroke: { color: colors.line, width: 1 } })))] } satisfies SlideElement)
+          : ({ type: "text-list", position: { x: 5.05, y: visualY }, size: { width: 3.95, height: visualH }, font: { family: SANS, size: 17, color: colors.text, lineHeight: 1.35 }, marker: "bullet", items: (section.bullets).map((text) => ({ type: "text" as const, text })) } satisfies SlideElement);
 
   return {
     title: section.title,
@@ -525,20 +292,7 @@ function sectionSlide(
       ...(section.visual === "bullets"
         ? []
         : [
-            {
-              kind: "bullets" as const,
-              x: 0.8,
-              y: bulletsY,
-              w: 3.7,
-              h: Math.max(1.2, 4.82 - bulletsY),
-              items: section.bullets.slice(0, 4),
-              fontFace: SANS,
-              fontSize: 14,
-              color: colors.text,
-              bulletColor: colors.accent,
-              lineSpacingMultiple: 1.25,
-              itemGap: 0.07,
-            },
+            ({ type: "text-list", position: { x: 0.8, y: bulletsY }, size: { width: 3.7, height: Math.max(1.2, 4.82 - bulletsY) }, font: { family: SANS, size: 14, color: colors.text, lineHeight: 1.25 }, marker: "bullet", items: (section.bullets.slice(0, 4)).map((text) => ({ type: "text" as const, text })) } satisfies SlideElement),
           ]),
       visual,
       ...footer(index, total, colors.muted),

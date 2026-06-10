@@ -25,22 +25,18 @@ export function useSvgGeneration() {
     try {
       const result = await generateSvgWithAiFn({ data: { prompt } });
       insertElement({
-        kind: "svg",
-        x: 2.7,
-        y: 1.6,
-        w: 4.6,
-        h: 2.9,
+        type: "svg",
+        position: { x: 2.7, y: 1.6 },
+        size: { width: 4.6, height: 2.9 },
         name: result.name,
         svg: sanitizeSvgMarkup(result.svg),
       });
       setSvgGenerationStatus("Generated with OpenAI.");
     } catch (error) {
       insertElement({
-        kind: "svg",
-        x: 2.7,
-        y: 1.6,
-        w: 4.6,
-        h: 2.9,
+        type: "svg",
+        position: { x: 2.7, y: 1.6 },
+        size: { width: 4.6, height: 2.9 },
         name: prompt.slice(0, 120),
         svg: sanitizeSvgMarkup(generateSvgFromPrompt(prompt)),
       });

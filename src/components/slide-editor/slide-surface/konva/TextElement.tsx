@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Group, Rect, Text } from "react-konva";
 import type { TextElement as TextEl } from "../../../../lib/slide-schema";
+import { elementBox, elementFont, textContent } from "../../../../lib/element-model";
 import { fitFontToBox } from "../../../../lib/textMeasure";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { rotationProps, shadowProps } from "./elementVisuals";
@@ -20,17 +21,20 @@ export function TextElement({
   renderMode?: "canvas" | "proxy";
 }) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
+  const box = elementBox(element);
+  const font = elementFont(element);
   // Shrink-to-fit at render time. The PPTX export uses `fit: shrink`
   // which silently scales text down to fit the box. Without doing the
   // same here, the preview overflows visibly while the export looks
   // tight — diverging from presentation/export. `fitFontToBox` never
   // grows, so authored sizes that fit are untouched.
   const effectiveFontSizePt = useMemo(
-    () => fitFontToBox(element, element.h),
+    () => fitFontToBox(element, box.h),
     [element],
   );
   const fontSize = effectiveFontSizePt * PT_TO_PX * (scale / PX_PER_IN);
-  const isTopAligned = (element.valign ?? "top") === "top";
+  const verticalAlign = element.alignment?.vertical ?? "top";
+  const isTopAligned = verticalAlign === "top";
 
   return (
     <Group
@@ -50,15 +54,15 @@ export function TextElement({
         <Text
           width={width}
           height={isTopAligned ? undefined : height}
-          text={element.text}
-          fill={withHash(element.color)}
-          fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
+          text={textContent(element)}
+          fill={withHash(font.color)}
+          fontFamily={`${font.family}, Helvetica, sans-serif`}
           fontSize={fontSize}
-          fontStyle={`${element.bold ? "bold" : "normal"} ${element.italic ? "italic" : ""}`}
-          align={element.align ?? "left"}
-          verticalAlign={element.valign ?? "top"}
-          lineHeight={element.lineHeight ?? 1.15}
-          letterSpacing={((element.charSpacing ?? 0) / 100) * PT_TO_PX * (scale / PX_PER_IN)}
+          fontStyle={`${font.bold ? "bold" : "normal"} ${font.italic ? "italic" : ""}`}
+          align={element.alignment?.horizontal ?? "left"}
+          verticalAlign={verticalAlign}
+          lineHeight={font.lineHeight ?? 1.15}
+          letterSpacing={((font.letterSpacing ?? 0) / 100) * PT_TO_PX * (scale / PX_PER_IN)}
           wrap="word"
           listening={false}
         />

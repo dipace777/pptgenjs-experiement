@@ -2,19 +2,31 @@ import PptxGenJS from "pptxgenjs";
 import {
   SLIDE_H,
   SLIDE_W,
+  type BorderRadius,
   type ChartElement,
   type Deck,
+  type Fill,
   type Shadow,
   type Slide,
   type SlideElement,
+  type Stroke,
+  type TableElement,
 } from "../lib/slide-schema";
 import JSZip from "jszip";
-import { getElementDefinition } from "../lib/slide-elements";
 import {
   PPTY_DECK_SIDECAR_PATH,
   PPTY_IMAGE_PLACEHOLDER_TAG,
 } from "../lib/pptx-tags";
 import { sanitizeSvgMarkup } from "../lib/svg-sanitize";
+import {
+  chartColor,
+  elementBox,
+  elementFont,
+  fillColor,
+  strokeColor,
+  strokeWidth,
+  textListStrings,
+} from "../lib/element-model";
 import {
   fitBulletsFontToBox,
   fitFontToBox,
@@ -47,22 +59,24 @@ function svgDataUri(svg: string): string {
 
 function pptxShadow(shadow?: Shadow | null): PptxGenJS.ShadowProps | undefined {
   if (!shadow) return undefined;
-  const offset = Math.sqrt(shadow.offsetX ** 2 + shadow.offsetY ** 2) * 72;
-  const angle = ((Math.atan2(shadow.offsetY, shadow.offsetX) * 180) / Math.PI + 360) % 360;
+  const offsetX = shadow.offsetX ?? 0;
+  const offsetY = shadow.offsetY ?? 0;
+  const offset = Math.sqrt(offsetX ** 2 + offsetY ** 2) * 72;
+  const angle = ((Math.atan2(offsetY, offsetX) * 180) / Math.PI + 360) % 360;
   return {
     type: "outer",
-    color: shadow.color,
-    opacity: shadow.opacity,
-    blur: shadow.blur * 72,
+    color: shadow.color ?? "000000",
+    opacity: shadow.opacity ?? 0.35,
+    blur: (shadow.blur ?? 0) * 72,
     offset,
     angle,
   };
 }
 
-function uniformRadius(element: { rx?: number | null; radius?: { tl?: number | null; tr?: number | null; bl?: number | null; br?: number | null } | null }) {
-  const radius = element.radius;
-  if (!radius) return element.rx ?? 0;
-  const values = [radius.tl, radius.tr, radius.bl, radius.br].map((value) => value ?? element.rx ?? 0);
+function uniformRadius(element: { borderRadius?: BorderRadius | null }) {
+  const radius = element.borderRadius;
+  if (!radius) return 0;
+  const values = [radius.tl, radius.tr, radius.bl, radius.br];
   return values.every((value) => value === values[0]) ? values[0] : 0;
 }
 
@@ -90,8 +104,10 @@ function addChartElement(
   s: PptxGenJS.Slide,
   el: ChartElement,
 ): void {
+  const box = elementBox(el);
   const axisColor = el.axisColor ?? "9AA7BD";
   const labelColor = el.labelColor ?? "6A7894";
+  const color = chartColor(el);
   const chartType =
     el.chartType === "donut"
       ? pptx.ChartType.doughnut
@@ -100,7 +116,7 @@ function addChartElement(
         : pptx.ChartType.bar;
   const labels = el.data.map((datum) => datum.label);
   const values = el.data.map((datum) => datum.value);
-  const chartColors = el.data.map((datum) => datum.color ?? el.color);
+  const chartColors = el.data.map((datum) => datum.color ?? color);
   const isDonut = el.chartType === "donut";
   const data: PptxGenJS.OptsChartData[] = [
     {
@@ -110,10 +126,10 @@ function addChartElement(
     },
   ];
   const options: PptxGenJS.IChartOpts = {
-    x: el.x,
-    y: el.y,
-    w: el.w,
-    h: el.h,
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
     altText: el.title ?? "Chart",
     barDir: "col",
     barGapWidthPct: 70,
@@ -205,6 +221,7 @@ function addChartShell(
   s: PptxGenJS.Slide,
   el: ChartElement,
 ): { x: number; y: number; w: number; h: number } {
+  const box = elementBox(el);
   const axisColor = el.axisColor ?? "9AA7BD";
   const labelColor = el.labelColor ?? "6A7894";
   const titleH = el.title ? 0.28 : 0.08;
@@ -212,10 +229,10 @@ function addChartShell(
   const labelBand = el.chartType === "donut" ? 0 : 0.22;
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: el.x,
-    y: el.y,
-    w: el.w,
-    h: el.h,
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
     rectRadius: 0.04,
     fill: { color: "FFFFFF", transparency: transparencyPct(el.opacity ?? 0.92) },
     line: { color: axisColor, transparency: 65, width: 0.75 },
@@ -223,9 +240,9 @@ function addChartShell(
 
   if (el.title) {
     s.addText(el.title, {
-      x: el.x + pad,
-      y: el.y + 0.08,
-      w: el.w - pad * 2,
+      x: box.x + pad,
+      y: box.y + 0.08,
+      w: box.w - pad * 2,
       h: 0.18,
       fontFace: "Arial",
       fontSize: 9,
@@ -237,10 +254,10 @@ function addChartShell(
   }
 
   return {
-    x: el.x + pad,
-    y: el.y + pad + titleH,
-    w: Math.max(0.2, el.w - pad * 2),
-    h: Math.max(0.2, el.h - pad * 2 - titleH - labelBand),
+    x: box.x + pad,
+    y: box.y + pad + titleH,
+    w: Math.max(0.2, box.w - pad * 2),
+    h: Math.max(0.2, box.h - pad * 2 - titleH - labelBand),
   };
 }
 
@@ -252,6 +269,7 @@ function addBarShapeChart(
 ): void {
   const axisColor = el.axisColor ?? "9AA7BD";
   const labelColor = el.labelColor ?? "6A7894";
+  const color = chartColor(el);
   const max = chartMax(el);
   const gap = Math.min(0.1, plot.w / Math.max(12, el.data.length * 4));
   const barW = Math.max(0.08, (plot.w - gap * (el.data.length - 1)) / el.data.length);
@@ -280,7 +298,7 @@ function addBarShapeChart(
       y,
       w: barW,
       h,
-      fill: { color: datum.color ?? el.color },
+      fill: { color: datum.color ?? color },
       line: { type: "none" },
     });
     if (el.showValues) {
@@ -320,6 +338,7 @@ function addLineShapeChart(
 ): void {
   const axisColor = el.axisColor ?? "9AA7BD";
   const labelColor = el.labelColor ?? "6A7894";
+  const color = chartColor(el);
   const max = chartMax(el);
 
   s.addShape(pptx.ShapeType.line, {
@@ -344,7 +363,7 @@ function addLineShapeChart(
   }));
 
   points.slice(1).forEach((point, index) => {
-    addLineSegment(pptx, s, points[index], point, el.color, 1.5);
+    addLineSegment(pptx, s, points[index], point, color, 1.5);
   });
   points.forEach((point) => {
     s.addShape(pptx.ShapeType.ellipse, {
@@ -352,7 +371,7 @@ function addLineShapeChart(
       y: point.y - 0.035,
       w: 0.07,
       h: 0.07,
-      fill: { color: point.datum.color ?? el.color },
+      fill: { color: point.datum.color ?? color },
       line: { color: "FFFFFF", width: 0.5 },
     });
     if (el.showValues) {
@@ -391,6 +410,7 @@ function addDonutShapeChart(
   plot: { x: number; y: number; w: number; h: number },
 ): void {
   const labelColor = el.labelColor ?? "6A7894";
+  const color = chartColor(el);
   const total = Math.max(1, el.data.reduce((sum, datum) => sum + datum.value, 0));
   const size = Math.min(plot.w * 0.52, plot.h * 0.95);
   const donutX = plot.x;
@@ -402,7 +422,7 @@ function addDonutShapeChart(
       y: donutY,
       w: size,
       h: size,
-      fill: { color: el.data[0]?.color ?? el.color },
+      fill: { color: el.data[0]?.color ?? color },
       line: { type: "none" },
     });
   } else {
@@ -416,7 +436,7 @@ function addDonutShapeChart(
         h: size,
         angleRange: [normalizeAngle(start), normalizeAngle(start + sweep)],
         arcThicknessRatio: 0.46,
-        fill: { color: datum.color ?? el.color },
+        fill: { color: datum.color ?? color },
         line: { color: "FFFFFF", transparency: 35, width: 0.4 },
       });
       start += sweep;
@@ -431,7 +451,7 @@ function addDonutShapeChart(
     fontFace: "Arial",
     fontSize: 10,
     bold: true,
-    color: el.color,
+    color,
     align: "center",
     margin: 0,
     fit: "shrink",
@@ -444,7 +464,7 @@ function addDonutShapeChart(
       y,
       w: 0.1,
       h: 0.1,
-      fill: { color: datum.color ?? el.color },
+      fill: { color: datum.color ?? color },
       line: { type: "none" },
     });
     s.addText(`${datum.label}${el.showValues ? ` ${datum.value}` : ""}`, {
@@ -481,29 +501,40 @@ function addChartShapeElement(
 
 function addTableElement(
   s: PptxGenJS.Slide,
-  el: Extract<SlideElement, { kind: "table" }>,
+  el: TableElement,
 ): void {
-  const rows = el.rows;
+  const box = elementBox(el);
+  const baseFont = elementFont(el);
+  const rows = [el.columns, ...el.rows];
   const cols = Math.max(1, ...rows.map((row) => row.length));
-  const rowH = el.h / rows.length;
-  const colW = el.w / cols;
-  const fill = el.fill ?? "FFFFFF";
+  const rowH = box.h / rows.length;
+  const colW = box.w / cols;
+  const defaultBorder =
+    el.columns[0]?.stroke?.color ?? el.rows[0]?.[0]?.stroke?.color ?? "D9E2EF";
+  const defaultFill = el.rows[0]?.[0]?.fill?.color ?? "FFFFFF";
   const tableRows: PptxGenJS.TableRow[] = rows.map((row, rowIndex) =>
     Array.from({ length: cols }).map((_, colIndex) => {
       const isHeader = rowIndex === 0;
-      const cellStyle = el.cellStyles?.[rowIndex]?.[colIndex];
+      const cell = row[colIndex] ?? {};
+      const cellFont = elementFont({
+        font: { ...(el.font ?? {}), ...(cell.font ?? {}) },
+      });
       return {
-        text: row[colIndex] ?? "",
+        text: cell.text ?? "",
         options: {
-          bold: cellStyle?.bold ?? isHeader,
-          border: { color: cellStyle?.borderColor ?? el.borderColor, pt: 0.5 },
-          color: cellStyle?.textColor ?? (isHeader ? el.headerTextColor : el.textColor),
-          fill: {
-            color: cellStyle?.fill ?? (isHeader ? el.headerFill : fill),
-            transparency: transparencyPct(el.opacity ?? undefined),
+          bold: cellFont.bold ?? isHeader,
+          border: {
+            color: strokeColor(cell.stroke, defaultBorder),
+            pt: strokeWidth(cell.stroke) || 0.5,
           },
-          fontFace: el.fontFace ?? "Arial",
-          fontSize: el.fontSize,
+          color: cellFont.color,
+          fill: {
+            color: fillColor(cell.fill, isHeader ? "F9FAFB" : defaultFill),
+            transparency: transparencyPct(cell.fill?.opacity ?? el.opacity ?? undefined),
+          },
+          fontFace: cellFont.family,
+          fontSize: cellFont.size,
+          italic: cellFont.italic ?? undefined,
           fit: "shrink",
           margin: [0.05, 0.08, 0.05, 0.08],
           valign: "middle",
@@ -517,21 +548,38 @@ function addTableElement(
     rotate?: number;
     shadow?: PptxGenJS.ShadowProps;
   } = {
-    x: el.x,
-    y: el.y,
-    w: el.w,
-    h: el.h,
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
     rotate: el.rotation ?? undefined,
     shadow: pptxShadow(el.shadow),
-    border: { color: el.borderColor, pt: 0.5 },
+    border: { color: defaultBorder, pt: 0.5 },
     colW: Array.from({ length: cols }, () => colW),
-    fill: { color: fill, transparency: transparencyPct(el.opacity ?? undefined) },
-    fontFace: el.fontFace ?? "Arial",
-    fontSize: el.fontSize,
+    fill: { color: defaultFill, transparency: transparencyPct(el.opacity ?? undefined) },
+    fontFace: baseFont.family,
+    fontSize: baseFont.size,
     margin: [0.05, 0.08, 0.05, 0.08],
     rowH: Array.from({ length: rows.length }, () => rowH),
   };
   s.addTable(tableRows, tableOptions);
+}
+
+function shapeFill(fill: Fill | null | undefined, opacity: number | null | undefined) {
+  if (!fill) return { type: "none" } as const;
+  return {
+    color: fill.color,
+    transparency: transparencyPct(fill.opacity ?? opacity ?? undefined),
+  };
+}
+
+function shapeLine(stroke: Stroke | null | undefined) {
+  if (!stroke) return { type: "none" } as const;
+  return {
+    color: stroke.color,
+    width: stroke.width,
+    transparency: transparencyPct(stroke.opacity ?? undefined),
+  };
 }
 
 function addElement(
@@ -541,87 +589,94 @@ function addElement(
   bg: string,
   options: Required<GeneratePptxOptions>,
 ): void {
-  const renderer = getElementDefinition(el.kind).export.pptx;
+  const box = elementBox(el);
 
-  if (renderer === "rect" && el.kind === "rect") {
+  if (el.type === "rectangle") {
     const rx = uniformRadius(el);
     const rounded = rx > 0;
     const shape = rounded ? pptx.ShapeType.roundRect : pptx.ShapeType.rect;
     const opts: PptxGenJS.ShapeProps = {
-      x: el.x,
-      y: el.y,
-      w: el.w,
-      h: el.h,
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
       rotate: el.rotation ?? undefined,
       shadow: pptxShadow(el.shadow),
-      fill: {
-        color: el.fill,
-        transparency: transparencyPct(el.opacity ?? undefined),
-      },
-      line: el.line
-        ? { color: el.line.color, width: el.line.width }
-        : { type: "none" },
+      fill: shapeFill(el.fill, el.opacity),
+      line: shapeLine(el.stroke),
     };
     if (rounded) {
       // pptxgenjs rectRadius is a fraction of the shorter side / 2.
-      opts.rectRadius = Math.min(0.5, rx / Math.min(el.w, el.h));
+      opts.rectRadius = Math.min(0.5, rx / Math.min(box.w, box.h));
     }
     s.addShape(shape, opts);
     return;
   }
 
-  if (renderer === "ellipse" && el.kind === "ellipse") {
+  if (el.type === "ellipse") {
     s.addShape(pptx.ShapeType.ellipse, {
-      x: el.x,
-      y: el.y,
-      w: el.w,
-      h: el.h,
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
       rotate: el.rotation ?? undefined,
       shadow: pptxShadow(el.shadow),
-      fill: {
-        color: el.fill,
-        transparency: transparencyPct(el.opacity ?? undefined),
-      },
-      line: el.line
-        ? { color: el.line.color, width: el.line.width }
-        : { type: "none" },
+      fill: shapeFill(el.fill, el.opacity),
+      line: shapeLine(el.stroke),
     });
     return;
   }
 
-  if (renderer === "text" && el.kind === "text") {
+  if (el.type === "line") {
+    s.addShape(pptx.ShapeType.line, {
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
+      rotate: el.rotation ?? undefined,
+      shadow: pptxShadow(el.shadow),
+      line: shapeLine(el.stroke),
+    });
+    return;
+  }
+
+  if (el.type === "text") {
+    const font = elementFont(el);
     const color =
       el.opacity != null && el.opacity < 1
-        ? blendHex(el.color, bg, el.opacity)
-        : el.color;
+        ? blendHex(font.color, bg, el.opacity)
+        : font.color;
     // Pre-fit fontSize and pre-wrap lines on our side. Same Pretext-based
     // computation the editor preview uses, so a 36pt headline that gets
     // shrunk to 29pt in the preview also lands at 29pt in the export.
     // Without this, PPT did its own shrinking via `fit: shrink` with its
     // own metrics, and the two views diverged. `wrap: false` keeps PPT
     // from rewrapping; `fit: shrink` stays as a sub-character safety net.
-    const effectiveFontSize = fitFontToBox(el, el.h);
-    const lines = wrapTextElementLines({ ...el, fontSize: effectiveFontSize });
+    const effectiveFontSize = fitFontToBox(el, box.h);
+    const lines = wrapTextElementLines({
+      ...el,
+      font: { ...(el.font ?? {}), size: effectiveFontSize },
+    });
     s.addText(lines.join("\n"), {
-      x: el.x,
-      y: el.y,
-      w: el.w,
-      h: el.h,
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
       rotate: el.rotation ?? undefined,
       shadow: pptxShadow(el.shadow),
-      fontFace: el.fontFace ?? "Arial",
+      fontFace: font.family,
       fontSize: effectiveFontSize,
-      bold: el.bold ?? undefined,
-      italic: el.italic ?? undefined,
+      bold: font.bold ?? undefined,
+      italic: font.italic ?? undefined,
       color,
-      align: el.align ?? "left",
-      valign: VALIGN[el.valign ?? "top"],
+      align: el.alignment?.horizontal ?? "left",
+      valign: VALIGN[el.alignment?.vertical ?? "top"],
       // Spec uses hundredths-of-a-point (matches OOXML's `spc` unit and our
       // CSS letter-spacing math). pptxgenjs takes points directly, so divide.
-      charSpacing: el.charSpacing != null ? el.charSpacing / 100 : undefined,
+      charSpacing: font.letterSpacing != null ? font.letterSpacing / 100 : undefined,
       // Use absolute line height in points (= multiplier × fontSize) so PPTX
       // matches CSS's `line-height: X` (also a multiplier of fontSize).
-      lineSpacing: (el.lineHeight ?? 1.15) * effectiveFontSize,
+      lineSpacing: (font.lineHeight ?? 1.15) * effectiveFontSize,
       // Zero the text-frame inset so coordinates match the React preview
       // (which has no padding inside its boxes).
       margin: 0,
@@ -631,33 +686,33 @@ function addElement(
     return;
   }
 
-  if (renderer === "chart" && el.kind === "chart") {
+  if (el.type === "chart") {
     if (options.chartMode === "shapes") addChartShapeElement(pptx, s, el);
     else addChartElement(pptx, s, el);
     return;
   }
 
-  if (renderer === "table" && el.kind === "table") {
+  if (el.type === "table") {
     addTableElement(s, el);
     return;
   }
 
-  if (renderer === "image" && el.kind === "image") {
+  if (el.type === "image") {
     if (el.data) {
       s.addImage({
         data: el.data,
-        x: el.x,
-        y: el.y,
-        w: el.w,
-        h: el.h,
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
         rotate: el.rotation ?? undefined,
         shadow: pptxShadow(el.shadow),
         sizing:
           el.fit === "cover"
-            ? { type: "cover", w: el.w, h: el.h }
+            ? { type: "cover", w: box.w, h: box.h }
             : el.fit === "fill"
               ? undefined
-              : { type: "contain", w: el.w, h: el.h },
+              : { type: "contain", w: box.w, h: box.h },
         transparency: transparencyPct(el.opacity ?? undefined),
       });
     } else {
@@ -668,10 +723,10 @@ function addElement(
       // `{ transparency: 100 }` writes a black srgbClr with alpha=0, which
       // other readers (including ours, pre-fix) interpret as solid black.
       s.addShape(pptx.ShapeType.rect, {
-        x: el.x,
-        y: el.y,
-        w: el.w,
-        h: el.h,
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
         rotate: el.rotation ?? undefined,
         shadow: pptxShadow(el.shadow),
         fill: { type: "none" },
@@ -682,13 +737,13 @@ function addElement(
     return;
   }
 
-  if (renderer === "svg" && el.kind === "svg") {
+  if (el.type === "svg") {
     s.addImage({
       data: svgDataUri(el.svg),
-      x: el.x,
-      y: el.y,
-      w: el.w,
-      h: el.h,
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
       rotate: el.rotation ?? undefined,
       shadow: pptxShadow(el.shadow),
       transparency: transparencyPct(el.opacity ?? undefined),
@@ -696,35 +751,42 @@ function addElement(
     return;
   }
 
-  if (renderer !== "bullets" || el.kind !== "bullets") return;
+  if (el.type !== "text-list") return;
 
   // Same Pretext-measured shrink the editor preview applies, so bullet
   // lists that fit visually in the editor also fit in the exported
   // PPTX. Without this, PPT renders at the declared size and tall lists
   // overflow the box.
+  const font = elementFont(el);
   const effectiveFontSize = fitBulletsFontToBox(el);
-  const runs = el.items.map((t) => ({
-    text: t,
-    options: {
-      bullet: {
-        code: "2022", // BULLET (smaller dot — matches the React preview)
-        indent: 12,
-        color: el.bulletColor ?? el.color,
-      },
-    },
-  }));
+  const items = textListStrings(el);
+  const useBullets = el.marker !== "none";
+  const runs = items.map((text) =>
+    useBullets
+      ? {
+          text,
+          options: {
+            bullet: {
+              code: "2022", // BULLET (smaller dot — matches the React preview)
+              indent: 12,
+              color: font.color,
+            },
+          },
+        }
+      : { text },
+  );
   s.addText(runs, {
-    x: el.x,
-    y: el.y,
-    w: el.w,
-    h: el.h,
-    fontFace: el.fontFace ?? "Arial",
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    fontFace: font.family,
     fontSize: effectiveFontSize,
-    color: el.color,
+    color: font.color,
     valign: "top",
-    paraSpaceAfter: (el.itemGap ?? 0.05) * 72,
+    paraSpaceAfter: 0.05 * 72,
     paraSpaceBefore: 0,
-    lineSpacing: (el.lineSpacingMultiple ?? 1.3) * effectiveFontSize,
+    lineSpacing: (font.lineHeight ?? 1.3) * effectiveFontSize,
     margin: 0,
   });
 }

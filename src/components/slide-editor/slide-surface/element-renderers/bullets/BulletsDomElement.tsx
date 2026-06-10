@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 import type { Slide } from "../../../../../lib/slide-schema";
+import { elementFont, textListStrings } from "../../../../../lib/element-model";
 import { fitBulletsFontToBox } from "../../../../../lib/textMeasure";
 import {
   DomElementLayer,
@@ -24,7 +25,7 @@ export function BulletsDomElement({
   const effectiveFontSizes = useMemo(() => {
     const sizes = new Map<number, number>();
     slide.elements.forEach((element, index) => {
-      if (element.kind !== "bullets") return;
+      if (element.type !== "text-list") return;
       sizes.set(index, fitBulletsFontToBox(element));
     });
     return sizes;
@@ -34,45 +35,51 @@ export function BulletsDomElement({
     <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
         if (
-          element.kind !== "bullets" ||
+          element.type !== "text-list" ||
           editingBulletsIndex === elementIndex
         ) {
           return null;
         }
+        const font = elementFont(element);
+        const items = textListStrings(element);
         const effective =
-          effectiveFontSizes.get(elementIndex) ?? element.fontSize;
+          effectiveFontSizes.get(elementIndex) ?? font.size;
 
         return (
-          <ul
+          <ol
             key={elementIndex}
             style={{
               ...elementBoxStyle(element, scale),
               ...fontStyle(
-                {
-                  ...element,
-                  fontSize: effective,
-                  lineHeight: element.lineSpacingMultiple ?? 1.3,
-                },
+                { font: { ...(element.font ?? {}), lineHeight: font.lineHeight ?? 1.3 } },
                 scale,
+                effective,
               ),
               ...listStyle,
+              listStyleType:
+                element.marker === "none"
+                  ? "none"
+                  : element.marker === "number"
+                    ? "decimal"
+                    : "disc",
+              paddingLeft: element.marker === "none" ? 0 : "1.1em",
             }}
           >
-            {element.items.map((item, itemIndex) => (
+            {items.map((item, itemIndex) => (
               <li
                 key={`${item}-${itemIndex}`}
                 style={{
                   ...itemStyle,
                   marginBottom:
-                    itemIndex === element.items.length - 1
+                    itemIndex === items.length - 1
                       ? 0
-                      : (element.itemGap ?? 0.05) * scale,
+                      : 0.05 * scale,
                 }}
               >
                 {item}
               </li>
             ))}
-          </ul>
+          </ol>
         );
       })}
     </DomElementLayer>

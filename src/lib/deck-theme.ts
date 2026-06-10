@@ -1,4 +1,12 @@
-import type { Deck, SlideElement, ThemeRole } from "./slide-schema";
+import type {
+  Deck,
+  Fill,
+  Font,
+  SlideElement,
+  Stroke,
+  TableCell,
+  ThemeRole,
+} from "./slide-schema";
 
 export type DeckTheme = Record<ThemeRole, string>;
 
@@ -156,8 +164,6 @@ export function resolveDeckTheme(deck: Deck): DeckTheme {
 // (white headline text, black hairlines, etc). They're too ambiguous to
 // safely repaint through the hex-fallback remap — doing so flips white
 // headlines into the new surface color on dark→light theme swaps.
-// Elements that genuinely want the themed surface/background should set
-// `colorRole` explicitly, which still routes through `themedColor`.
 const HEX_FALLBACK_BLOCKLIST = new Set(["FFFFFF", "000000"]);
 
 export function applyDeckTheme(deck: Deck, nextTheme: DeckTheme): void {
@@ -184,105 +190,80 @@ export function applyDeckTheme(deck: Deck, nextTheme: DeckTheme): void {
       nextTheme,
       colorMap,
     );
-    for (const element of slide.elements) applyElementTheme(element, nextTheme, colorMap);
+    for (const element of slide.elements) applyElementTheme(element, colorMap);
   }
 }
 
 function applyElementTheme(
   element: SlideElement,
-  theme: DeckTheme,
   colorMap: Map<string, string>,
 ): void {
-  if (element.kind === "text") {
-    element.color = themedColor(element.color, element.colorRole, theme, colorMap);
+  if (element.type === "text") {
+    applyFontTheme(element.font, colorMap);
+    element.runs.forEach((run) => applyFontTheme(run.font, colorMap));
+    applyFillTheme(element.fill, colorMap);
+    applyStrokeTheme(element.stroke, colorMap);
     return;
   }
 
-  if (element.kind === "rect" || element.kind === "ellipse") {
-    element.fill = themedColor(element.fill, element.fillRole, theme, colorMap);
-    if (element.line) {
-      element.line.color = themedColor(
-        element.line.color,
-        element.line.colorRole,
-        theme,
-        colorMap,
-      );
-    }
+  if (element.type === "rectangle" || element.type === "ellipse") {
+    applyFillTheme(element.fill, colorMap);
+    applyStrokeTheme(element.stroke, colorMap);
     return;
   }
 
-  if (element.kind === "bullets") {
-    element.color = themedColor(element.color, element.colorRole, theme, colorMap);
-    if (element.bulletColor) {
-      element.bulletColor = themedColor(
-        element.bulletColor,
-        element.bulletColorRole,
-        theme,
-        colorMap,
-      );
-    }
+  if (element.type === "line") {
+    applyStrokeTheme(element.stroke, colorMap);
     return;
   }
 
-  if (element.kind === "chart") {
-    element.color = themedColor(element.color, element.colorRole, theme, colorMap);
-    if (element.axisColor) {
-      element.axisColor = themedColor(
-        element.axisColor,
-        element.axisColorRole,
-        theme,
-        colorMap,
-      );
-    }
-    if (element.labelColor) {
-      element.labelColor = themedColor(
-        element.labelColor,
-        element.labelColorRole,
-        theme,
-        colorMap,
-      );
-    }
+  if (element.type === "text-list") {
+    applyFontTheme(element.font, colorMap);
+    return;
+  }
+
+  if (element.type === "chart") {
+    element.color = mapOptionalColor(element.color, colorMap);
+    element.axisColor = mapOptionalColor(element.axisColor, colorMap);
+    element.labelColor = mapOptionalColor(element.labelColor, colorMap);
     element.data.forEach((datum) => {
-      if (datum.color) {
-        datum.color = themedColor(datum.color, datum.colorRole, theme, colorMap);
-      }
+      datum.color = mapOptionalColor(datum.color, colorMap);
     });
     return;
   }
 
-  if (element.kind === "table") {
-    element.textColor = themedColor(
-      element.textColor,
-      element.textColorRole,
-      theme,
-      colorMap,
+  if (element.type === "table") {
+    applyFontTheme(element.font, colorMap);
+    element.columns.forEach((cell) => applyTableCellTheme(cell, colorMap));
+    element.rows.forEach((row) =>
+      row.forEach((cell) => applyTableCellTheme(cell, colorMap)),
     );
-    element.headerFill = themedColor(
-      element.headerFill,
-      element.headerFillRole,
-      theme,
-      colorMap,
-    );
-    element.headerTextColor = themedColor(
-      element.headerTextColor,
-      element.headerTextColorRole,
-      theme,
-      colorMap,
-    );
-    element.borderColor = themedColor(
-      element.borderColor,
-      element.borderColorRole,
-      theme,
-      colorMap,
-    );
-    if (element.fill) {
-      element.fill = themedColor(element.fill, element.fillRole, theme, colorMap);
-    }
     return;
   }
 
-  if (element.kind === "svg") {
+  if (element.type === "svg") {
     element.svg = mapSvgColors(element.svg, colorMap);
+    return;
+  }
+
+  if (element.type === "container") {
+    applyFillTheme(element.fill, colorMap);
+    applyStrokeTheme(element.stroke, colorMap);
+    if (element.child) applyElementTheme(element.child, colorMap);
+    return;
+  }
+
+  if (
+    element.type === "group" ||
+    element.type === "flex" ||
+    element.type === "grid"
+  ) {
+    element.children.forEach((child) => applyElementTheme(child, colorMap));
+    return;
+  }
+
+  if (element.type === "list-view" || element.type === "grid-view") {
+    applyElementTheme(element.item, colorMap);
   }
 }
 
@@ -294,6 +275,46 @@ function themedColor(
 ): string {
   if (role) return theme[role];
   return mapColor(color, colorMap);
+}
+
+function applyFontTheme(
+  font: Font | null | undefined,
+  colorMap: Map<string, string>,
+): void {
+  if (!font?.color) return;
+  font.color = mapColor(font.color, colorMap);
+}
+
+function applyFillTheme(
+  fill: Fill | null | undefined,
+  colorMap: Map<string, string>,
+): void {
+  if (!fill?.color) return;
+  fill.color = mapColor(fill.color, colorMap);
+}
+
+function applyStrokeTheme(
+  stroke: Stroke | null | undefined,
+  colorMap: Map<string, string>,
+): void {
+  if (!stroke?.color) return;
+  stroke.color = mapColor(stroke.color, colorMap);
+}
+
+function applyTableCellTheme(
+  cell: TableCell,
+  colorMap: Map<string, string>,
+): void {
+  applyFillTheme(cell.fill, colorMap);
+  applyStrokeTheme(cell.stroke, colorMap);
+  applyFontTheme(cell.font, colorMap);
+}
+
+function mapOptionalColor<T extends string | null | undefined>(
+  color: T,
+  colorMap: Map<string, string>,
+): T {
+  return color ? (mapColor(color, colorMap) as T) : color;
 }
 
 function mapColor(color: string, colorMap: Map<string, string>): string {

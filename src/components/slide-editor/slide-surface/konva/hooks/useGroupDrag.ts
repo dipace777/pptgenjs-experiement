@@ -6,6 +6,7 @@ import {
   type Slide,
   type SlideElement,
 } from "../../../../../lib/slide-schema";
+import { elementBox, resizeElement } from "../../../../../lib/element-model";
 import { clamp } from "../../../editorUtils";
 
 type GroupDragState = {
@@ -77,11 +78,7 @@ export function useGroupDrag({
     onChangeMany?.(
       groupDrag.elements.map(({ index: selectedIndex, element }) => ({
         index: selectedIndex,
-        element: {
-          ...element,
-          x: clamp(element.x + dx, 0, SLIDE_W - element.w),
-          y: clamp(element.y + dy, 0, SLIDE_H - element.h),
-        } as SlideElement,
+        element: moveElementBy(element, dx, dy),
       })),
     );
     groupDragRef.current = null;
@@ -93,4 +90,12 @@ export function useGroupDrag({
     moveGroupDrag,
     startGroupDrag,
   };
+}
+
+function moveElementBy(element: SlideElement, dx: number, dy: number) {
+  const box = elementBox(element);
+  return resizeElement(element, {
+    x: clamp(box.x + dx, 0, SLIDE_W - box.w),
+    y: clamp(box.y + dy, 0, SLIDE_H - box.h),
+  });
 }

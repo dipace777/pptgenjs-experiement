@@ -1,5 +1,10 @@
 import { Group, Rect, Text } from "react-konva";
 import type { TableElement as TableEl } from "../../../../lib/slide-schema";
+import {
+  elementFont,
+  strokeColor,
+  tableRowsAsStrings,
+} from "../../../../lib/element-model";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../editorUtils";
 import { rotationProps, shadowProps } from "./elementVisuals";
 import { geometry, type ElementCommonProps, type TableInteractionProps } from "./types";
@@ -19,13 +24,17 @@ export function TableElement({
   renderMode?: "canvas" | "proxy";
 }) {
   const { x, y, width, height, stroke, strokeWidth } = geometry(element, scale, selected);
-  const rows = element.rows;
+  const rows = tableRowsAsStrings(element);
   const cols = Math.max(1, ...rows.map((row) => row.length));
   const rowH = height / rows.length;
   const colW = width / cols;
-  const fontSize = element.fontSize * PT_TO_PX * (scale / PX_PER_IN);
-  const fill = withHash(element.fill ?? "FFFFFF");
-  const borderColor = withHash(element.borderColor);
+  const font = elementFont(element);
+  const fill = withHash(element.rows[0]?.[0]?.fill?.color ?? "FFFFFF");
+  const borderColor = withHash(
+    element.columns[0]?.stroke?.color ??
+      element.rows[0]?.[0]?.stroke?.color ??
+      "D9E2EF",
+  );
 
   return (
     <Group
@@ -51,10 +60,16 @@ export function TableElement({
       {editing ? null : rows.map((row, rowIndex) =>
         Array.from({ length: cols }).map((_, colIndex) => {
           const isHeader = rowIndex === 0;
-          const cellStyle = element.cellStyles?.[rowIndex]?.[colIndex];
-          const cellFill = cellStyle?.fill ?? (isHeader ? element.headerFill : element.fill ?? "FFFFFF");
-          const cellBorder = cellStyle?.borderColor ?? element.borderColor;
-          const cellText = cellStyle?.textColor ?? (isHeader ? element.headerTextColor : element.textColor);
+          const cell = isHeader
+            ? element.columns[colIndex]
+            : element.rows[rowIndex - 1]?.[colIndex];
+          const cellFill =
+            cell?.fill?.color ??
+            (isHeader ? element.columns[0]?.fill?.color ?? "0B1F3A" : "FFFFFF");
+          const cellBorder = strokeColor(cell?.stroke, "D9E2EF");
+          const cellText =
+            cell?.font?.color ??
+            (isHeader ? element.columns[0]?.font?.color ?? "FFFFFF" : font.color);
           return (
             <Group key={`${rowIndex}-${colIndex}`}>
               <Rect
@@ -83,9 +98,9 @@ export function TableElement({
                   height={Math.max(1, rowH - 10 * (scale / PX_PER_IN))}
                   text={row[colIndex] ?? ""}
                   fill={withHash(cellText)}
-                  fontFamily={`${element.fontFace ?? "Arial"}, Helvetica, sans-serif`}
-                  fontSize={fontSize}
-                  fontStyle={(cellStyle?.bold ?? isHeader) ? "bold" : "normal"}
+                  fontFamily={`${cell?.font?.family ?? font.family}, Helvetica, sans-serif`}
+                  fontSize={(cell?.font?.size ?? font.size) * PT_TO_PX * (scale / PX_PER_IN)}
+                  fontStyle={(cell?.font?.bold ?? isHeader) ? "bold" : "normal"}
                   align={colIndex === 0 ? "left" : "center"}
                   verticalAlign="middle"
                   listening={false}

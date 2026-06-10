@@ -1,9 +1,20 @@
 import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
+import {
+  elementBox,
+  elementFont,
+  fillColor,
+  strokeColor,
+} from "../../../lib/element-model";
 import type { SlideElement } from "../../../lib/slide-schema";
 import type { ComponentTemplate } from "../componentTemplates";
 import { styles } from "../editorStyles";
-import { kindLabel, withHash, withoutHash } from "../editorUtils";
+import {
+  colorWithOpacity,
+  kindLabel,
+  withHash,
+  withoutHash,
+} from "../editorUtils";
 import { useSvgGeneration } from "../hooks";
 import { ElementInspector } from "../inspector/ElementInspector";
 import { ADDABLE_ELEMENT_KINDS } from "../registry";
@@ -104,7 +115,7 @@ export function SlideEditorDrawer({
               SLIDE {String(active + 1).padStart(2, "0")}
             </div>
             <h2 style={drawerStyles.title}>
-              {selectedElement ? kindLabel(selectedElement.kind) : "Slide"}
+              {selectedElement ? kindLabel(selectedElement.type) : "Slide"}
             </h2>
           </div>
           <div style={drawerStyles.iconRow}>
@@ -344,10 +355,11 @@ type PreviewBounds = {
 
 function boundsForElements(elements: SlideElement[]): PreviewBounds {
   if (elements.length === 0) return { x: 0, y: 0, w: 1, h: 1 };
-  const minX = Math.min(...elements.map((element) => element.x));
-  const minY = Math.min(...elements.map((element) => element.y));
-  const maxX = Math.max(...elements.map((element) => element.x + element.w));
-  const maxY = Math.max(...elements.map((element) => element.y + element.h));
+  const boxes = elements.map(elementBox);
+  const minX = Math.min(...boxes.map((box) => box.x));
+  const minY = Math.min(...boxes.map((box) => box.y));
+  const maxX = Math.max(...boxes.map((box) => box.x + box.w));
+  const maxY = Math.max(...boxes.map((box) => box.y + box.h));
   return {
     x: minX,
     y: minY,
@@ -360,10 +372,11 @@ function previewElementStyle(
   element: SlideElement,
   bounds: PreviewBounds,
 ): CSSProperties {
-  const left = ((element.x - bounds.x) / bounds.w) * 100;
-  const top = ((element.y - bounds.y) / bounds.h) * 100;
-  const width = (element.w / bounds.w) * 100;
-  const height = (element.h / bounds.h) * 100;
+  const box = elementBox(element);
+  const left = ((box.x - bounds.x) / bounds.w) * 100;
+  const top = ((box.y - bounds.y) / bounds.h) * 100;
+  const width = (box.w / bounds.w) * 100;
+  const height = (box.h / bounds.h) * 100;
   const style: CSSProperties = {
     position: "absolute",
     left: `${left}%`,
@@ -376,28 +389,47 @@ function previewElementStyle(
     transformOrigin: "center",
   };
 
-  if (element.kind === "text" || element.kind === "bullets") {
+  if (element.type === "text" || element.type === "text-list") {
     return {
       ...style,
       borderRadius: 2,
-      background: withHash(element.kind === "text" ? element.color : element.color),
+      background: withHash(elementFont(element).color),
       opacity: 0.75,
     };
   }
 
-  if (element.kind === "rect" || element.kind === "ellipse") {
+  if (element.type === "rectangle" || element.type === "ellipse") {
     return {
       ...style,
-      borderRadius: element.kind === "ellipse" ? "999px" : 3,
-      background: withHash(element.fill),
-      border: element.line ? `1px solid ${withHash(element.line.color)}` : undefined,
+      borderRadius: element.type === "ellipse" ? "999px" : 3,
+      background: colorWithOpacity(
+        fillColor(element.fill, "D4A24C"),
+        element.fill?.opacity,
+      ),
+      border: element.stroke
+        ? `1px solid ${colorWithOpacity(
+            strokeColor(element.stroke),
+            element.stroke.opacity,
+          )}`
+        : undefined,
       boxShadow: element.shadow
-        ? `0 2px 8px rgba(0,0,0,${Math.min(0.35, element.shadow.opacity + 0.12)})`
+        ? `0 2px 8px rgba(0,0,0,${Math.min(0.35, (element.shadow.opacity ?? 0.2) + 0.12)})`
         : undefined,
     };
   }
 
-  if (element.kind === "image") {
+  if (element.type === "line") {
+    return {
+      ...style,
+      height: `${Math.max(height, 2)}%`,
+      background: colorWithOpacity(
+        strokeColor(element.stroke),
+        element.stroke.opacity,
+      ),
+    };
+  }
+
+  if (element.type === "image") {
     return {
       ...style,
       borderRadius: 4,
@@ -408,21 +440,23 @@ function previewElementStyle(
     };
   }
 
-  if (element.kind === "table") {
+  if (element.type === "table") {
+    const headerFill = element.columns[0]?.fill?.color ?? "0B1F3A";
+    const border = element.columns[0]?.stroke ?? element.rows[0]?.[0]?.stroke;
     return {
       ...style,
       borderRadius: 3,
-      background: withHash(element.fill ?? "FFFFFF"),
-      border: `1px solid ${withHash(element.borderColor)}`,
-      backgroundImage: `linear-gradient(${withHash(element.headerFill)} 0 28%, transparent 28%)`,
+      background: withHash(element.rows[0]?.[0]?.fill?.color ?? "FFFFFF"),
+      border: `1px solid ${withHash(strokeColor(border, "D9E2EF"))}`,
+      backgroundImage: `linear-gradient(${withHash(headerFill)} 0 28%, transparent 28%)`,
     };
   }
 
-  if (element.kind === "chart") {
+  if (element.type === "chart") {
     return {
       ...style,
       borderRadius: 4,
-      background: `linear-gradient(135deg, ${withHash(element.color)}, #20283a)`,
+      background: `linear-gradient(135deg, ${withHash(element.color ?? "D4A24C")}, #20283a)`,
     };
   }
 

@@ -1,58 +1,57 @@
 import type { CSSProperties } from "react";
-import type { Shadow } from "../../../../../lib/slide-schema";
+import { elementBox, elementFont } from "../../../../../lib/element-model";
+import type { Font, Shadow, SlideElement } from "../../../../../lib/slide-schema";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../../editorUtils";
 
 export function elementBoxStyle(
   element: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
+    position?: SlideElement["position"];
+    size?: SlideElement["size"];
     opacity?: number | null;
     rotation?: number | null;
     shadow?: Shadow | null;
   },
   scale: number,
 ): CSSProperties {
+  const box = elementBox(element);
+
   return {
     position: "absolute",
     boxSizing: "border-box",
-    height: element.h * scale,
-    left: element.x * scale,
+    height: box.h * scale,
+    left: box.x * scale,
     opacity: element.opacity ?? 1,
-    top: element.y * scale,
+    top: box.y * scale,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     transformOrigin: "top left",
     boxShadow: element.shadow
-      ? `${element.shadow.offsetX * scale}px ${element.shadow.offsetY * scale}px ${element.shadow.blur * scale}px rgba(${hexToRgb(
-          element.shadow.color,
-        )}, ${element.shadow.opacity})`
+      ? `${(element.shadow.offsetX ?? 0) * scale}px ${(element.shadow.offsetY ?? 0) * scale}px ${(element.shadow.blur ?? 0) * scale}px rgba(${hexToRgb(
+          element.shadow.color ?? "000000",
+        )}, ${element.shadow.opacity ?? 0.2})`
       : undefined,
-    width: element.w * scale,
+    width: box.w * scale,
   };
 }
 
 export function fontStyle(
   element: {
-    fontSize: number;
-    color: string;
-    fontFace?: string | null;
-    bold?: boolean | null;
-    italic?: boolean | null;
-    charSpacing?: number | null;
-    lineHeight?: number | null;
+    font?: Font | null;
   },
   scale: number,
+  fontSizeOverride?: number,
 ): CSSProperties {
+  const font = elementFont(element);
+  const fontSize = fontSizeOverride ?? font.size;
+
   return {
-    color: withHash(element.color),
-    fontFamily: `${element.fontFace ?? "Arial"}, Helvetica, sans-serif`,
-    fontSize: element.fontSize * PT_TO_PX * (scale / PX_PER_IN),
-    fontStyle: element.italic ? "italic" : "normal",
-    fontWeight: element.bold ? 700 : 400,
+    color: withHash(font.color),
+    fontFamily: `${font.family}, Helvetica, sans-serif`,
+    fontSize: fontSize * PT_TO_PX * (scale / PX_PER_IN),
+    fontStyle: font.italic ? "italic" : "normal",
+    fontWeight: font.bold ? 700 : 400,
     letterSpacing:
-      ((element.charSpacing ?? 0) / 100) * PT_TO_PX * (scale / PX_PER_IN),
-    lineHeight: element.lineHeight ?? 1.15,
+      ((font.letterSpacing ?? 0) / 100) * PT_TO_PX * (scale / PX_PER_IN),
+    lineHeight: font.lineHeight ?? 1.15,
   };
 }
 

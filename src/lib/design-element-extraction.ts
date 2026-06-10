@@ -5,6 +5,16 @@ import {
   type Slide,
   type SlideElement,
 } from "./slide-schema";
+import {
+  averageBorderRadius,
+  chartColor,
+  elementBox,
+  elementFont,
+  fillColor,
+  strokeColor,
+  textContent,
+  textListStrings,
+} from "./element-model";
 
 export type ExtractedDesignElementTemplate = {
   id: string;
@@ -134,7 +144,7 @@ function containerGroupCandidates(deck: Deck): Candidate[] {
 
       const elements = members.map(({ element }) => element);
       if (elements.length < 2) return;
-      if (!elements.some((element) => element.kind === "text" || element.kind === "image")) {
+      if (!elements.some((element) => element.type === "text" || element.type === "image")) {
         return;
       }
 
@@ -158,7 +168,7 @@ function titleLockupCandidates(deck: Deck): Candidate[] {
 
   deck.slides.forEach((slide, slideIndex) => {
     slide.elements.forEach((element, elementIndex) => {
-      if (element.kind !== "text") return;
+      if (element.type !== "text") return;
       if (!isHeadingText(element)) return;
 
       const accents = slide.elements
@@ -196,7 +206,7 @@ function mediaCandidates(deck: Deck): Candidate[] {
 
   deck.slides.forEach((slide, slideIndex) => {
     slide.elements.forEach((element, elementIndex) => {
-      if (element.kind !== "image") return;
+      if (element.type !== "image") return;
       if (isLikelyBackgroundElement(element, slide)) return;
       const area = elementArea(element);
       if (area < SLIDE_AREA * 0.01 || area > SLIDE_AREA * 0.5) return;
@@ -210,7 +220,7 @@ function mediaCandidates(deck: Deck): Candidate[] {
         description: `Image asset extracted from imported slide ${slideIndex + 1}.`,
         elements: [element],
         score: 360 + Math.min(80, area * 5),
-        signature: `image:${imageIdentity(element)}:${roundForSignature(element.w)}x${roundForSignature(element.h)}`,
+        signature: `image:${imageIdentity(element)}:${roundForSignature(elementBounds(element).w)}x${roundForSignature(elementBounds(element).h)}`,
       });
     });
   });
@@ -233,18 +243,19 @@ function withTemplateMetadata(
 }
 
 function isContainerElement(element: SlideElement, slide: Slide): boolean {
-  if (element.kind !== "rect" && element.kind !== "ellipse") return false;
+  if (element.type !== "rectangle" && element.type !== "ellipse") return false;
   if (element.opacity === 0) return false;
   if (isLikelyBackgroundElement(element, slide)) return false;
 
   const area = elementArea(element);
+  const box = elementBounds(element);
   if (area < MIN_GROUP_AREA || area > MAX_GROUP_AREA) return false;
-  if (element.w < 0.2 || element.h < 0.16) return false;
+  if (box.w < 0.2 || box.h < 0.16) return false;
 
   if (
-    element.kind === "rect" &&
-    sameColor(element.fill, slide.background) &&
-    !element.line &&
+    element.type === "rectangle" &&
+    sameColor(element.fill?.color, slide.background) &&
+    !element.stroke &&
     !element.shadow &&
     area > SLIDE_AREA * 0.12
   ) {
@@ -256,36 +267,41 @@ function isContainerElement(element: SlideElement, slide: Slide): boolean {
 
 function isLikelyBackgroundElement(element: SlideElement, slide: Slide): boolean {
   const area = elementArea(element);
+  const box = elementBounds(element);
   if (area < SLIDE_AREA * 0.72) return false;
-  if (element.x > 0.2 || element.y > 0.2) return false;
-  if (element.w < SLIDE_W * 0.85 || element.h < SLIDE_H * 0.85) return false;
-  if (element.kind === "rect" && sameColor(element.fill, slide.background)) return true;
-  return element.kind === "image";
+  if (box.x > 0.2 || box.y > 0.2) return false;
+  if (box.w < SLIDE_W * 0.85 || box.h < SLIDE_H * 0.85) return false;
+  if (element.type === "rectangle" && sameColor(element.fill?.color, slide.background)) return true;
+  return element.type === "image";
 }
 
-function isHeadingText(element: Extract<SlideElement, { kind: "text" }>): boolean {
-  const text = element.text.trim();
+function isHeadingText(element: Extract<SlideElement, { type: "text" }>): boolean {
+  const text = textContent(element).trim();
+  const box = elementBounds(element);
+  const font = elementFont(element);
   if (text.length < 2 || text.length > 140) return false;
-  if (element.w < 1.4 || element.h > 1.4) return false;
-  return element.fontSize >= 22 || (element.bold === true && element.fontSize >= 16);
+  if (box.w < 1.4 || box.h > 1.4) return false;
+  return font.size >= 22 || (font.bold === true && font.size >= 16);
 }
 
 function isNearbyAccent(candidate: SlideElement, heading: SlideElement): boolean {
-  if (candidate.kind !== "rect" && candidate.kind !== "ellipse" && candidate.kind !== "image") {
+  if (candidate.type !== "rectangle" && candidate.type !== "ellipse" && candidate.type !== "image") {
     return false;
   }
   if (candidate.opacity === 0) return false;
+  const candidateBox = elementBounds(candidate);
+  const headingBox = elementBounds(heading);
 
   const horizontalOverlap =
-    Math.min(heading.x + heading.w, candidate.x + candidate.w) -
-    Math.max(heading.x, candidate.x);
-  const closeHorizontally = horizontalOverlap > 0 || Math.abs(candidate.x - heading.x) < 0.35;
+    Math.min(headingBox.x + headingBox.w, candidateBox.x + candidateBox.w) -
+    Math.max(headingBox.x, candidateBox.x);
+  const closeHorizontally = horizontalOverlap > 0 || Math.abs(candidateBox.x - headingBox.x) < 0.35;
   const closeVertically =
-    candidate.y >= heading.y - 0.18 && candidate.y <= heading.y + heading.h + 0.45;
+    candidateBox.y >= headingBox.y - 0.18 && candidateBox.y <= headingBox.y + headingBox.h + 0.45;
   const accentSized =
-    candidate.h <= 0.16 ||
-    candidate.w <= 0.16 ||
-    (candidate.w <= 0.8 && candidate.h <= 0.8);
+    candidateBox.h <= 0.16 ||
+    candidateBox.w <= 0.16 ||
+    (candidateBox.w <= 0.8 && candidateBox.h <= 0.8);
 
   return closeHorizontally && closeVertically && accentSized;
 }
@@ -314,14 +330,14 @@ function labelFromComponentId(componentId: string): string {
 
 function labelFromElements(elements: SlideElement[], fallback: string): string {
   const text = elements.find(
-    (element): element is Extract<SlideElement, { kind: "text" }> =>
-      element.kind === "text" && element.text.trim().length > 0,
+    (element): element is Extract<SlideElement, { type: "text" }> =>
+      element.type === "text" && textContent(element).trim().length > 0,
   );
-  if (text) return `${fallback}: ${truncate(oneLine(text.text), 42)}`;
+  if (text) return `${fallback}: ${truncate(oneLine(textContent(text)), 42)}`;
 
   const image = elements.find(
-    (element): element is Extract<SlideElement, { kind: "image" }> =>
-      element.kind === "image" && !!element.name?.trim(),
+    (element): element is Extract<SlideElement, { type: "image" }> =>
+      element.type === "image" && !!element.name?.trim(),
   );
   if (image?.name) return `${fallback}: ${truncate(image.name.trim(), 42)}`;
 
@@ -332,14 +348,15 @@ function layoutSignature(elements: SlideElement[]): string {
   const bounds = boundsForElements(elements);
   return elements
     .map((element) => {
-      const relX = roundForSignature(element.x - bounds.x);
-      const relY = roundForSignature(element.y - bounds.y);
+      const box = elementBounds(element);
+      const relX = roundForSignature(box.x - bounds.x);
+      const relY = roundForSignature(box.y - bounds.y);
       return [
-        element.kind,
+        element.type,
         relX,
         relY,
-        roundForSignature(element.w),
-        roundForSignature(element.h),
+        roundForSignature(box.w),
+        roundForSignature(box.h),
         styleSignature(element),
       ].join(":");
     })
@@ -347,57 +364,62 @@ function layoutSignature(elements: SlideElement[]): string {
 }
 
 function styleSignature(element: SlideElement): string {
-  if (element.kind === "text") {
+  if (element.type === "text") {
+    const font = elementFont(element);
     return [
-      element.fontFace ?? "",
-      Math.round(element.fontSize / 4) * 4,
-      element.bold ? "b" : "",
-      normalizeColor(element.color),
-      element.align ?? "",
-      Math.ceil(element.text.trim().length / 20),
+      font.family,
+      Math.round(font.size / 4) * 4,
+      font.bold ? "b" : "",
+      normalizeColor(font.color),
+      element.alignment?.horizontal ?? "",
+      Math.ceil(textContent(element).trim().length / 20),
     ].join(",");
   }
-  if (element.kind === "rect") {
+  if (element.type === "rectangle") {
     return [
-      normalizeColor(element.fill),
-      element.line?.color ? normalizeColor(element.line.color) : "",
-      element.rx != null ? roundForSignature(element.rx) : "",
+      normalizeColor(fillColor(element.fill, "")),
+      element.stroke?.color ? normalizeColor(strokeColor(element.stroke)) : "",
+      element.borderRadius ? roundForSignature(averageBorderRadius(element.borderRadius)) : "",
     ].join(",");
   }
-  if (element.kind === "ellipse") {
-    return normalizeColor(element.fill);
+  if (element.type === "ellipse") {
+    return normalizeColor(fillColor(element.fill, ""));
   }
-  if (element.kind === "image") {
+  if (element.type === "image") {
     return [element.fit ?? "", element.name ?? ""].join(",");
   }
-  if (element.kind === "table") {
-    return [normalizeColor(element.headerFill), normalizeColor(element.borderColor)].join(",");
+  if (element.type === "table") {
+    return [
+      normalizeColor(fillColor(element.columns[0]?.fill, "")),
+      normalizeColor(strokeColor(element.columns[0]?.stroke, "")),
+    ].join(",");
   }
-  if (element.kind === "chart") {
-    return [element.chartType, normalizeColor(element.color)].join(",");
+  if (element.type === "chart") {
+    return [element.chartType, normalizeColor(chartColor(element))].join(",");
   }
-  if (element.kind === "bullets") {
-    return [normalizeColor(element.color), element.items.length].join(",");
+  if (element.type === "text-list") {
+    return [normalizeColor(elementFont(element).color), textListStrings(element).length].join(",");
   }
-  return element.name ?? "";
+  return "name" in element ? element.name ?? "" : "";
 }
 
-function imageIdentity(element: Extract<SlideElement, { kind: "image" }>): string {
+function imageIdentity(element: Extract<SlideElement, { type: "image" }>): string {
   if (element.name?.trim()) return `name-${slugify(element.name)}`;
   if (element.data) return `data-${sampleHash(element.data)}`;
   return "empty";
 }
 
 function boundsForElements(elements: SlideElement[]): Bounds {
-  const minX = Math.min(...elements.map((element) => element.x));
-  const minY = Math.min(...elements.map((element) => element.y));
-  const maxX = Math.max(...elements.map((element) => element.x + element.w));
-  const maxY = Math.max(...elements.map((element) => element.y + element.h));
+  const boxes = elements.map(elementBounds);
+  const minX = Math.min(...boxes.map((box) => box.x));
+  const minY = Math.min(...boxes.map((box) => box.y));
+  const maxX = Math.max(...boxes.map((box) => box.x + box.w));
+  const maxY = Math.max(...boxes.map((box) => box.y + box.h));
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
 function elementBounds(element: SlideElement): Bounds {
-  return { x: element.x, y: element.y, w: element.w, h: element.h };
+  return elementBox(element);
 }
 
 function padBounds(bounds: Bounds, padding: number): Bounds {
@@ -410,7 +432,8 @@ function padBounds(bounds: Bounds, padding: number): Bounds {
 }
 
 function elementArea(element: SlideElement): number {
-  return element.w * element.h;
+  const box = elementBounds(element);
+  return box.w * box.h;
 }
 
 function intersectionArea(a: Bounds, b: Bounds): number {

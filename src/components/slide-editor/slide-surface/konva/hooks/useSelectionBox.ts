@@ -1,6 +1,7 @@
 import Konva from "konva";
 import { useMemo, useState } from "react";
 import type { Slide, SlideElement } from "../../../../../lib/slide-schema";
+import { elementBox as getElementBox } from "../../../../../lib/element-model";
 
 type SelectionBox = {
   active: boolean;
@@ -57,11 +58,12 @@ export function useSelectionBox({
   });
 
   const elementIntersectsBox = (element: SlideElement, box: RectBox) => {
+    const resolved = getElementBox(element);
     const elementBox = {
-      x: element.x * scale,
-      y: element.y * scale,
-      width: element.w * scale,
-      height: element.h * scale,
+      x: resolved.x * scale,
+      y: resolved.y * scale,
+      width: resolved.w * scale,
+      height: resolved.h * scale,
     };
     const elementCenter = {
       x: elementBox.x + elementBox.width / 2,

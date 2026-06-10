@@ -7,6 +7,7 @@ import {
   type Slide,
   type SlideElement,
 } from "../../../../lib/slide-schema";
+import { elementBox, resizeElement } from "../../../../lib/element-model";
 import { textElementOverflows } from "../../../../lib/textMeasure";
 import { clamp } from "../../editorUtils";
 import { getComponentRun } from "../../state";
@@ -107,7 +108,7 @@ export function ElementLayer({
     if (!interactive) return null;
     const out = new Set<number>();
     slide.elements.forEach((element, index) => {
-      if (element.kind === "text" && textElementOverflows(element)) {
+      if (element.type === "text" && textElementOverflows(element)) {
         out.add(index);
       }
     });
@@ -219,21 +220,21 @@ export function ElementLayer({
     },
     onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
       if (
-        el.kind !== "text" &&
-        el.kind !== "bullets" &&
-        el.kind !== "chart" &&
-        el.kind !== "image" &&
-        el.kind !== "svg" &&
-        el.kind !== "table"
+        el.type !== "text" &&
+        el.type !== "text-list" &&
+        el.type !== "chart" &&
+        el.type !== "image" &&
+        el.type !== "svg" &&
+        el.type !== "table"
       ) return;
       event.cancelBubble = true;
       onSelect?.(index);
-      if (el.kind === "text") onEditText?.(index);
-      if (el.kind === "bullets") onEditBullets?.(index);
-      if (el.kind === "chart") onEditChart?.(index);
-      if (el.kind === "image") onEditImage?.(index);
-      if (el.kind === "svg") onEditSvg?.(index);
-      if (el.kind === "table") onEditTable?.(index);
+      if (el.type === "text") onEditText?.(index);
+      if (el.type === "text-list") onEditBullets?.(index);
+      if (el.type === "chart") onEditChart?.(index);
+      if (el.type === "image") onEditImage?.(index);
+      if (el.type === "svg") onEditSvg?.(index);
+      if (el.type === "table") onEditTable?.(index);
     },
     onTap: (event: Konva.KonvaEventObject<TouchEvent>) => {
       if (shouldSuppressSelect(index)) {
@@ -268,15 +269,17 @@ export function ElementLayer({
     },
     onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
       if (endGroupDrag(index, event)) return;
+      const box = elementBox(el);
       const rawX = event.target.x() / scale;
       const rawY = event.target.y() / scale;
-      const nextX = el.kind === "ellipse" ? rawX - el.w / 2 : rawX;
-      const nextY = el.kind === "ellipse" ? rawY - el.h / 2 : rawY;
+      const nextX = el.type === "ellipse" ? rawX - box.w / 2 : rawX;
+      const nextY = el.type === "ellipse" ? rawY - box.h / 2 : rawY;
       onChange?.(index, {
-        ...el,
-        x: clamp(nextX, 0, SLIDE_W - el.w),
-        y: clamp(nextY, 0, SLIDE_H - el.h),
-      } as SlideElement);
+        ...resizeElement(el, {
+          x: clamp(nextX, 0, SLIDE_W - box.w),
+          y: clamp(nextY, 0, SLIDE_H - box.h),
+        }),
+      });
     },
     onTransformEnd: (event: Konva.KonvaEventObject<Event>) => {
       const node = event.target;
@@ -286,18 +289,19 @@ export function ElementLayer({
       const nextH = Math.max(0.1, (node.height() * scaleY) / scale);
       const rawX = node.x() / scale;
       const rawY = node.y() / scale;
-      const nextX = el.kind === "ellipse" ? rawX - nextW / 2 : rawX;
-      const nextY = el.kind === "ellipse" ? rawY - nextH / 2 : rawY;
+      const nextX = el.type === "ellipse" ? rawX - nextW / 2 : rawX;
+      const nextY = el.type === "ellipse" ? rawY - nextH / 2 : rawY;
       node.scaleX(1);
       node.scaleY(1);
       onChange?.(index, {
-        ...el,
-        x: clamp(nextX, 0, SLIDE_W - nextW),
-        y: clamp(nextY, 0, SLIDE_H - nextH),
-        w: clamp(nextW, 0.1, SLIDE_W),
-        h: clamp(nextH, 0.1, SLIDE_H),
+        ...resizeElement(el, {
+          x: clamp(nextX, 0, SLIDE_W - nextW),
+          y: clamp(nextY, 0, SLIDE_H - nextH),
+          w: clamp(nextW, 0.1, SLIDE_W),
+          h: clamp(nextH, 0.1, SLIDE_H),
+        }),
         rotation: node.rotation(),
-      } as SlideElement);
+      });
     },
   });
 
@@ -322,7 +326,7 @@ export function ElementLayer({
             editingTableIndex === index
           }
           onTableCellClick={
-            el.kind === "table"
+            el.type === "table"
               ? (rowIndex, colIndex) => onSelectTableCell?.(index, rowIndex, colIndex)
               : undefined
           }
@@ -335,8 +339,9 @@ export function ElementLayer({
       {overflowingIndices
         ? slide.elements.map((el, index) => {
             if (!overflowingIndices.has(index)) return null;
-            const badgeX = el.x * scale + el.w * scale - 10;
-            const badgeY = el.y * scale - 10;
+            const box = elementBox(el);
+            const badgeX = box.x * scale + box.w * scale - 10;
+            const badgeY = box.y * scale - 10;
             return (
               <Group
                 key={`overflow-${index}`}
@@ -383,8 +388,9 @@ export function ElementLayer({
             const tooltipH = 50;
             // Anchor: under the badge, right-aligned to the element's right
             // edge, then clamped so we never paint off-stage.
-            const anchorX = el.x * scale + el.w * scale - 10 + 20;
-            const anchorY = el.y * scale - 10 + 26;
+            const box = elementBox(el);
+            const anchorX = box.x * scale + box.w * scale - 10 + 20;
+            const anchorY = box.y * scale - 10 + 26;
             const x = clamp(anchorX - tooltipW, 4, Math.max(4, width - tooltipW - 4));
             const y = clamp(anchorY, 4, Math.max(4, height - tooltipH - 4));
             return (

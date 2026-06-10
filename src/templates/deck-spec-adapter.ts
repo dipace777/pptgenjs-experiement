@@ -217,105 +217,86 @@ function convertElement(
   const y = toSlideY(componentPosition.y + element.position.y, sourceSize);
   const w = toSlideX(element.size.width, sourceSize);
   const h = toSlideY(element.size.height, sourceSize);
+  const geometry = {
+    position: { x, y },
+    size: { width: Math.max(0.01, w), height: Math.max(0.01, h) },
+  };
 
   if (element.type === "text") {
     const fontSize = pxToPt(element.font.size, sourceSize);
     return {
-      kind: "text",
-      x,
-      y,
-      w,
-      h,
+      type: "text",
+      ...geometry,
       ...commonElementProps(element, sourceSize, metadata),
-      text: element.text,
-      fontFace: element.font.family ?? "Poppins",
-      fontSize,
-      bold: element.font.bold ?? undefined,
-      italic: element.font.italic ?? undefined,
-      color: stripHash(element.font.color),
-      align: element.alignment?.horizontal ?? undefined,
-      valign: element.alignment?.vertical ?? undefined,
-      charSpacing:
-        element.font.letterSpacing != null
-          ? clamp(pxToPt(element.font.letterSpacing, sourceSize) * 100, -200, 600)
-          : undefined,
-      lineHeight:
-        element.font.lineHeight != null && element.font.size > 0
-          ? clamp(element.font.lineHeight / element.font.size, 0.8, 2.2)
-          : undefined,
+      runs: [{ text: element.text || " " }],
+      font: {
+        family: element.font.family ?? "Poppins",
+        size: fontSize,
+        color: stripHash(element.font.color),
+        bold: element.font.bold ?? undefined,
+        italic: element.font.italic ?? undefined,
+        letterSpacing:
+          element.font.letterSpacing != null
+            ? clamp(pxToPt(element.font.letterSpacing, sourceSize) * 100, -200, 600)
+            : undefined,
+        lineHeight:
+          element.font.lineHeight != null && element.font.size > 0
+            ? clamp(element.font.lineHeight / element.font.size, 0.8, 2.2)
+            : undefined,
+      },
+      alignment: {
+        horizontal: element.alignment?.horizontal ?? undefined,
+        vertical: element.alignment?.vertical ?? undefined,
+      },
     };
   }
 
   if (element.type === "rectangle") {
     return {
-      kind: "rect",
-      x,
-      y,
-      w,
-      h,
+      type: "rectangle",
+      ...geometry,
       ...commonElementProps(element, sourceSize, metadata),
-      fill: stripHash(element.fill?.color ?? "FFFFFF"),
-      opacity: element.fill?.opacity ?? undefined,
-      line: element.stroke
+      fill: element.fill
         ? {
-            color: stripHash(element.stroke.color),
-            width: element.stroke.width ?? 1,
+            color: stripHash(element.fill.color),
+            opacity: element.fill.opacity ?? undefined,
           }
         : undefined,
-      rx: radiusToSlide(element.borderRadius, sourceSize),
-      radius: cornerRadiusToSlide(element.borderRadius, sourceSize),
+      stroke: strokeToSlide(element.stroke),
+      borderRadius: cornerRadiusToSlide(element.borderRadius, sourceSize),
     };
   }
 
   if (element.type === "image") {
     return {
-      kind: "image",
-      x,
-      y,
-      w,
-      h,
+      type: "image",
+      ...geometry,
       ...commonElementProps(element, sourceSize, metadata),
       data: element.data ?? undefined,
       name: element.name ?? undefined,
       fit: element.fit ?? undefined,
-      rx: radiusToSlide(element.borderRadius, sourceSize),
-      radius: cornerRadiusToSlide(element.borderRadius, sourceSize),
+      is_icon: element.is_icon ?? undefined,
+      borderRadius: cornerRadiusToSlide(element.borderRadius, sourceSize),
     };
   }
 
   if (element.type === "table") {
-    const header = element.columns.map((column) => column.text);
-    const rows = element.rows.map((row) => row.map((cell) => cell.text));
-    const firstHeader = element.columns[0];
-    const firstBodyCell = element.rows[0]?.[0];
+    const columnCells =
+      element.columns.length > 0
+        ? element.columns.map((cell) => tableCellToSlide(cell, true))
+        : [tableCellToSlide({ text: "" }, true)];
+    const rowCells = element.rows.map((row) =>
+      row.length > 0
+        ? row.map((cell) => tableCellToSlide(cell))
+        : [tableCellToSlide({ text: "" })],
+    );
     return {
-      kind: "table",
-      x,
-      y,
-      w,
-      h,
+      type: "table",
+      ...geometry,
       ...commonElementProps(element, sourceSize, metadata),
-      rows: [header, ...rows],
-      cellStyles: [
-        element.columns.map((column) => ({
-          fill: column.fill?.color ? stripHash(column.fill.color) : undefined,
-          borderColor: column.stroke?.color ? stripHash(column.stroke.color) : undefined,
-          bold: true,
-        })),
-        ...element.rows.map((row) =>
-          row.map((cell) => ({
-            fill: cell.fill?.color ? stripHash(cell.fill.color) : undefined,
-            borderColor: cell.stroke?.color ? stripHash(cell.stroke.color) : undefined,
-          })),
-        ),
-      ],
-      fontFace: "Poppins",
-      fontSize: 12,
-      textColor: "111827",
-      headerFill: stripHash(firstHeader?.fill?.color ?? "F9FAFB"),
-      headerTextColor: "111827",
-      borderColor: stripHash(firstHeader?.stroke?.color ?? firstBodyCell?.stroke?.color ?? "E5E7EB"),
-      fill: stripHash(firstBodyCell?.fill?.color ?? "FFFFFF"),
+      font: { family: "Poppins", size: 12, color: "111827" },
+      columns: columnCells,
+      rows: rowCells.length > 0 ? rowCells : [[tableCellToSlide({ text: "" })]],
     };
   }
 
@@ -334,25 +315,40 @@ function pxToPt(value: number, sourceSize: SpecSize) {
   return round((value / sourceSize.width) * SLIDE_W * 72);
 }
 
-function radiusToSlide(radius: SpecRadius | null | undefined, sourceSize: SpecSize) {
-  if (!radius) return undefined;
-  const values = [radius.tl, radius.tr, radius.bl, radius.br].filter(
-    (value): value is number => typeof value === "number",
-  );
-  if (!values.length) return undefined;
-  return round(Math.min(0.5, toSlideX(values.reduce((sum, value) => sum + value, 0) / values.length, sourceSize)));
-}
-
 function cornerRadiusToSlide(
   radius: SpecRadius | null | undefined,
   sourceSize: SpecSize,
 ): CornerRadius | undefined {
   if (!radius) return undefined;
   return {
-    tl: radius.tl != null ? toSlideX(radius.tl, sourceSize) : undefined,
-    tr: radius.tr != null ? toSlideX(radius.tr, sourceSize) : undefined,
-    bl: radius.bl != null ? toSlideX(radius.bl, sourceSize) : undefined,
-    br: radius.br != null ? toSlideX(radius.br, sourceSize) : undefined,
+    tl: radius.tl != null ? clamp(toSlideX(radius.tl, sourceSize), 0, 0.5) : 0,
+    tr: radius.tr != null ? clamp(toSlideX(radius.tr, sourceSize), 0, 0.5) : 0,
+    bl: radius.bl != null ? clamp(toSlideX(radius.bl, sourceSize), 0, 0.5) : 0,
+    br: radius.br != null ? clamp(toSlideX(radius.br, sourceSize), 0, 0.5) : 0,
+  };
+}
+
+function strokeToSlide(stroke: SpecStroke | null | undefined) {
+  if (!stroke) return undefined;
+  return {
+    color: stripHash(stroke.color),
+    opacity: stroke.opacity ?? undefined,
+    width: stroke.width ?? 1,
+    dash: stroke.dash ? [4, 2] : undefined,
+  };
+}
+
+function tableCellToSlide(cell: SpecTableCell, isHeader = false) {
+  return {
+    text: cell.text,
+    fill: cell.fill
+      ? {
+          color: stripHash(cell.fill.color),
+          opacity: cell.fill.opacity ?? undefined,
+        }
+      : undefined,
+    stroke: strokeToSlide(cell.stroke),
+    font: isHeader ? { bold: true } : undefined,
   };
 }
 
@@ -380,6 +376,7 @@ function commonElementProps(
     componentId: metadata.componentId,
     componentInstanceId: metadata.componentInstanceId,
     componentDescription: metadata.componentDescription,
+    componentSlot: element.slot ?? element.name ?? undefined,
   };
 }
 

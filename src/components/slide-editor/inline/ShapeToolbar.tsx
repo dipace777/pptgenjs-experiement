@@ -1,3 +1,7 @@
+import {
+  averageBorderRadius,
+  uniformBorderRadius,
+} from "../../../lib/element-model";
 import type { ShapeSlideElement } from "../state";
 import { withHash, withoutHash } from "../editorUtils";
 import { InlineToolbar } from "./InlineToolbar";
@@ -14,29 +18,37 @@ export function ShapeToolbar({
   scale: number;
   onChange: (index: number, element: ShapeSlideElement) => void;
 }) {
-  const line = element.line ?? { color: "172033", width: 0 };
+  const stroke = element.stroke ?? { color: "172033", width: 0 };
 
   return (
     <InlineToolbar element={element} scale={scale}>
-      <input
-        aria-label="Shape fill"
-        title="Fill"
-        type="color"
-        value={withHash(element.fill)}
-        onChange={(event) =>
-          onChange(index, { ...element, fill: withoutHash(event.target.value) })
-        }
-        style={inlineStyles.colorInput}
-      />
+      {element.type !== "line" ? (
+        <input
+          aria-label="Shape fill"
+          title="Fill"
+          type="color"
+          value={withHash(element.fill?.color ?? "D4A24C")}
+          onChange={(event) =>
+            onChange(index, {
+              ...element,
+              fill: {
+                ...(element.fill ?? {}),
+                color: withoutHash(event.target.value),
+              },
+            })
+          }
+          style={inlineStyles.colorInput}
+        />
+      ) : null}
       <input
         aria-label="Shape border color"
         title="Border color"
         type="color"
-        value={withHash(line.color)}
+        value={withHash(stroke.color)}
         onChange={(event) =>
           onChange(index, {
             ...element,
-            line: { ...line, color: withoutHash(event.target.value) },
+            stroke: { ...stroke, color: withoutHash(event.target.value) },
           })
         }
         style={inlineStyles.colorInput}
@@ -48,16 +60,16 @@ export function ShapeToolbar({
         min={0}
         max={8}
         step={0.25}
-        value={line.width}
+        value={stroke.width}
         onChange={(event) =>
           onChange(index, {
             ...element,
-            line: { ...line, width: Number(event.target.value) || 0 },
+            stroke: { ...stroke, width: Number(event.target.value) || 0 },
           })
         }
         style={inlineStyles.numberInput}
       />
-      {element.kind === "rect" ? (
+      {element.type === "rectangle" ? (
         <input
           aria-label="Shape radius"
           title="Radius"
@@ -65,11 +77,11 @@ export function ShapeToolbar({
           min={0}
           max={0.5}
           step={0.02}
-          value={element.rx ?? 0}
+          value={averageBorderRadius(element.borderRadius)}
           onChange={(event) =>
             onChange(index, {
               ...element,
-              rx: Number(event.target.value) || 0,
+              borderRadius: uniformBorderRadius(Number(event.target.value) || 0),
             })
           }
           style={inlineStyles.numberInput}

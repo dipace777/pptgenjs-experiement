@@ -28,7 +28,7 @@ export function ChartElement({
   const max = Math.max(1, ...element.data.map((datum) => datum.value));
   const titleH = element.title ? 24 * (scale / PX_PER_IN) : 8;
   const pad = 12 * (scale / PX_PER_IN);
-  const chartColor = withHash(element.color);
+  const chartColor = withHash(element.color ?? "D4A24C");
   const axisColor = withHash(element.axisColor ?? "9AA7BD");
   const labelColor = withHash(element.labelColor ?? "6A7894");
   const plot = {

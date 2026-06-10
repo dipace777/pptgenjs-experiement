@@ -1,4 +1,19 @@
-import type { SlideElement } from "../../../lib/slide-schema";
+import {
+  averageBorderRadius,
+  elementFont,
+  setTableRowsFromStrings,
+  setTextContent,
+  setTextListStrings,
+  tableRowsAsStrings,
+  textContent,
+  textListStrings,
+  uniformBorderRadius,
+} from "../../../lib/element-model";
+import type {
+  Font,
+  SlideElement,
+  TableCell,
+} from "../../../lib/slide-schema";
 import { sanitizeSvgMarkup } from "../../../lib/svg-sanitize";
 import { styles } from "../editorStyles";
 import { GeometryInspector } from "./GeometryInspector";
@@ -18,10 +33,22 @@ type KindInspectorProps<T extends SlideElement> = {
   onPatch: Patch;
 };
 
+type TextElement = Extract<SlideElement, { type: "text" }>;
+type BulletsElement = Extract<SlideElement, { type: "text-list" }>;
+type ShapeElement = Extract<
+  SlideElement,
+  { type: "rectangle" | "ellipse" | "line" }
+>;
+type ImageElement = Extract<SlideElement, { type: "image" }>;
+type TableElement = Extract<SlideElement, { type: "table" }>;
+type SvgElement = Extract<SlideElement, { type: "svg" }>;
+
 export function TextInspector({
   element,
   onPatch,
-}: KindInspectorProps<Extract<SlideElement, { kind: "text" }>>) {
+}: KindInspectorProps<TextElement>) {
+  const font = elementFont(element);
+
   return (
     <>
       <GeometryInspector element={element} onPatch={onPatch} />
@@ -29,49 +56,60 @@ export function TextInspector({
         <TextareaField
           label="Text"
           rows={4}
-          value={element.text}
-          onChange={(text) => text.trim() && onPatch({ text })}
+          value={textContent(element)}
+          onChange={(text) => {
+            const next = setTextContent(element, text || " ");
+            onPatch({ runs: next.runs } as Partial<SlideElement>);
+          }}
         />
         <div style={styles.grid2}>
           <TextField
             label="Font"
-            value={element.fontFace ?? "Arial"}
-            onChange={(fontFace) => onPatch({ fontFace })}
+            value={font.family}
+            onChange={(family) => patchFont(onPatch, element, { family })}
           />
           <NumberField
             label="Size"
             min={6}
             max={360}
             step={1}
-            value={element.fontSize}
-            onChange={(fontSize) => onPatch({ fontSize })}
+            value={font.size}
+            onChange={(size) => patchFont(onPatch, element, { size })}
           />
         </div>
         <ColorField
           label="Color"
-          value={element.color}
-          onChange={(color) => onPatch({ color })}
+          value={font.color}
+          onChange={(color) => patchFont(onPatch, element, { color })}
         />
         <div style={styles.grid2}>
           <SelectField
             label="Align"
-            value={element.align ?? "left"}
+            value={element.alignment?.horizontal ?? "left"}
             options={[
               { label: "Left", value: "left" },
               { label: "Center", value: "center" },
               { label: "Right", value: "right" },
             ]}
-            onChange={(align) => onPatch({ align })}
+            onChange={(horizontal) =>
+              onPatch({
+                alignment: { ...(element.alignment ?? {}), horizontal },
+              } as Partial<SlideElement>)
+            }
           />
           <SelectField
             label="Vertical"
-            value={element.valign ?? "top"}
+            value={element.alignment?.vertical ?? "top"}
             options={[
               { label: "Top", value: "top" },
               { label: "Middle", value: "middle" },
               { label: "Bottom", value: "bottom" },
             ]}
-            onChange={(valign) => onPatch({ valign })}
+            onChange={(vertical) =>
+              onPatch({
+                alignment: { ...(element.alignment ?? {}), vertical },
+              } as Partial<SlideElement>)
+            }
           />
         </div>
         <div style={styles.grid2}>
@@ -80,27 +118,29 @@ export function TextInspector({
             min={0.8}
             max={2.2}
             step={0.05}
-            value={element.lineHeight ?? 1.15}
-            onChange={(lineHeight) => onPatch({ lineHeight })}
+            value={font.lineHeight ?? 1.15}
+            onChange={(lineHeight) => patchFont(onPatch, element, { lineHeight })}
           />
           <NumberField
             label="Tracking"
             min={-200}
             max={600}
             step={10}
-            value={element.charSpacing ?? 0}
-            onChange={(charSpacing) => onPatch({ charSpacing })}
+            value={font.letterSpacing ?? 0}
+            onChange={(letterSpacing) =>
+              patchFont(onPatch, element, { letterSpacing })
+            }
           />
         </div>
         <CheckboxField
           label="Bold"
-          checked={element.bold ?? false}
-          onChange={(bold) => onPatch({ bold })}
+          checked={font.bold ?? false}
+          onChange={(bold) => patchFont(onPatch, element, { bold })}
         />
         <CheckboxField
           label="Italic"
-          checked={element.italic ?? false}
-          onChange={(italic) => onPatch({ italic })}
+          checked={font.italic ?? false}
+          onChange={(italic) => patchFont(onPatch, element, { italic })}
         />
       </form>
     </>
@@ -110,7 +150,9 @@ export function TextInspector({
 export function BulletsInspector({
   element,
   onPatch,
-}: KindInspectorProps<Extract<SlideElement, { kind: "bullets" }>>) {
+}: KindInspectorProps<BulletsElement>) {
+  const font = elementFont(element);
+
   return (
     <>
       <GeometryInspector element={element} onPatch={onPatch} />
@@ -118,65 +160,58 @@ export function BulletsInspector({
         <TextareaField
           label="Items"
           rows={5}
-          value={element.items.join("\n")}
+          value={textListStrings(element).join("\n")}
           onChange={(value) => {
             const items = value
               .split("\n")
               .map((item) => item.trim())
               .filter(Boolean)
               .slice(0, 8);
-            if (items.length > 0) onPatch({ items } as Partial<SlideElement>);
+            if (items.length > 0) {
+              onPatch(setTextListStrings(element, items) as Partial<SlideElement>);
+            }
           }}
         />
         <div style={styles.grid2}>
           <TextField
             label="Font"
-            value={element.fontFace ?? "Arial"}
-            onChange={(fontFace) => onPatch({ fontFace } as Partial<SlideElement>)}
+            value={font.family}
+            onChange={(family) => patchFont(onPatch, element, { family })}
           />
           <NumberField
             label="Size"
             min={8}
             max={36}
             step={1}
-            value={element.fontSize}
-            onChange={(fontSize) => onPatch({ fontSize } as Partial<SlideElement>)}
+            value={font.size}
+            onChange={(size) => patchFont(onPatch, element, { size })}
           />
         </div>
         <div style={styles.grid2}>
           <ColorField
             label="Text"
-            value={element.color}
-            onChange={(color) => onPatch({ color } as Partial<SlideElement>)}
+            value={font.color}
+            onChange={(color) => patchFont(onPatch, element, { color })}
           />
-          <ColorField
-            label="Bullet"
-            value={element.bulletColor ?? element.color}
-            onChange={(bulletColor) =>
-              onPatch({ bulletColor } as Partial<SlideElement>)
-            }
-          />
-        </div>
-        <div style={styles.grid2}>
-          <NumberField
-            label="Line spacing"
-            min={0.9}
-            max={2}
-            step={0.05}
-            value={element.lineSpacingMultiple ?? 1.25}
-            onChange={(lineSpacingMultiple) =>
-              onPatch({ lineSpacingMultiple } as Partial<SlideElement>)
-            }
-          />
-          <NumberField
-            label="Item gap"
-            min={0}
-            max={0.4}
-            step={0.01}
-            value={element.itemGap ?? 0.08}
-            onChange={(itemGap) => onPatch({ itemGap } as Partial<SlideElement>)}
+          <SelectField
+            label="Marker"
+            value={element.marker ?? "bullet"}
+            options={[
+              { label: "Bullet", value: "bullet" },
+              { label: "Number", value: "number" },
+              { label: "None", value: "none" },
+            ]}
+            onChange={(marker) => onPatch({ marker } as Partial<SlideElement>)}
           />
         </div>
+        <NumberField
+          label="Line spacing"
+          min={0.9}
+          max={2}
+          step={0.05}
+          value={font.lineHeight ?? 1.25}
+          onChange={(lineHeight) => patchFont(onPatch, element, { lineHeight })}
+        />
       </form>
     </>
   );
@@ -185,25 +220,31 @@ export function BulletsInspector({
 export function ShapeInspector({
   element,
   onPatch,
-}: KindInspectorProps<Extract<SlideElement, { kind: "rect" | "ellipse" }>>) {
-  const line = element.line ?? { color: "0B1F3A", width: 0 };
+}: KindInspectorProps<ShapeElement>) {
+  const stroke = element.stroke ?? { color: "0B1F3A", width: 0 };
 
   return (
     <>
       <GeometryInspector element={element} onPatch={onPatch} />
       <form onSubmit={(event) => event.preventDefault()} style={styles.form}>
-        <ColorField
-          label="Fill"
-          value={element.fill}
-          onChange={(fill) => onPatch({ fill } as Partial<SlideElement>)}
-        />
+        {element.type !== "line" ? (
+          <ColorField
+            label="Fill"
+            value={element.fill?.color ?? "D4A24C"}
+            onChange={(color) =>
+              onPatch({
+                fill: { ...(element.fill ?? {}), color },
+              } as Partial<SlideElement>)
+            }
+          />
+        ) : null}
         <div style={styles.grid2}>
           <ColorField
             label="Stroke"
-            value={line.color}
+            value={stroke.color}
             onChange={(color) =>
               onPatch({
-                line: { color, width: Math.max(0.5, line.width || 1) },
+                stroke: { ...stroke, color, width: Math.max(0.5, stroke.width) },
               } as Partial<SlideElement>)
             }
           />
@@ -212,22 +253,26 @@ export function ShapeInspector({
             min={0}
             max={8}
             step={0.25}
-            value={line.width}
+            value={stroke.width}
             onChange={(width) =>
               onPatch({
-                line: width > 0 ? { color: line.color, width } : undefined,
+                stroke: { ...stroke, width },
               } as Partial<SlideElement>)
             }
           />
         </div>
-        {element.kind === "rect" ? (
+        {element.type === "rectangle" ? (
           <NumberField
             label="Corner radius"
             min={0}
             max={0.5}
             step={0.01}
-            value={element.rx ?? 0}
-            onChange={(rx) => onPatch({ rx } as Partial<SlideElement>)}
+            value={averageBorderRadius(element.borderRadius)}
+            onChange={(radius) =>
+              onPatch({
+                borderRadius: uniformBorderRadius(radius),
+              } as Partial<SlideElement>)
+            }
           />
         ) : null}
       </form>
@@ -238,7 +283,7 @@ export function ShapeInspector({
 export function ImageInspector({
   element,
   onPatch,
-}: KindInspectorProps<Extract<SlideElement, { kind: "image" }>>) {
+}: KindInspectorProps<ImageElement>) {
   return (
     <>
       <GeometryInspector element={element} onPatch={onPatch} />
@@ -266,7 +311,9 @@ export function ImageInspector({
 export function TableInspector({
   element,
   onPatch,
-}: KindInspectorProps<Extract<SlideElement, { kind: "table" }>>) {
+}: KindInspectorProps<TableElement>) {
+  const font = elementFont(element);
+
   return (
     <>
       <GeometryInspector element={element} onPatch={onPatch} />
@@ -274,7 +321,9 @@ export function TableInspector({
         <TextareaField
           label="Rows"
           rows={6}
-          value={element.rows.map((row) => row.join(", ")).join("\n")}
+          value={tableRowsAsStrings(element)
+            .map((row) => row.join(", "))
+            .join("\n")}
           onChange={(value) => {
             const rows = value
               .split("\n")
@@ -286,57 +335,67 @@ export function TableInspector({
               )
               .filter((row) => row.some(Boolean))
               .slice(0, 8);
-            if (rows.length >= 2) onPatch({ rows } as Partial<SlideElement>);
+            if (rows.length >= 2) {
+              onPatch(
+                setTableRowsFromStrings(element, rows) as Partial<SlideElement>,
+              );
+            }
           }}
         />
         <div style={styles.grid2}>
           <TextField
             label="Font"
-            value={element.fontFace ?? "Arial"}
-            onChange={(fontFace) => onPatch({ fontFace } as Partial<SlideElement>)}
+            value={font.family}
+            onChange={(family) => patchFont(onPatch, element, { family })}
           />
           <NumberField
             label="Size"
             min={6}
             max={28}
             step={1}
-            value={element.fontSize}
-            onChange={(fontSize) => onPatch({ fontSize } as Partial<SlideElement>)}
+            value={font.size}
+            onChange={(size) => patchFont(onPatch, element, { size })}
           />
         </div>
         <div style={styles.grid2}>
           <ColorField
             label="Text"
-            value={element.textColor}
-            onChange={(textColor) => onPatch({ textColor } as Partial<SlideElement>)}
+            value={font.color}
+            onChange={(color) => patchFont(onPatch, element, { color })}
           />
           <ColorField
             label="Fill"
-            value={element.fill ?? "FFFFFF"}
-            onChange={(fill) => onPatch({ fill } as Partial<SlideElement>)}
+            value={element.rows[0]?.[0]?.fill?.color ?? "FFFFFF"}
+            onChange={(color) =>
+              onPatch(updateBodyFill(element, color) as Partial<SlideElement>)
+            }
           />
         </div>
         <div style={styles.grid2}>
           <ColorField
             label="Header fill"
-            value={element.headerFill}
-            onChange={(headerFill) =>
-              onPatch({ headerFill } as Partial<SlideElement>)
+            value={element.columns[0]?.fill?.color ?? "0B1F3A"}
+            onChange={(color) =>
+              onPatch(updateHeaderFill(element, color) as Partial<SlideElement>)
             }
           />
           <ColorField
             label="Header text"
-            value={element.headerTextColor}
-            onChange={(headerTextColor) =>
-              onPatch({ headerTextColor } as Partial<SlideElement>)
+            value={element.columns[0]?.font?.color ?? "FFFFFF"}
+            onChange={(color) =>
+              onPatch(updateHeaderText(element, color) as Partial<SlideElement>)
             }
           />
         </div>
         <ColorField
           label="Border"
-          value={element.borderColor}
-          onChange={(borderColor) =>
-            onPatch({ borderColor } as Partial<SlideElement>)
+          value={
+            element.columns[0]?.stroke?.color ??
+            element.rows[0]?.[0]?.stroke?.color ??
+            "D9E2EF"
+          }
+          onChange={(color) =>
+            onPatch(updateCellBorders(element, color) as Partial<SlideElement>)
           }
         />
       </form>
@@ -347,7 +406,7 @@ export function TableInspector({
 export function SvgInspector({
   element,
   onPatch,
-}: KindInspectorProps<Extract<SlideElement, { kind: "svg" }>>) {
+}: KindInspectorProps<SvgElement>) {
   return (
     <>
       <GeometryInspector element={element} onPatch={onPatch} />
@@ -370,4 +429,57 @@ export function SvgInspector({
       </form>
     </>
   );
+}
+
+function patchFont<T extends { font?: Font | null }>(
+  onPatch: Patch,
+  element: T,
+  font: Partial<Font>,
+) {
+  onPatch({ font: { ...(element.font ?? {}), ...font } } as Partial<SlideElement>);
+}
+
+function updateHeaderFill(element: TableElement, color: string): TableElement {
+  return {
+    ...element,
+    columns: element.columns.map((cell) => ({
+      ...cell,
+      fill: { ...(cell.fill ?? {}), color },
+    })),
+  };
+}
+
+function updateHeaderText(element: TableElement, color: string): TableElement {
+  return {
+    ...element,
+    columns: element.columns.map((cell) => ({
+      ...cell,
+      font: { ...(cell.font ?? {}), color },
+    })),
+  };
+}
+
+function updateBodyFill(element: TableElement, color: string): TableElement {
+  return {
+    ...element,
+    rows: element.rows.map((row) =>
+      row.map((cell) => ({
+        ...cell,
+        fill: { ...(cell.fill ?? {}), color },
+      })),
+    ),
+  };
+}
+
+function updateCellBorders(element: TableElement, color: string): TableElement {
+  const withBorder = (cell: TableCell): TableCell => ({
+    ...cell,
+    stroke: { ...(cell.stroke ?? { width: 0.5 }), color },
+  });
+
+  return {
+    ...element,
+    columns: element.columns.map(withBorder),
+    rows: element.rows.map((row) => row.map(withBorder)),
+  };
 }

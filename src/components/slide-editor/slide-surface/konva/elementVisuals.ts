@@ -2,29 +2,22 @@ import type { CornerRadius, Shadow, SlideElement } from "../../../../lib/slide-s
 import { withHash } from "../../editorUtils";
 
 export function konvaCornerRadius(
-  element: { rx?: number | null; radius?: CornerRadius | null },
+  element: { borderRadius?: CornerRadius | null },
   scale: number,
 ) {
-  if (element.radius) {
-    const r = element.radius;
-    return [
-      (r.tl ?? element.rx ?? 0) * scale,
-      (r.tr ?? element.rx ?? 0) * scale,
-      (r.br ?? element.rx ?? 0) * scale,
-      (r.bl ?? element.rx ?? 0) * scale,
-    ];
-  }
-  return (element.rx ?? 0) * scale;
+  const r = element.borderRadius;
+  if (!r) return 0;
+  return [r.tl * scale, r.tr * scale, r.br * scale, r.bl * scale];
 }
 
 export function shadowProps(shadow?: Shadow | null, scale = 1) {
   if (!shadow) return {};
   return {
-    shadowColor: withHash(shadow.color),
-    shadowBlur: shadow.blur * scale,
-    shadowOpacity: shadow.opacity,
-    shadowOffsetX: shadow.offsetX * scale,
-    shadowOffsetY: shadow.offsetY * scale,
+    shadowColor: withHash(shadow.color ?? "000000"),
+    shadowBlur: (shadow.blur ?? 0) * scale,
+    shadowOpacity: shadow.opacity ?? 0.2,
+    shadowOffsetX: (shadow.offsetX ?? 0) * scale,
+    shadowOffsetY: (shadow.offsetY ?? 0) * scale,
   };
 }
 

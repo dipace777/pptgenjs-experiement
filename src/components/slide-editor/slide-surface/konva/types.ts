@@ -1,4 +1,6 @@
 import type Konva from "konva";
+import { elementBox } from "../../../../lib/element-model";
+import type { SlideElement } from "../../../../lib/slide-schema";
 
 export const SELECTION_STROKE = "#d4a24c";
 
@@ -35,10 +37,12 @@ export type TableInteractionProps = {
 };
 
 export function geometry(
-  box: { x: number; y: number; w: number; h: number },
+  element: Pick<SlideElement, "position" | "size">,
   scale: number,
   selected: boolean,
 ) {
+  const box = elementBox(element);
+
   return {
     x: box.x * scale,
     y: box.y * scale,

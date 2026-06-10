@@ -534,7 +534,7 @@ export const SlideSchema = z
     background: HexColorSchema,
     backgroundRole: ThemeRoleSchema.nullish(),
     backgroundImage: SlideBackgroundImageSchema.nullish(),
-    elements: z.array(SlideElementSchema).min(1).max(80),
+    elements: z.array(SlideElementSchema).max(80),
     title: z.string().min(1).max(60).nullish(),
   })
   .strict();

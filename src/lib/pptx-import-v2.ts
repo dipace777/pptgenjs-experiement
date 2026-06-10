@@ -5,6 +5,7 @@ import {
   SLIDE_H,
   SLIDE_W,
   type Deck,
+  type BorderRadius,
   type Fill,
   type Shadow,
   type Slide,
@@ -24,13 +25,15 @@ import { fitFontToBox } from "./textMeasure";
 const EMU_PER_INCH = 914400;
 const emuToIn = (emu: number): number => emu / EMU_PER_INCH;
 
-// Caps so we never emit a deck that fails DeckSchema validation. The
-// schema constraints live in slide-schema.ts; if those move, update here.
+// Caps so we never emit a deck that fails DeckSchema validation. The schema
+// constraints live in slide-schemaV2.ts; if those move, update here.
 const MAX_SLIDES = 50;
 const MAX_ELEMENTS_PER_SLIDE = 60;
 const MAX_TEXT_LEN = 700;
 const MIN_FONT_SIZE = 6;
 const MAX_FONT_SIZE = 360;
+const MIN_CHAR_SPACING = -200;
+const MAX_CHAR_SPACING = 600;
 
 const PARSER = new XMLParser({
   ignoreAttributes: false,
@@ -123,17 +126,27 @@ export type PptxImportResult = {
   warnings: string[];
 };
 
+export type PptxImportOptions = {
+  preferSidecar?: boolean;
+};
+
 export async function importPptxFile(
   file: File | Blob,
+  options: PptxImportOptions = {},
 ): Promise<PptxImportResult> {
   const buffer = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(buffer);
-  return importFromZip(zip, file instanceof File ? file.name : "Imported deck");
+  return importFromZip(
+    zip,
+    file instanceof File ? file.name : "Imported deck",
+    options,
+  );
 }
 
 async function importFromZip(
   zip: JSZip,
   fallbackTitle: string,
+  options: PptxImportOptions,
 ): Promise<PptxImportResult> {
   const warnings: string[] = [];
   const themeColors = await readThemeColors(zip);
@@ -142,10 +155,13 @@ async function importFromZip(
   // original deck. Trust it for a lossless round-trip (charts, tables,
   // image slots, anything PPTX can't natively express). For foreign
   // decks the sidecar is absent and we fall through to OOXML parsing.
-  const sidecar = await readText(zip, PPTY_DECK_SIDECAR_PATH);
+  const sidecar = options.preferSidecar === false
+    ? null
+    : await readText(zip, PPTY_DECK_SIDECAR_PATH);
   if (sidecar) {
     try {
-      const parsed = DeckSchema.safeParse(JSON.parse(sidecar));
+      const rawSidecar = JSON.parse(sidecar);
+      const parsed = DeckSchema.safeParse(rawSidecar);
       if (parsed.success) {
         return { deck: parsed.data, warnings };
       }
@@ -305,17 +321,6 @@ async function parseSlide(
     }
   }
 
-  if (elements.length === 0) {
-    // The DeckSchema requires at least one element per slide. Add an
-    // invisible 1x1 rect so the slide still validates.
-    elements.push({
-      type: "rectangle",
-      ...boxToPositionSize({ x: 0, y: 0, w: 0.1, h: 0.1 }),
-      fill: { color: background },
-      opacity: 0,
-    });
-  }
-
   return {
     background,
     elements,
@@ -457,6 +462,7 @@ async function spToElement(
       shadow,
       nameFromNvProps(sp),
       rotation,
+      borderRadiusForShape(spPr, geomKind, box),
     );
   }
 
@@ -473,7 +479,9 @@ async function spToElement(
     const trimmedText = text.text.slice(0, MAX_TEXT_LEN);
     const preserveSize = isPageNumberLabel(trimmedText);
     const charSpacing =
-      text.charSpacing != null ? text.charSpacing * fontMul : undefined;
+      text.charSpacing != null
+        ? clampCharSpacing(text.charSpacing * fontMul)
+        : undefined;
     // Final shrink-to-fit. PPT measures glyphs with its own metrics; our
     // preview uses the browser's. Even after scaling, a label authored to
     // fit can still wrap or overflow here. Mirror PPT's autofit behavior
@@ -484,7 +492,7 @@ async function spToElement(
       : fitFontToBox(
           {
             text: trimmedText,
-            fontFace,
+            family: fontFace,
             fontSize: rawSize,
             bold: text.bold,
             italic: text.italic,
@@ -642,6 +650,8 @@ async function picToElement(
   if (!box) return null;
   const rotation = rotationFromXfrm(xfrm, transform);
   const spPr = pic["p:spPr"] as Record<string, unknown> | undefined;
+  const prstGeom = spPr?.["a:prstGeom"] as Record<string, unknown> | undefined;
+  const geomKind = prstGeom?.["@_prst"];
   const shadow = extractShadow(spPr, scale, themeColors);
 
   const blipFill = pic["p:blipFill"] as Record<string, unknown> | undefined;
@@ -654,6 +664,7 @@ async function picToElement(
     shadow,
     nameFromNvProps(pic),
     rotation,
+    borderRadiusForShape(spPr, geomKind, box),
   );
 }
 
@@ -666,6 +677,7 @@ async function blipFillToImageElement(
   shadow: Shadow | undefined,
   name: string | null,
   rotation: number | undefined,
+  borderRadius: BorderRadius | undefined,
 ): Promise<SlideElement | null> {
   if (!blipFill || typeof blipFill !== "object") return null;
   const blip = (blipFill as Record<string, unknown>)["a:blip"] as
@@ -690,6 +702,7 @@ async function blipFillToImageElement(
     name: name ?? undefined,
     shadow,
     fit: "cover",
+    ...(borderRadius ? { borderRadius } : {}),
   };
 }
 
@@ -1308,6 +1321,11 @@ function clamp(n: number, min: number, max: number): number {
 
 function clampFontSize(n: number): number {
   return clamp(Math.round(n), MIN_FONT_SIZE, MAX_FONT_SIZE);
+}
+
+function clampCharSpacing(n: number): number | undefined {
+  if (!Number.isFinite(n)) return undefined;
+  return clamp(n, MIN_CHAR_SPACING, MAX_CHAR_SPACING);
 }
 
 function round(n: number): number {

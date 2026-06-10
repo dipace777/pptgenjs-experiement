@@ -10,6 +10,8 @@ import {
   type Slide,
   type SlideElement,
 } from "../../../lib/slide-schema";
+import { elementBox, resizeElement } from "../../../lib/element-model";
+import type { ElementKind } from "../../../lib/slide-elements";
 import { clamp } from "../editorUtils";
 import {
   activeSlideAtom,
@@ -207,7 +209,7 @@ export const patchSelectedAtom = atom(
 
 export const addElementAtom = atom(
   null,
-  (get, set, kind: SlideElement["kind"]) => {
+  (get, set, kind: ElementKind) => {
     const next = createDefaultElement(kind);
     const slide = get(activeSlideAtom);
     if (!slide) return;
@@ -274,14 +276,15 @@ export const duplicateSelectedAtom = atom(null, (get, set) => {
   delete copy.componentId;
   delete copy.componentInstanceId;
   delete copy.componentDescription;
-  Object.assign(copy, {
-    x: clamp(selected.x + 0.2, 0, SLIDE_W - selected.w),
-    y: clamp(selected.y + 0.2, 0, SLIDE_H - selected.h),
+  const box = elementBox(selected);
+  const moved = resizeElement(copy, {
+    x: clamp(box.x + 0.2, 0, SLIDE_W - box.w),
+    y: clamp(box.y + 0.2, 0, SLIDE_H - box.h),
   });
   const activeIdx = get(activeSlideIndexAtom);
   set(pushHistoryAtom);
   set(deckAtom, (draft) => {
-    draft.slides[activeIdx].elements.splice(idx + 1, 0, copy);
+    draft.slides[activeIdx].elements.splice(idx + 1, 0, moved);
   });
   set(selectedAtom, idx + 1);
   set(selectedItemsAtom, [idx + 1]);

@@ -1,6 +1,5 @@
 import { useAtomValue } from "jotai";
 import type { SlideElement } from "../../../lib/slide-schema";
-import { getElementDefinition } from "../registry";
 import { selectedElementOverflowsAtom } from "../state";
 import { ChartInspector } from "./ChartInspector";
 import {
@@ -25,12 +24,11 @@ export function ElementInspector({
   onPatch,
   onReplace,
 }: ElementInspectorProps) {
-  const inspector = getElementDefinition(element.kind).inspector;
   const overflows = useAtomValue(selectedElementOverflowsAtom);
 
   const overflowBanner = overflows ? <OverflowBanner element={element} /> : null;
 
-  if (inspector === "chart" && element.kind === "chart") {
+  if (element.type === "chart") {
     return (
       <>
         {overflowBanner}
@@ -43,7 +41,7 @@ export function ElementInspector({
     );
   }
 
-  if (inspector === "text" && element.kind === "text") {
+  if (element.type === "text") {
     return (
       <>
         {overflowBanner}
@@ -52,7 +50,7 @@ export function ElementInspector({
     );
   }
 
-  if (inspector === "bullets" && element.kind === "bullets") {
+  if (element.type === "text-list") {
     return (
       <>
         {overflowBanner}
@@ -61,22 +59,23 @@ export function ElementInspector({
     );
   }
 
-  if (inspector === "image" && element.kind === "image") {
+  if (element.type === "image") {
     return <ImageInspector element={element} onPatch={onPatch} />;
   }
 
   if (
-    inspector === "shape" &&
-    (element.kind === "rect" || element.kind === "ellipse")
+    element.type === "rectangle" ||
+    element.type === "ellipse" ||
+    element.type === "line"
   ) {
     return <ShapeInspector element={element} onPatch={onPatch} />;
   }
 
-  if (inspector === "table" && element.kind === "table") {
+  if (element.type === "table") {
     return <TableInspector element={element} onPatch={onPatch} />;
   }
 
-  if (inspector === "svg" && element.kind === "svg") {
+  if (element.type === "svg") {
     return <SvgInspector element={element} onPatch={onPatch} />;
   }
 

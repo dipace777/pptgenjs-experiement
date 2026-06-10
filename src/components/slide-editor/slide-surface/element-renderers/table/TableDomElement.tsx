@@ -1,5 +1,10 @@
 import type { CSSProperties } from "react";
 import type { Slide } from "../../../../../lib/slide-schema";
+import {
+  elementFont,
+  strokeColor,
+  tableRowsAsStrings,
+} from "../../../../../lib/element-model";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../../../editorUtils";
 import type { TableCellSelection } from "../../../state";
 import { DomElementLayer, elementBoxStyle } from "../shared";
@@ -18,13 +23,18 @@ export function TableDomElement({
   return (
     <DomElementLayer>
       {slide.elements.map((element, elementIndex) => {
-        if (element.kind !== "table" || editingTableIndex === elementIndex) {
+        if (element.type !== "table" || editingTableIndex === elementIndex) {
           return null;
         }
 
-        const rows = element.rows;
+        const rows = tableRowsAsStrings(element);
+        const font = elementFont(element);
         const cols = Math.max(1, ...rows.map((row) => row.length));
-        const borderColor = withHash(element.borderColor);
+        const borderColor = withHash(
+          element.columns[0]?.stroke?.color ??
+            element.rows[0]?.[0]?.stroke?.color ??
+            "D9E2EF",
+        );
 
         return (
           <table
@@ -33,8 +43,8 @@ export function TableDomElement({
               ...elementBoxStyle(element, scale),
               ...tableStyle,
               borderColor,
-              fontFamily: `${element.fontFace ?? "Arial"}, Helvetica, sans-serif`,
-              fontSize: element.fontSize * PT_TO_PX * (scale / PX_PER_IN),
+              fontFamily: `${font.family}, Helvetica, sans-serif`,
+              fontSize: font.size * PT_TO_PX * (scale / PX_PER_IN),
             }}
           >
             <tbody>
@@ -46,9 +56,11 @@ export function TableDomElement({
                       selectedCell?.elementIndex === elementIndex &&
                       selectedCell.rowIndex === rowIndex &&
                       selectedCell.colIndex === colIndex;
-                    const cellStyleOverride = element.cellStyles?.[rowIndex]?.[colIndex];
+                    const cell = isHeader
+                      ? element.columns[colIndex]
+                      : element.rows[rowIndex - 1]?.[colIndex];
                     const cellBorderColor = withHash(
-                      cellStyleOverride?.borderColor ?? element.borderColor,
+                      strokeColor(cell?.stroke, "D9E2EF"),
                     );
                     return (
                       <td
@@ -59,14 +71,23 @@ export function TableDomElement({
                           height: `${100 / rows.length}%`,
                           borderColor: cellBorderColor,
                           background: withHash(
-                            cellStyleOverride?.fill ??
-                              (isHeader ? element.headerFill : element.fill ?? "FFFFFF"),
+                            cell?.fill?.color ??
+                              (isHeader
+                                ? element.columns[0]?.fill?.color ?? "0B1F3A"
+                                : "FFFFFF"),
                           ),
                           color: withHash(
-                            cellStyleOverride?.textColor ??
-                              (isHeader ? element.headerTextColor : element.textColor),
+                            cell?.font?.color ??
+                              (isHeader
+                                ? element.columns[0]?.font?.color ?? "FFFFFF"
+                                : font.color),
                           ),
-                          fontWeight: (cellStyleOverride?.bold ?? isHeader) ? 700 : 400,
+                          fontFamily: `${cell?.font?.family ?? font.family}, Helvetica, sans-serif`,
+                          fontSize:
+                            (cell?.font?.size ?? font.size) *
+                            PT_TO_PX *
+                            (scale / PX_PER_IN),
+                          fontWeight: (cell?.font?.bold ?? isHeader) ? 700 : 400,
                           textAlign: colIndex === 0 ? "left" : "center",
                           boxShadow: isSelected
                             ? "inset 0 0 0 2px #6f93ff"

@@ -6,13 +6,13 @@ import { textElementOverflows } from "../../../lib/textMeasure";
 import { layoutKitDeck } from "../../../templates/layout-kit";
 
 export type ExportMode = "native" | "keynote" | "raster";
-export type TextSlideElement = Extract<SlideElement, { kind: "text" }>;
-export type BulletsSlideElement = Extract<SlideElement, { kind: "bullets" }>;
-export type ImageSlideElement = Extract<SlideElement, { kind: "image" }>;
-export type ShapeSlideElement = Extract<SlideElement, { kind: "rect" | "ellipse" }>;
-export type TableSlideElement = Extract<SlideElement, { kind: "table" }>;
-export type ChartSlideElement = Extract<SlideElement, { kind: "chart" }>;
-export type SvgSlideElement = Extract<SlideElement, { kind: "svg" }>;
+export type TextSlideElement = Extract<SlideElement, { type: "text" }>;
+export type BulletsSlideElement = Extract<SlideElement, { type: "text-list" }>;
+export type ImageSlideElement = Extract<SlideElement, { type: "image" }>;
+export type ShapeSlideElement = Extract<SlideElement, { type: "rectangle" | "ellipse" | "line" }>;
+export type TableSlideElement = Extract<SlideElement, { type: "table" }>;
+export type ChartSlideElement = Extract<SlideElement, { type: "chart" }>;
+export type SvgSlideElement = Extract<SlideElement, { type: "svg" }>;
 export type TableCellSelection = { elementIndex: number; rowIndex: number; colIndex: number };
 
 // --- Primitive atoms ----------------------------------------------------
@@ -65,67 +65,67 @@ export const selectedElementAtom = atom<SlideElement | null>((get) => {
 
 export const selectedTextElementAtom = atom<TextSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "text" ? element : null;
+  return element?.type === "text" ? element : null;
 });
 
 export const selectedBulletsElementAtom = atom<BulletsSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "bullets" ? element : null;
+  return element?.type === "text-list" ? element : null;
 });
 
 export const selectedImageElementAtom = atom<ImageSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "image" ? element : null;
+  return element?.type === "image" ? element : null;
 });
 
 export const selectedShapeElementAtom = atom<ShapeSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "rect" || element?.kind === "ellipse" ? element : null;
+  return element?.type === "rectangle" || element?.type === "ellipse" || element?.type === "line" ? element : null;
 });
 
 export const selectedTableElementAtom = atom<TableSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "table" ? element : null;
+  return element?.type === "table" ? element : null;
 });
 
 export const selectedChartElementAtom = atom<ChartSlideElement | null>((get) => {
   const element = get(selectedElementAtom);
-  return element?.kind === "chart" ? element : null;
+  return element?.type === "chart" ? element : null;
 });
 
 export const editingTextElementAtom = atom<TextSlideElement | null>((get) => {
   const index = get(editingTextIndexAtom);
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
-  return element?.kind === "text" ? element : null;
+  return element?.type === "text" ? element : null;
 });
 
 export const editingBulletsElementAtom = atom<BulletsSlideElement | null>((get) => {
   const index = get(editingBulletsIndexAtom);
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
-  return element?.kind === "bullets" ? element : null;
+  return element?.type === "text-list" ? element : null;
 });
 
 export const editingTableElementAtom = atom<TableSlideElement | null>((get) => {
   const index = get(editingTableIndexAtom);
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
-  return element?.kind === "table" ? element : null;
+  return element?.type === "table" ? element : null;
 });
 
 export const editingChartElementAtom = atom<ChartSlideElement | null>((get) => {
   const index = get(editingChartIndexAtom);
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
-  return element?.kind === "chart" ? element : null;
+  return element?.type === "chart" ? element : null;
 });
 
 export const editingSvgElementAtom = atom<SvgSlideElement | null>((get) => {
   const index = get(editingSvgIndexAtom);
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
-  return element?.kind === "svg" ? element : null;
+  return element?.type === "svg" ? element : null;
 });
 
 // Set of element indices on the active slide whose declared `h` is too small
@@ -134,7 +134,7 @@ export const activeSlideOverflowIndicesAtom = atom<ReadonlySet<number>>((get) =>
   const slide = get(activeSlideAtom);
   const overflowing = new Set<number>();
   slide.elements.forEach((element, index) => {
-    if (element.kind === "text" && textElementOverflows(element)) {
+    if (element.type === "text" && textElementOverflows(element)) {
       overflowing.add(index);
     }
   });

@@ -11,6 +11,18 @@ export function withHash(color: string) {
   return color.startsWith("#") ? color : `#${color}`;
 }
 
+export function colorWithOpacity(color: string, opacity?: number | null) {
+  const clean = color.replace("#", "").toUpperCase();
+  if (opacity == null || opacity >= 1 || !/^[0-9A-F]{6}$/.test(clean)) {
+    return withHash(color);
+  }
+  const alpha = clamp(opacity, 0, 1);
+  const r = Number.parseInt(clean.slice(0, 2), 16);
+  const g = Number.parseInt(clean.slice(2, 4), 16);
+  const b = Number.parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function withoutHash(color: string) {
   return color.replace("#", "").toUpperCase();
 }

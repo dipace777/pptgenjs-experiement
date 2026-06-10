@@ -4,6 +4,7 @@ import {
   type Slide,
   type SlideElement,
 } from "../../../lib/slide-schema";
+import { elementBox, resizeElement } from "../../../lib/element-model";
 import { clamp } from "../editorUtils";
 
 export type ComponentRun = {
@@ -92,10 +93,11 @@ function componentRunsFor(elements: SlideElement[], componentId: string) {
 
 function boundsFor(elements: SlideElement[], indexes: number[]) {
   const selected = indexes.map((index) => elements[index]).filter(Boolean);
-  const minX = Math.min(...selected.map((element) => element.x));
-  const minY = Math.min(...selected.map((element) => element.y));
-  const maxX = Math.max(...selected.map((element) => element.x + element.w));
-  const maxY = Math.max(...selected.map((element) => element.y + element.h));
+  const boxes = selected.map(elementBox);
+  const minX = Math.min(...boxes.map((box) => box.x));
+  const minY = Math.min(...boxes.map((box) => box.y));
+  const maxX = Math.max(...boxes.map((box) => box.x + box.w));
+  const maxY = Math.max(...boxes.map((box) => box.y + box.h));
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
@@ -108,7 +110,10 @@ function moveRun(
   for (const index of indexes) {
     const element = elements[index];
     if (!element) continue;
-    element.x += dx;
-    element.y += dy;
+    const box = elementBox(element);
+    elements[index] = resizeElement(element, {
+      x: box.x + dx,
+      y: box.y + dy,
+    });
   }
 }

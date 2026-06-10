@@ -5,6 +5,7 @@ import {
   type Slide,
   type SlideElement,
 } from "../lib/slide-schema";
+import { elementFont, textContent } from "../lib/element-model";
 
 export const data = {
   id: "709bec13-f7b8-479d-8d8b-6c45d020eecc",
@@ -421,43 +422,20 @@ function htmlDivToElement(div: HtmlDiv, index: number): SlideElement | null {
 
   const image = div.inner.match(/<img\s+[^>]*src=["']([^"']+)["']/);
   if (image?.[1]) {
-    return {
-      kind: "image",
-      ...box,
-      data: decodeHtml(image[1]),
-      fit: "cover",
-      name: `Neo image ${index + 1}`,
-    };
+    return { type: "image", ...box, data: decodeHtml(image[1]), name: `Neo image ${index + 1}`, fit: "cover" };
   }
 
   const text = extractText(div.inner);
   if (text) {
     const textStyle = parseTextStyle(div.tag, div.inner);
-    return {
-      kind: "text",
-      ...box,
-      text,
-      fontFace: "Poppins",
-      fontSize: textStyle.fontSize,
-      bold: textStyle.bold,
-      italic: textStyle.italic,
-      color: textStyle.color,
-      align: textStyle.align,
-      lineHeight: textStyle.lineHeight,
-    };
+    return { type: "text", ...box, font: { family: "Poppins", size: textStyle.fontSize, color: textStyle.color, bold: textStyle.bold, italic: textStyle.italic, lineHeight: textStyle.lineHeight }, alignment: { horizontal: textStyle.align }, runs: [{ text: text }] };
   }
 
   const paint = parsePaint(div.tag);
   const line = parseLine(div.tag);
   if (!paint && !line) return null;
 
-  return {
-    kind: "rect",
-    ...box,
-    fill: paint?.color ?? "FFFFFF",
-    opacity: paint?.opacity,
-    line,
-  };
+  return { type: "rectangle", ...box, opacity: paint?.opacity, fill: { color: paint?.color ?? "FFFFFF" }, stroke: line };
 }
 
 function parseBox(tag: string) {
@@ -467,10 +445,11 @@ function parseBox(tag: string) {
   const h = parsePxClass(tag, "h");
   if (x == null || y == null || w == null || h == null) return null;
   return {
-    x: pxToSlideX(x),
-    y: pxToSlideY(y),
-    w: Math.max(0.01, pxToSlideX(w)),
-    h: Math.max(0.01, pxToSlideY(h)),
+    position: { x: pxToSlideX(x), y: pxToSlideY(y) },
+    size: {
+      width: Math.max(0.01, pxToSlideX(w)),
+      height: Math.max(0.01, pxToSlideY(h)),
+    },
   };
 }
 
@@ -544,26 +523,16 @@ function extractText(inner: string) {
 function inferSlideTitle(elements: SlideElement[]) {
   const title = elements.find(
     (element) =>
-      element.kind === "text" &&
-      element.bold &&
-      element.fontSize >= 20 &&
-      element.text.length <= 80,
+      element.type === "text" &&
+      elementFont(element).bold &&
+      elementFont(element).size >= 20 &&
+      textContent(element).length <= 80,
   );
-  return title?.kind === "text" ? title.text : undefined;
+  return title?.type === "text" ? textContent(title) : undefined;
 }
 
 function fallbackElement(): SlideElement {
-  return {
-    kind: "text",
-    x: 0.6,
-    y: 0.6,
-    w: 8.8,
-    h: 0.4,
-    text: "Empty slide",
-    fontFace: "Poppins",
-    fontSize: 18,
-    color: DEFAULT_TEXT_COLOR,
-  };
+  return { type: "text", position: { x: 0.6, y: 0.6 }, size: { width: 8.8, height: 0.4 }, font: { family: "Poppins", size: 18, color: DEFAULT_TEXT_COLOR }, runs: [{ text: "Empty slide" }] };
 }
 
 function pxToSlideX(value: number) {
