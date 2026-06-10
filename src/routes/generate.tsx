@@ -13,9 +13,11 @@ import {
   type DeckGenerationInput,
 } from "../lib/deck-generator";
 import {
-  extractDesignElementTemplates,
+  createDesignElementExtraction,
+  templatesFromDesignElementCuration,
   type ExtractedDesignElementTemplate,
 } from "../lib/design-element-extraction";
+import { curateDesignElementsWithAi } from "../lib/design-element-curation-ai";
 import { savePreviewDeck } from "../lib/deck-storage";
 import { DECK_THEME_PRESETS, type DeckTheme } from "../lib/deck-theme";
 import { DeckSchema, type Deck } from "../lib/slide-schema";
@@ -93,6 +95,7 @@ const generateDeck = createServerFn({ method: "POST" })
           if (timedOut) {
             throw new Error(
               `AI generation timed out after ${AI_GENERATION_TIMEOUT_MS / 1000} seconds`,
+              { cause: error },
             );
           }
           throw error;
@@ -124,6 +127,7 @@ export const Route = createFileRoute("/generate")({
 
 function GeneratePage() {
   const generateDeckFn = useServerFn(generateDeck);
+  const curateDesignElementsFn = useServerFn(curateDesignElementsWithAi);
   const [mode, setMode] = useState<GenerateMode>("prompt");
   const [input, setInput] = useState<DeckGenerationInput>(defaultInput);
   const [status, setStatus] = useState<string | null>(null);
@@ -193,18 +197,36 @@ function GeneratePage() {
       if (warnings.length > 0) {
         // Surface the first warning so the user knows what was dropped;
         // full list is logged in dev tools for inspection.
-        // eslint-disable-next-line no-console
         console.warn("PPTX import warnings:", warnings);
       }
-      const componentTemplates = extractDesignElementTemplates(validated.data);
+      setStatus("Extracting reusable design elements...");
+      const extraction = createDesignElementExtraction(validated.data);
+      let componentTemplates = extraction.templates;
+      let curationLabel = "clustered";
+
+      if (extraction.curationInput.clusters.length > 0) {
+        setStatus("Curating reusable design elements...");
+        const curation = await curateDesignElementsFn({
+          data: extraction.curationInput,
+        });
+        componentTemplates = templatesFromDesignElementCuration(
+          extraction,
+          curation,
+        );
+        curationLabel = curation.source === "ai" ? "AI-curated" : "clustered";
+        if (curation.source !== "ai" && curation.message) {
+          console.warn("Design element AI curation fallback:", curation.message);
+        }
+      }
+
       setStatus(
         `Imported ${validated.data.slides.length} slide(s)${
           warnings.length > 0 ? ` (${warnings.length} warnings)` : ""
         }${
           componentTemplates.length > 0
-            ? ` Found ${componentTemplates.length} reusable design element(s).`
+            ? ` Found ${componentTemplates.length} ${curationLabel} reusable design element(s).`
             : ""
-        }.`,
+        } (${extraction.metrics.candidateCount} candidates, ${extraction.metrics.clusterCount} clusters).`,
       );
       await saveAndPreview(validated.data, componentTemplates);
     } catch (error) {

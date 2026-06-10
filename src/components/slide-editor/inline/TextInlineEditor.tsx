@@ -4,6 +4,7 @@ import {
   setTextContent,
   textContent,
 } from "../../../lib/element-model";
+import { fitFontToBox } from "../../../lib/textMeasure";
 import type { TextSlideElement } from "../state";
 import { PT_TO_PX, PX_PER_IN, withHash } from "../editorUtils";
 import { inlineStyles } from "./inlineStyles";
@@ -23,6 +24,7 @@ export function TextInlineEditor({
 }) {
   const box = elementBox(element);
   const font = elementFont(element);
+  const effectiveFontSizePt = fitFontToBox(element, box.h);
 
   return (
     <textarea
@@ -43,7 +45,7 @@ export function TextInlineEditor({
         height: box.h * scale,
         color: withHash(font.color),
         fontFamily: `${font.family}, Helvetica, sans-serif`,
-        fontSize: font.size * PT_TO_PX * (scale / PX_PER_IN),
+        fontSize: effectiveFontSizePt * PT_TO_PX * (scale / PX_PER_IN),
         fontWeight: font.bold ? 700 : 400,
         fontStyle: font.italic ? "italic" : "normal",
         textAlign: element.alignment?.horizontal ?? "left",

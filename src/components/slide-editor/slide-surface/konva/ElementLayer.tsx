@@ -8,9 +8,14 @@ import {
   type SlideElement,
 } from "../../../../lib/slide-schema";
 import { elementBox, resizeElement } from "../../../../lib/element-model";
+import {
+  editableDescendantsForSemanticElement,
+  elementPathKey,
+  isSemanticElement,
+} from "../../../../lib/semantic-elements";
 import { textElementOverflows } from "../../../../lib/textMeasure";
 import { clamp } from "../../editorUtils";
-import { getComponentRun } from "../../state";
+import { getComponentRun, type NestedElementSelection } from "../../state";
 import { useGroupDrag } from "./hooks/useGroupDrag";
 import { KonvaElement } from "./KonvaElement";
 import { SELECTION_STROKE } from "./types";
@@ -31,9 +36,11 @@ const SUPPRESS_SELECT_AFTER_LONG_PRESS_MS = 400;
 export function ElementLayer({
   editingBulletsIndex,
   editingChartIndex,
+  editingNestedElement,
   editingSvgIndex,
   editingTableIndex,
   editingTextIndex,
+  groupEditRootIndex,
   interactive,
   nodeRefs,
   normalizedSelectionBox,
@@ -48,12 +55,16 @@ export function ElementLayer({
   onEditSvg,
   onEditTable,
   onEditText,
+  onEditNestedText,
+  onEnterGroupEdit,
   onSelect,
   onSelectMany,
+  onSelectNested,
   onSelectTableCell,
   scale,
   selectedBounds,
   selectedIndexes,
+  selectedNestedElement,
   slide,
   tableRenderMode = "canvas",
   textRenderMode = "canvas",
@@ -63,9 +74,11 @@ export function ElementLayer({
 }: {
   editingBulletsIndex?: number | null;
   editingChartIndex?: number | null;
+  editingNestedElement?: NestedElementSelection | null;
   editingSvgIndex?: number | null;
   editingTableIndex?: number | null;
   editingTextIndex?: number | null;
+  groupEditRootIndex?: number | null;
   interactive: boolean;
   nodeRefs: RefObject<Array<Konva.Node | null>>;
   normalizedSelectionBox: Bounds | null;
@@ -80,12 +93,16 @@ export function ElementLayer({
   onEditSvg?: (index: number) => void;
   onEditTable?: (index: number) => void;
   onEditText?: (index: number) => void;
+  onEditNestedText?: (selection: NestedElementSelection) => void;
+  onEnterGroupEdit?: (index: number) => void;
   onSelect?: (index: number, additive?: boolean) => void;
   onSelectMany?: (indexes: number[]) => void;
+  onSelectNested?: (selection: NestedElementSelection | null) => void;
   onSelectTableCell?: (index: number, rowIndex: number, colIndex: number) => void;
   scale: number;
   selectedBounds: Bounds | null;
   selectedIndexes: number[];
+  selectedNestedElement?: NestedElementSelection | null;
   slide: Slide;
   tableRenderMode?: "canvas" | "proxy";
   textRenderMode?: "canvas" | "proxy";
@@ -219,6 +236,12 @@ export function ElementLayer({
       return true;
     },
     onDblClick: (event: Konva.KonvaEventObject<MouseEvent>) => {
+      if (isSemanticElement(el)) {
+        event.cancelBubble = true;
+        onSelect?.(index);
+        onEnterGroupEdit?.(index);
+        return;
+      }
       if (
         el.type !== "text" &&
         el.type !== "text-list" &&
@@ -325,6 +348,7 @@ export function ElementLayer({
             editingSvgIndex === index ||
             editingTableIndex === index
           }
+          editingNestedElement={editingNestedElement}
           onTableCellClick={
             el.type === "table"
               ? (rowIndex, colIndex) => onSelectTableCell?.(index, rowIndex, colIndex)
@@ -336,6 +360,16 @@ export function ElementLayer({
           events={commonEvents(index, el)}
         />
       ))}
+      {interactive && groupEditRootIndex != null ? (
+        <NestedGroupEditLayer
+          root={slide.elements[groupEditRootIndex]}
+          rootIndex={groupEditRootIndex}
+          scale={scale}
+          selected={selectedNestedElement}
+          onEditText={onEditNestedText}
+          onSelect={onSelectNested}
+        />
+      ) : null}
       {overflowingIndices
         ? slide.elements.map((el, index) => {
             if (!overflowingIndices.has(index)) return null;
@@ -521,5 +555,72 @@ function DeleteSelectionButton({
       <Line points={[13, 14, 13, 20]} stroke="#f4f6fa" strokeWidth={1.2} />
       <Line points={[17, 14, 17, 20]} stroke="#f4f6fa" strokeWidth={1.2} />
     </Group>
+  );
+}
+
+function NestedGroupEditLayer({
+  root,
+  rootIndex,
+  scale,
+  selected,
+  onEditText,
+  onSelect,
+}: {
+  root: SlideElement | undefined;
+  rootIndex: number;
+  scale: number;
+  selected?: NestedElementSelection | null;
+  onEditText?: (selection: NestedElementSelection) => void;
+  onSelect?: (selection: NestedElementSelection | null) => void;
+}) {
+  if (!root || !isSemanticElement(root)) return null;
+  const selectedKey =
+    selected?.rootIndex === rootIndex ? elementPathKey(selected.path) : null;
+  const descendants = editableDescendantsForSemanticElement(root);
+
+  return (
+    <>
+      {descendants.map(({ element, path }) => {
+        const box = elementBox(element);
+        const key = elementPathKey(path);
+        const isSelected = key === selectedKey;
+        const selection = { rootIndex, path };
+        const width = Math.max(box.w * scale, 8);
+        const height = Math.max(box.h * scale, 8);
+
+        return (
+          <Rect
+            key={`nested-${rootIndex}-${key}`}
+            x={box.x * scale}
+            y={box.y * scale}
+            width={width}
+            height={height}
+            fill="rgba(90, 132, 255, 0.001)"
+            stroke={isSelected ? "#6f93ff" : undefined}
+            strokeWidth={isSelected ? 1.5 : 0}
+            dash={isSelected ? [5, 4] : undefined}
+            onClick={(event) => {
+              event.cancelBubble = true;
+              onSelect?.(selection);
+            }}
+            onTap={(event) => {
+              event.cancelBubble = true;
+              onSelect?.(selection);
+            }}
+            onDblClick={(event) => {
+              event.cancelBubble = true;
+              onSelect?.(selection);
+              if (element.type === "text") onEditText?.(selection);
+            }}
+            onMouseEnter={(event) => {
+              event.target.getStage()?.container().style.setProperty("cursor", "pointer");
+            }}
+            onMouseLeave={(event) => {
+              event.target.getStage()?.container().style.removeProperty("cursor");
+            }}
+          />
+        );
+      })}
+    </>
   );
 }

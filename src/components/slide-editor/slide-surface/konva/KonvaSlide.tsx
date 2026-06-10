@@ -1,5 +1,6 @@
 import Konva from "konva";
 import { SLIDE_W, type Slide, type SlideElement } from "../../../../lib/slide-schema";
+import type { NestedElementSelection } from "../../state";
 import { ElementLayer } from "./ElementLayer";
 import { useEditorCanvasInteractions } from "./hooks/useEditorCanvasInteractions";
 import { useKonvaSelection } from "./hooks/useKonvaSelection";
@@ -22,7 +23,10 @@ export function KonvaSlide({
   onEditImage,
   onEditSvg,
   onEditTable,
+  onEditNestedText,
+  onEnterGroupEdit,
   onSelectTableCell,
+  onSelectNested,
   onChange,
   onChangeMany,
   stageRef,
@@ -33,8 +37,10 @@ export function KonvaSlide({
   editingTextIndex,
   editingBulletsIndex,
   editingChartIndex,
+  editingNestedElement,
   editingSvgIndex,
   editingTableIndex,
+  groupEditRootIndex,
 }: {
   slide: Slide;
   width: number;
@@ -51,7 +57,10 @@ export function KonvaSlide({
   onEditImage?: (index: number) => void;
   onEditSvg?: (index: number) => void;
   onEditTable?: (index: number) => void;
+  onEditNestedText?: (selection: NestedElementSelection) => void;
+  onEnterGroupEdit?: (index: number) => void;
   onSelectTableCell?: (index: number, rowIndex: number, colIndex: number) => void;
+  onSelectNested?: (selection: NestedElementSelection | null) => void;
   onChange?: (index: number, element: SlideElement) => void;
   onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
@@ -62,8 +71,10 @@ export function KonvaSlide({
   editingTextIndex?: number | null;
   editingBulletsIndex?: number | null;
   editingChartIndex?: number | null;
+  editingNestedElement?: NestedElementSelection | null;
   editingSvgIndex?: number | null;
   editingTableIndex?: number | null;
+  groupEditRootIndex?: number | null;
 }) {
   const scale = width / SLIDE_W;
   const editorInteractions = useEditorCanvasInteractions({
@@ -80,10 +91,16 @@ export function KonvaSlide({
     (interactive ? editorInteractions.editingBulletsIndex : undefined);
   const resolvedEditingChartIndex =
     editingChartIndex ?? (interactive ? editorInteractions.editingChartIndex : undefined);
+  const resolvedEditingNestedElement =
+    editingNestedElement ??
+    (interactive ? editorInteractions.editingNestedElement : undefined);
   const resolvedEditingSvgIndex =
     editingSvgIndex ?? (interactive ? editorInteractions.editingSvgIndex : undefined);
   const resolvedEditingTableIndex =
     editingTableIndex ?? (interactive ? editorInteractions.editingTableIndex : undefined);
+  const resolvedGroupEditRootIndex =
+    groupEditRootIndex ??
+    (interactive ? editorInteractions.groupEditRootIndex : undefined);
   const resolvedOnSelect = onSelect ?? (interactive ? editorInteractions.onSelect : undefined);
   const resolvedOnSelectMany =
     onSelectMany ?? (interactive ? editorInteractions.onSelectMany : undefined);
@@ -103,6 +120,14 @@ export function KonvaSlide({
   const resolvedOnSelectTableCell =
     onSelectTableCell ??
     (interactive ? editorInteractions.onSelectTableCell : undefined);
+  const resolvedOnEditNestedText =
+    onEditNestedText ??
+    (interactive ? editorInteractions.onEditNestedText : undefined);
+  const resolvedOnEnterGroupEdit =
+    onEnterGroupEdit ??
+    (interactive ? editorInteractions.onEnterGroupEdit : undefined);
+  const resolvedOnSelectNested =
+    onSelectNested ?? (interactive ? editorInteractions.onSelectNested : undefined);
   const resolvedOnChange = onChange ?? (interactive ? editorInteractions.onChange : undefined);
   const resolvedOnChangeMany =
     onChangeMany ?? (interactive ? editorInteractions.onChangeMany : undefined);
@@ -134,9 +159,11 @@ export function KonvaSlide({
       <ElementLayer
         editingBulletsIndex={resolvedEditingBulletsIndex}
         editingChartIndex={resolvedEditingChartIndex}
+        editingNestedElement={resolvedEditingNestedElement}
         editingSvgIndex={resolvedEditingSvgIndex}
         editingTableIndex={resolvedEditingTableIndex}
         editingTextIndex={resolvedEditingTextIndex}
+        groupEditRootIndex={resolvedGroupEditRootIndex}
         interactive={interactive}
         nodeRefs={nodeRefs}
         normalizedSelectionBox={normalizedSelectionBox}
@@ -151,12 +178,16 @@ export function KonvaSlide({
         onEditSvg={resolvedOnEditSvg}
         onEditTable={resolvedOnEditTable}
         onEditText={resolvedOnEditText}
+        onEditNestedText={resolvedOnEditNestedText}
+        onEnterGroupEdit={resolvedOnEnterGroupEdit}
         onSelect={resolvedOnSelect}
         onSelectMany={resolvedOnSelectMany}
+        onSelectNested={resolvedOnSelectNested}
         onSelectTableCell={resolvedOnSelectTableCell}
         scale={scale}
         selectedBounds={selectedBounds}
         selectedIndexes={selectedIndexes}
+        selectedNestedElement={editorInteractions.selectedNestedElement}
         slide={slide}
         tableRenderMode={tableRenderMode}
         textRenderMode={textRenderMode}

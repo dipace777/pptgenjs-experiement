@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { renderableChildrenForSemanticElement } from "../../../../lib/semantic-elements";
 import type { SlideElement } from "../../../../lib/slide-schema";
 import {
   ELEMENT_REGISTRY,
@@ -12,6 +13,7 @@ import { EllipseElement } from "./EllipseElement";
 import { ImageElement } from "./ImageElement";
 import { LineElement } from "./LineElement";
 import { RectElement } from "./RectElement";
+import { SemanticElementFrame } from "./SemanticElementFrame";
 import { SvgElement } from "./SvgElement";
 import { TableElement } from "./TableElement";
 import { TextElement } from "./TextElement";
@@ -65,6 +67,60 @@ const KONVA_RENDERERS = {
   text: ({ element, textRenderMode, ...rest }) =>
     element.type === "text" ? (
       <TextElement element={element} renderMode={textRenderMode} {...rest} />
+    ) : null,
+  container: ({ element, ...rest }) =>
+    element.type === "container" ? (
+      <SemanticElementFrame
+        element={element}
+        childElements={renderableChildrenForSemanticElement(element)}
+        renderElement={renderKonvaElement}
+        {...rest}
+      />
+    ) : null,
+  flex: ({ element, ...rest }) =>
+    element.type === "flex" ? (
+      <SemanticElementFrame
+        element={element}
+        childElements={renderableChildrenForSemanticElement(element)}
+        renderElement={renderKonvaElement}
+        {...rest}
+      />
+    ) : null,
+  grid: ({ element, ...rest }) =>
+    element.type === "grid" ? (
+      <SemanticElementFrame
+        element={element}
+        childElements={renderableChildrenForSemanticElement(element)}
+        renderElement={renderKonvaElement}
+        {...rest}
+      />
+    ) : null,
+  group: ({ element, ...rest }) =>
+    element.type === "group" ? (
+      <SemanticElementFrame
+        element={element}
+        childElements={renderableChildrenForSemanticElement(element)}
+        renderElement={renderKonvaElement}
+        {...rest}
+      />
+    ) : null,
+  "list-view": ({ element, ...rest }) =>
+    element.type === "list-view" ? (
+      <SemanticElementFrame
+        element={element}
+        childElements={renderableChildrenForSemanticElement(element)}
+        renderElement={renderKonvaElement}
+        {...rest}
+      />
+    ) : null,
+  "grid-view": ({ element, ...rest }) =>
+    element.type === "grid-view" ? (
+      <SemanticElementFrame
+        element={element}
+        childElements={renderableChildrenForSemanticElement(element)}
+        renderElement={renderKonvaElement}
+        {...rest}
+      />
     ) : null,
 } satisfies Record<
   KonvaRendererKey,

@@ -9,18 +9,24 @@ import {
   SLIDE_W,
   type Slide,
   type SlideElement,
+  type TextElement,
 } from "../../../lib/slide-schema";
 import { elementBox, resizeElement } from "../../../lib/element-model";
+import { updateElementAtPath } from "../../../lib/semantic-elements";
 import type { ElementKind } from "../../../lib/slide-elements";
 import { clamp } from "../editorUtils";
 import {
   activeSlideAtom,
   activeSlideIndexAtom,
   deckAtom,
+  editingNestedTextAtom,
   editorOpenAtom,
+  groupEditRootIndexAtom,
+  type NestedElementSelection,
   selectedAtom,
   selectedIndexAtom,
   selectedItemsAtom,
+  selectedNestedElementAtom,
   selectedTableCellAtom,
 } from "./atoms";
 import { arrangeRepeatableComponents, getComponentRun } from "./componentGroups";
@@ -39,12 +45,21 @@ export const selectElementAtom = atom(
     if (index < 0) {
       set(selectedAtom, -1);
       set(selectedItemsAtom, []);
+      set(selectedNestedElementAtom, null);
+      set(editingNestedTextAtom, null);
+      set(groupEditRootIndexAtom, null);
       set(selectedTableCellAtom, null);
       return;
     }
     if (!additive) {
       set(selectedAtom, index);
       set(selectedItemsAtom, [index]);
+      set(selectedNestedElementAtom, null);
+      set(editingNestedTextAtom, null);
+      const groupRoot = get(groupEditRootIndexAtom);
+      if (groupRoot != null && groupRoot !== index) {
+        set(groupEditRootIndexAtom, null);
+      }
       const cell = get(selectedTableCellAtom);
       if (cell?.elementIndex !== index) set(selectedTableCellAtom, null);
       return;
@@ -63,6 +78,11 @@ export const selectElementAtom = atom(
 export const setSelectionAtom = atom(null, (get, set, next: number) => {
   set(selectedAtom, next);
   set(selectedItemsAtom, next < 0 ? [] : [next]);
+  set(selectedNestedElementAtom, null);
+  set(editingNestedTextAtom, null);
+  if (next < 0 || get(groupEditRootIndexAtom) !== next) {
+    set(groupEditRootIndexAtom, null);
+  }
   const cell = get(selectedTableCellAtom);
   if (cell?.elementIndex !== next) set(selectedTableCellAtom, null);
 });
@@ -70,9 +90,46 @@ export const setSelectionAtom = atom(null, (get, set, next: number) => {
 export const selectElementsAtom = atom(null, (get, set, indexes: number[]) => {
   set(selectedItemsAtom, indexes);
   set(selectedAtom, indexes.at(-1) ?? -1);
+  set(selectedNestedElementAtom, null);
+  set(editingNestedTextAtom, null);
+  set(groupEditRootIndexAtom, null);
   const cell = get(selectedTableCellAtom);
   if (cell && !indexes.includes(cell.elementIndex)) set(selectedTableCellAtom, null);
 });
+
+export const enterGroupEditAtom = atom(null, (_get, set, rootIndex: number) => {
+  set(groupEditRootIndexAtom, rootIndex);
+  set(selectedAtom, rootIndex);
+  set(selectedItemsAtom, [rootIndex]);
+  set(selectedNestedElementAtom, null);
+  set(editingNestedTextAtom, null);
+  set(selectedTableCellAtom, null);
+  set(editorOpenAtom, true);
+});
+
+export const exitGroupEditAtom = atom(null, (_get, set) => {
+  set(groupEditRootIndexAtom, null);
+  set(selectedNestedElementAtom, null);
+  set(editingNestedTextAtom, null);
+});
+
+export const selectNestedElementAtom = atom(
+  null,
+  (_get, set, selection: NestedElementSelection | null) => {
+    set(selectedNestedElementAtom, selection);
+    set(editingNestedTextAtom, null);
+    set(selectedTableCellAtom, null);
+  },
+);
+
+export const editNestedTextAtom = atom(
+  null,
+  (_get, set, selection: NestedElementSelection | null) => {
+    set(selectedNestedElementAtom, selection);
+    set(editingNestedTextAtom, selection);
+    set(selectedTableCellAtom, null);
+  },
+);
 
 // --- Deck mutation actions ---------------------------------------------
 
@@ -126,6 +183,33 @@ export const updateElementAtom = atom(
     set(pushHistoryAtom, { tag: `updateElement:${activeIdx}:${payload.index}` });
     set(deckAtom, (draft) => {
       draft.slides[activeIdx].elements[payload.index] = payload.element;
+    });
+  },
+);
+
+export const updateNestedTextElementAtom = atom(
+  null,
+  (
+    get,
+    set,
+    payload: { element: TextElement; selection: NestedElementSelection },
+  ) => {
+    const activeIdx = get(activeSlideIndexAtom);
+    const { rootIndex, path } = payload.selection;
+    set(pushHistoryAtom, {
+      tag: `updateNestedText:${activeIdx}:${rootIndex}:${path.length}`,
+    });
+    set(deckAtom, (draft) => {
+      const root = draft.slides[activeIdx].elements[rootIndex];
+      if (!root) return;
+      draft.slides[activeIdx].elements[rootIndex] = updateElementAtPath(
+        root,
+        path,
+        (element) =>
+          element.type === "text"
+            ? { ...element, runs: payload.element.runs }
+            : element,
+      );
     });
   },
 );

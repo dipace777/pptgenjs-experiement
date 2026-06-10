@@ -6,6 +6,7 @@ import {
   type ChartElement,
   type Deck,
   type Fill,
+  type RectangleElement,
   type Shadow,
   type Slide,
   type SlideElement,
@@ -27,6 +28,12 @@ import {
   strokeWidth,
   textListStrings,
 } from "../lib/element-model";
+import {
+  elementWithOffset,
+  hasContainerBackground,
+  isSemanticElement,
+  renderableChildrenForSemanticElement,
+} from "../lib/semantic-elements";
 import {
   fitBulletsFontToBox,
   fitFontToBox,
@@ -582,6 +589,53 @@ function shapeLine(stroke: Stroke | null | undefined) {
   };
 }
 
+function addSemanticElement(
+  pptx: PptxGenJS,
+  s: PptxGenJS.Slide,
+  el: SlideElement,
+  bg: string,
+  options: Required<GeneratePptxOptions>,
+): void {
+  if (!isSemanticElement(el)) return;
+  const box = elementBox(el);
+
+  if (el.type === "container" && hasContainerBackground(el)) {
+    const frame: RectangleElement = {
+      type: "rectangle",
+      position: { x: box.x, y: box.y },
+      size: { width: box.w, height: box.h },
+      fill: el.fill,
+      stroke: el.stroke,
+      borderRadius: el.borderRadius,
+      opacity: el.opacity,
+      shadow: el.shadow,
+      rotation: el.rotation,
+    };
+    addElement(pptx, s, frame, bg, options);
+  }
+
+  for (const child of renderableChildrenForSemanticElement(el)) {
+    addElement(
+      pptx,
+      s,
+      inheritOpacity(elementWithOffset(child, box.x, box.y), el.opacity),
+      bg,
+      options,
+    );
+  }
+}
+
+function inheritOpacity(
+  element: SlideElement,
+  opacity: number | null | undefined,
+): SlideElement {
+  if (opacity == null || opacity >= 1) return element;
+  return {
+    ...element,
+    opacity: (element.opacity ?? 1) * opacity,
+  } as SlideElement;
+}
+
 function addElement(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
@@ -589,6 +643,11 @@ function addElement(
   bg: string,
   options: Required<GeneratePptxOptions>,
 ): void {
+  if (isSemanticElement(el)) {
+    addSemanticElement(pptx, s, el, bg, options);
+    return;
+  }
+
   const box = elementBox(el);
 
   if (el.type === "rectangle") {

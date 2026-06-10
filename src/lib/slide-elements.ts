@@ -9,7 +9,13 @@ export type ElementKind =
   | "chart"
   | "table"
   | "svg"
-  | "line";
+  | "line"
+  | "container"
+  | "flex"
+  | "grid"
+  | "group"
+  | "list-view"
+  | "grid-view";
 export type ElementToolbarKey =
   | "text"
   | "bullets"
@@ -215,6 +221,106 @@ export const ELEMENT_REGISTRY = {
       ...box(0.8, 0.8, 2.6, 0.02),
       type: "line",
       stroke: { color: "1A2B45", width: 1 },
+    }),
+  },
+  container: {
+    label: "Container",
+    addable: false,
+    toolbar: null,
+    inspector: null,
+    renderers: { konva: "container", domOverlay: null },
+    export: { pptx: "container", pdf: "raster" },
+    createDefault: () => ({
+      ...box(0.8, 0.8, 3.2, 1.8),
+      type: "container",
+      fill: { color: "FFFFFF" },
+      borderRadius: { tl: 0.08, tr: 0.08, bl: 0.08, br: 0.08 },
+      padding: { top: 0.16, right: 0.16, bottom: 0.16, left: 0.16 },
+    }),
+  },
+  flex: {
+    label: "Flex",
+    addable: false,
+    toolbar: null,
+    inspector: null,
+    renderers: { konva: "flex", domOverlay: null },
+    export: { pptx: "flex", pdf: "raster" },
+    createDefault: () => ({
+      ...box(0.8, 0.8, 3.2, 1.2),
+      type: "flex",
+      direction: "row",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      gap: 0.12,
+      children: [],
+    }),
+  },
+  grid: {
+    label: "Grid",
+    addable: false,
+    toolbar: null,
+    inspector: null,
+    renderers: { konva: "grid", domOverlay: null },
+    export: { pptx: "grid", pdf: "raster" },
+    createDefault: () => ({
+      ...box(0.8, 0.8, 3.2, 2),
+      type: "grid",
+      columns: 2,
+      gap: 0.12,
+      children: [],
+    }),
+  },
+  group: {
+    label: "Group",
+    addable: false,
+    toolbar: null,
+    inspector: null,
+    renderers: { konva: "group", domOverlay: null },
+    export: { pptx: "group", pdf: "raster" },
+    createDefault: () => ({
+      ...box(0.8, 0.8, 3.2, 1.8),
+      type: "group",
+      children: [],
+    }),
+  },
+  "list-view": {
+    label: "List View",
+    addable: false,
+    toolbar: null,
+    inspector: null,
+    renderers: { konva: "list-view", domOverlay: null },
+    export: { pptx: "list-view", pdf: "raster" },
+    createDefault: () => ({
+      ...box(0.8, 0.8, 3.2, 2),
+      type: "list-view",
+      direction: "column",
+      gap: 0.12,
+      count: 3,
+      item: {
+        ...box(0, 0, 3.2, 0.5),
+        type: "text",
+        runs: [{ text: "List item" }],
+      },
+    }),
+  },
+  "grid-view": {
+    label: "Grid View",
+    addable: false,
+    toolbar: null,
+    inspector: null,
+    renderers: { konva: "grid-view", domOverlay: null },
+    export: { pptx: "grid-view", pdf: "raster" },
+    createDefault: () => ({
+      ...box(0.8, 0.8, 3.2, 2),
+      type: "grid-view",
+      columns: 2,
+      gap: 0.12,
+      count: 4,
+      item: {
+        ...box(0, 0, 1.5, 0.8),
+        type: "rectangle",
+        fill: { color: "FFFFFF" },
+      },
     }),
   },
 } satisfies Record<ElementKind, ElementDefinition>;

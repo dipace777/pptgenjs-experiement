@@ -4,22 +4,29 @@ import type { Slide, SlideElement } from "../../../../../lib/slide-schema";
 import { textListStrings } from "../../../../../lib/element-model";
 import {
   deleteSelectedAtom,
+  editNestedTextAtom,
   editingBulletsDraftAtom,
   editingBulletsIndexAtom,
   editingChartDraftAtom,
   editingChartIndexAtom,
+  editingNestedTextAtom,
   editingSvgDraftAtom,
   editingSvgIndexAtom,
   editingTableDraftAtom,
   editingTableIndexAtom,
   editingTextIndexAtom,
+  enterGroupEditAtom,
+  groupEditRootIndexAtom,
   selectElementAtom,
   selectElementsAtom,
+  selectNestedElementAtom,
   selectedIndexAtom,
   selectedItemsAtom,
+  selectedNestedElementAtom,
   selectedTableCellAtom,
   updateElementAtom,
   updateElementsAtom,
+  type NestedElementSelection,
 } from "../../../state";
 import {
   chartDraftFromElement,
@@ -41,8 +48,14 @@ export function useEditorCanvasInteractions({
   const editingTableIndex = useAtomValue(editingTableIndexAtom);
   const editingChartIndex = useAtomValue(editingChartIndexAtom);
   const editingSvgIndex = useAtomValue(editingSvgIndexAtom);
+  const editingNestedElement = useAtomValue(editingNestedTextAtom);
+  const groupEditRootIndex = useAtomValue(groupEditRootIndexAtom);
+  const selectedNestedElement = useAtomValue(selectedNestedElementAtom);
   const selectElement = useSetAtom(selectElementAtom);
   const selectElements = useSetAtom(selectElementsAtom);
+  const selectNestedElement = useSetAtom(selectNestedElementAtom);
+  const editNestedText = useSetAtom(editNestedTextAtom);
+  const enterGroupEdit = useSetAtom(enterGroupEditAtom);
   const setSelectedTableCell = useSetAtom(selectedTableCellAtom);
   const deleteSelected = useSetAtom(deleteSelectedAtom);
   const setEditingTextIndex = useSetAtom(editingTextIndexAtom);
@@ -169,6 +182,8 @@ export function useEditorCanvasInteractions({
   return {
     editingBulletsIndex,
     editingChartIndex,
+    editingNestedElement,
+    groupEditRootIndex,
     editingSvgIndex,
     editingTableIndex,
     editingTextIndex,
@@ -182,13 +197,19 @@ export function useEditorCanvasInteractions({
     onEditSvg: editSvg,
     onEditTable: editTable,
     onEditText: editText,
+    onEditNestedText: (selection: NestedElementSelection) =>
+      editNestedText(selection),
+    onEnterGroupEdit: (index: number) => enterGroupEdit(index),
     onSelect: (index: number, additive?: boolean) =>
       selectElement({ index, additive }),
     onSelectMany: selectElements,
+    onSelectNested: (selection: NestedElementSelection | null) =>
+      selectNestedElement(selection),
     onSelectTableCell: (index: number, rowIndex: number, colIndex: number) => {
       setSelectedTableCell({ elementIndex: index, rowIndex, colIndex });
     },
     selected,
     selectedItems,
+    selectedNestedElement,
   };
 }

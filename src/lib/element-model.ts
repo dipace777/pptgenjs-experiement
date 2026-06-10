@@ -59,15 +59,17 @@ export function resizeElement<T extends SlideElement>(
   box: Partial<ElementBox>,
 ): T {
   const current = elementBox(element);
-  return {
+  const next = {
+    x: box.x ?? current.x,
+    y: box.y ?? current.y,
+    w: box.w ?? current.w,
+    h: box.h ?? current.h,
+  };
+  const resized = {
     ...element,
-    ...boxToPositionSize({
-      x: box.x ?? current.x,
-      y: box.y ?? current.y,
-      w: box.w ?? current.w,
-      h: box.h ?? current.h,
-    }),
+    ...boxToPositionSize(next),
   } as T;
+  return scaleSemanticChildren(resized, current, next);
 }
 
 export function moveElement<T extends SlideElement>(
@@ -224,4 +226,53 @@ export function isShapeElement(
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function scaleSemanticChildren<T extends SlideElement>(
+  element: T,
+  current: ElementBox,
+  next: ElementBox,
+): T {
+  const scaleX = current.w > 0 ? next.w / current.w : 1;
+  const scaleY = current.h > 0 ? next.h / current.h : 1;
+  if (scaleX === 1 && scaleY === 1) return element;
+
+  switch (element.type) {
+    case "container":
+      return {
+        ...element,
+        child: element.child ? scaleRelativeElement(element.child, scaleX, scaleY) : element.child,
+      } as T;
+    case "flex":
+    case "grid":
+    case "group":
+      return {
+        ...element,
+        children: element.children.map((child) =>
+          scaleRelativeElement(child, scaleX, scaleY),
+        ),
+      } as T;
+    case "list-view":
+    case "grid-view":
+      return {
+        ...element,
+        item: scaleRelativeElement(element.item, scaleX, scaleY),
+      } as T;
+    default:
+      return element;
+  }
+}
+
+function scaleRelativeElement(
+  element: SlideElement,
+  scaleX: number,
+  scaleY: number,
+): SlideElement {
+  const box = elementBox(element);
+  return resizeElement(element, {
+    x: box.x * scaleX,
+    y: box.y * scaleY,
+    w: Math.max(0.01, box.w * scaleX),
+    h: Math.max(0.01, box.h * scaleY),
+  });
 }

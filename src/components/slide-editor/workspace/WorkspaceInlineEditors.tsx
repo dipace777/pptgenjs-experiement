@@ -13,6 +13,8 @@ import {
   editingChartDraftAtom,
   editingChartElementAtom,
   editingChartIndexAtom,
+  editingNestedTextAtom,
+  editingNestedTextElementAtom,
   editingSvgDraftAtom,
   editingSvgElementAtom,
   editingSvgIndexAtom,
@@ -22,6 +24,7 @@ import {
   editingTextElementAtom,
   editingTextIndexAtom,
   updateElementAtom,
+  updateNestedTextElementAtom,
 } from "../state";
 
 type WorkspaceInlineEditorsProps = {
@@ -34,7 +37,9 @@ export function WorkspaceInlineEditors({ scale }: WorkspaceInlineEditorsProps) {
   const editingTableElement = useAtomValue(editingTableElementAtom);
   const editingChartElement = useAtomValue(editingChartElementAtom);
   const editingSvgElement = useAtomValue(editingSvgElementAtom);
+  const editingNestedTextElement = useAtomValue(editingNestedTextElementAtom);
   const [editingTextIndex, setEditingTextIndex] = useAtom(editingTextIndexAtom);
+  const [editingNestedText, setEditingNestedText] = useAtom(editingNestedTextAtom);
   const [editingBulletsIndex, setEditingBulletsIndex] = useAtom(
     editingBulletsIndexAtom,
   );
@@ -56,6 +61,7 @@ export function WorkspaceInlineEditors({ scale }: WorkspaceInlineEditorsProps) {
   const [editingSvgIndex, setEditingSvgIndex] = useAtom(editingSvgIndexAtom);
   const [editingSvgDraft, setEditingSvgDraft] = useAtom(editingSvgDraftAtom);
   const updateElement = useSetAtom(updateElementAtom);
+  const updateNestedTextElement = useSetAtom(updateNestedTextElementAtom);
 
   return (
     <>
@@ -66,6 +72,20 @@ export function WorkspaceInlineEditors({ scale }: WorkspaceInlineEditorsProps) {
           scale={scale}
           onChange={(index, element) => updateElement({ index, element })}
           onClose={() => setEditingTextIndex(null)}
+        />
+      ) : null}
+      {editingNestedTextElement && editingNestedText ? (
+        <TextInlineEditor
+          element={editingNestedTextElement}
+          index={-1}
+          scale={scale}
+          onChange={(_, element) =>
+            updateNestedTextElement({
+              element,
+              selection: editingNestedText,
+            })
+          }
+          onClose={() => setEditingNestedText(null)}
         />
       ) : null}
       {editingBulletsElement && editingBulletsIndex != null ? (

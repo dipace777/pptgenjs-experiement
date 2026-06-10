@@ -1,5 +1,6 @@
 import type Konva from "konva";
 import { elementBox } from "../../../../lib/element-model";
+import type { ElementPath } from "../../../../lib/semantic-elements";
 import type { SlideElement } from "../../../../lib/slide-schema";
 
 export const SELECTION_STROKE = "#d4a24c";
@@ -28,8 +29,16 @@ export type ElementCommonProps = {
   scale: number;
   selected: boolean;
   editing?: boolean;
+  editingNestedElement?: NestedElementTarget | null;
+  semanticPath?: ElementPath;
+  semanticRootIndex?: number;
   setRef: (node: Konva.Node | null) => void;
   events: ElementEvents;
+};
+
+export type NestedElementTarget = {
+  path: ElementPath;
+  rootIndex: number;
 };
 
 export type TableInteractionProps = {

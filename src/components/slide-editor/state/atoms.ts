@@ -1,6 +1,11 @@
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { atomWithImmer } from "jotai-immer";
+import {
+  editableDescendantsForSemanticElement,
+  elementPathKey,
+  type ElementPath,
+} from "../../../lib/semantic-elements";
 import type { Slide, SlideElement } from "../../../lib/slide-schema";
 import { textElementOverflows } from "../../../lib/textMeasure";
 import { layoutKitDeck } from "../../../templates/layout-kit";
@@ -14,6 +19,10 @@ export type TableSlideElement = Extract<SlideElement, { type: "table" }>;
 export type ChartSlideElement = Extract<SlideElement, { type: "chart" }>;
 export type SvgSlideElement = Extract<SlideElement, { type: "svg" }>;
 export type TableCellSelection = { elementIndex: number; rowIndex: number; colIndex: number };
+export type NestedElementSelection = {
+  path: ElementPath;
+  rootIndex: number;
+};
 
 // --- Primitive atoms ----------------------------------------------------
 
@@ -37,6 +46,9 @@ export const editingChartDraftAtom = atom("");
 export const editingSvgIndexAtom = atom<number | null>(null);
 export const editingSvgDraftAtom = atom("");
 export const selectedTableCellAtom = atom<TableCellSelection | null>(null);
+export const groupEditRootIndexAtom = atom<number | null>(null);
+export const selectedNestedElementAtom = atom<NestedElementSelection | null>(null);
+export const editingNestedTextAtom = atom<NestedElementSelection | null>(null);
 
 // --- Derived atoms ------------------------------------------------------
 
@@ -61,6 +73,12 @@ export const selectedElementAtom = atom<SlideElement | null>((get) => {
   const idx = get(selectedIndexAtom);
   if (idx < 0) return null;
   return get(activeSlideAtom)?.elements[idx] ?? null;
+});
+
+export const selectedNestedSlideElementAtom = atom<SlideElement | null>((get) => {
+  const selection = get(selectedNestedElementAtom);
+  if (!selection) return null;
+  return nestedElementForSelection(get(activeSlideAtom), selection);
 });
 
 export const selectedTextElementAtom = atom<TextSlideElement | null>((get) => {
@@ -97,6 +115,13 @@ export const editingTextElementAtom = atom<TextSlideElement | null>((get) => {
   const index = get(editingTextIndexAtom);
   if (index == null) return null;
   const element = get(activeSlideAtom).elements[index];
+  return element?.type === "text" ? element : null;
+});
+
+export const editingNestedTextElementAtom = atom<TextSlideElement | null>((get) => {
+  const selection = get(editingNestedTextAtom);
+  if (!selection) return null;
+  const element = nestedElementForSelection(get(activeSlideAtom), selection);
   return element?.type === "text" ? element : null;
 });
 
@@ -146,3 +171,17 @@ export const selectedElementOverflowsAtom = atom<boolean>((get) => {
   if (idx < 0) return false;
   return get(activeSlideOverflowIndicesAtom).has(idx);
 });
+
+function nestedElementForSelection(
+  slide: Slide,
+  selection: NestedElementSelection,
+): SlideElement | null {
+  const root = slide.elements[selection.rootIndex];
+  if (!root) return null;
+  const targetKey = elementPathKey(selection.path);
+  return (
+    editableDescendantsForSemanticElement(root).find(
+      (descendant) => elementPathKey(descendant.path) === targetKey,
+    )?.element ?? null
+  );
+}

@@ -1,31 +1,35 @@
-import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
 import {
-  elementBox,
-  elementFont,
-  fillColor,
-  strokeColor,
-} from "../../../lib/element-model";
-import type { SlideElement } from "../../../lib/slide-schema";
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type RefObject,
+} from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { Group, Layer, Rect, Stage } from "react-konva";
+import { elementBox, resizeElement } from "../../../lib/element-model";
+import { isSemanticElement } from "../../../lib/semantic-elements";
+import { SLIDE_H, SLIDE_W, type SlideElement } from "../../../lib/slide-schema";
 import type { ComponentTemplate } from "../componentTemplates";
 import { styles } from "../editorStyles";
-import {
-  colorWithOpacity,
-  kindLabel,
-  withHash,
-  withoutHash,
-} from "../editorUtils";
+import { kindLabel, withHash, withoutHash } from "../editorUtils";
 import { useSvgGeneration } from "../hooks";
 import { ElementInspector } from "../inspector/ElementInspector";
 import { ADDABLE_ELEMENT_KINDS } from "../registry";
 import { EditorButton, TextareaField } from "../shared/FormControls";
+import { renderKonvaElement } from "../slide-surface/konva/elementRenderers";
+import type { ElementEvents } from "../slide-surface/konva/types";
 import {
   activeSlideAtom,
   activeSlideIndexAtom,
   addElementAtom,
   deleteSelectedComponentRunAtom,
   duplicateSelectedAtom,
+  enterGroupEditAtom,
+  exitGroupEditAtom,
   getComponentRun,
+  groupEditRootIndexAtom,
   insertElementsAtom,
   patchSelectedAtom,
   selectedElementAtom,
@@ -49,6 +53,7 @@ export function SlideEditorDrawer({
   const activeSlide = useAtomValue(activeSlideAtom);
   const selectedElement = useAtomValue(selectedElementAtom);
   const selectedIndex = useAtomValue(selectedIndexAtom);
+  const groupEditRootIndex = useAtomValue(groupEditRootIndexAtom);
   const selectedComponentRun = getComponentRun(activeSlide.elements, selectedIndex);
   const updateActiveSlide = useSetAtom(updateActiveSlideAtom);
   const updateElement = useSetAtom(updateElementAtom);
@@ -57,6 +62,8 @@ export function SlideEditorDrawer({
   const insertElements = useSetAtom(insertElementsAtom);
   const duplicateSelected = useSetAtom(duplicateSelectedAtom);
   const deleteSelectedComponentRun = useSetAtom(deleteSelectedComponentRunAtom);
+  const enterGroupEdit = useSetAtom(enterGroupEditAtom);
+  const exitGroupEdit = useSetAtom(exitGroupEditAtom);
   const {
     svgPrompt,
     setSvgPrompt,
@@ -88,7 +95,7 @@ export function SlideEditorDrawer({
   };
 
   const insertComponent = (component: ComponentTemplate) => {
-    insertElements(component.elements);
+    insertElements(centerElementsForInsertion(component.elements));
     setComponentPickerOpen(false);
   };
 
@@ -156,6 +163,28 @@ export function SlideEditorDrawer({
             </div>
             <EditorButton onClick={() => deleteSelectedComponentRun()}>
               Delete component
+            </EditorButton>
+          </div>
+        ) : null}
+
+        {selectedElement && isSemanticElement(selectedElement) && selectedIndex >= 0 ? (
+          <div style={drawerStyles.componentPanel}>
+            <div style={drawerStyles.sectionTitle}>
+              {groupEditRootIndex === selectedIndex ? "Editing contents" : "Group contents"}
+            </div>
+            <div style={drawerStyles.componentMeta}>
+              {groupEditRootIndex === selectedIndex
+                ? "Select or double-click a child element inside this group."
+                : "Enter the group to edit its nested text and objects."}
+            </div>
+            <EditorButton
+              onClick={() =>
+                groupEditRootIndex === selectedIndex
+                  ? exitGroupEdit()
+                  : enterGroupEdit(selectedIndex)
+              }
+            >
+              {groupEditRootIndex === selectedIndex ? "Done editing contents" : "Edit contents"}
             </EditorButton>
           </div>
         ) : null}
@@ -329,21 +358,102 @@ function ComponentPickerDrawer({
 
 function ComponentPreview({ elements }: { elements: SlideElement[] }) {
   const bounds = useMemo(() => boundsForElements(elements), [elements]);
+  const stageRef = useRef<HTMLSpanElement | null>(null);
+  const previewSize = useMeasuredPreviewSize(stageRef);
+  const scale = previewScale(bounds, previewSize);
+  const contentW = bounds.w * scale;
+  const contentH = bounds.h * scale;
+  const offsetX = (previewSize.width - contentW) / 2 - bounds.x * scale;
+  const offsetY = (previewSize.height - contentH) / 2 - bounds.y * scale;
+
   return (
     <span style={drawerStyles.componentPreviewFrame}>
-      <span style={drawerStyles.componentPreviewStage}>
-        {elements.map((element, index) => (
-          <span
-            key={index}
-            style={{
-              ...previewElementStyle(element, bounds),
-              zIndex: index + 1,
-            }}
-          />
-        ))}
+      <span ref={stageRef} style={drawerStyles.componentPreviewStage}>
+        {previewSize.width > 0 && previewSize.height > 0 ? (
+          <Stage
+            width={previewSize.width}
+            height={previewSize.height}
+            style={{ display: "block", pointerEvents: "none" }}
+          >
+            <Layer listening={false}>
+              <Rect
+                width={previewSize.width}
+                height={previewSize.height}
+                fill="#080b12"
+              />
+              <Group x={offsetX} y={offsetY}>
+                {elements.map((element, index) => (
+                  <Group key={`${element.type}-${index}`}>
+                    {renderKonvaElement({
+                      element,
+                      index,
+                      scale,
+                      selected: false,
+                      setRef: noopRef,
+                      events: previewEvents,
+                      bulletsRenderMode: "canvas",
+                      chartRenderMode: "canvas",
+                      tableRenderMode: "canvas",
+                      textRenderMode: "canvas",
+                    })}
+                  </Group>
+                ))}
+              </Group>
+            </Layer>
+          </Stage>
+        ) : null}
       </span>
     </span>
   );
+}
+
+const PREVIEW_PADDING = 8;
+
+const previewEvents: ElementEvents = {
+  draggable: false,
+  onClick: () => false,
+  onDblClick: () => undefined,
+  onTap: () => false,
+  onMouseDown: () => undefined,
+  onMouseMove: () => undefined,
+  onMouseUp: () => undefined,
+  onMouseLeave: () => undefined,
+  onTouchStart: () => undefined,
+  onTouchMove: () => undefined,
+  onTouchEnd: () => undefined,
+  onTouchCancel: () => undefined,
+  onDragStart: () => undefined,
+  onDragMove: () => undefined,
+  onDragEnd: () => undefined,
+  onTransformEnd: () => undefined,
+};
+
+function noopRef() {
+  return undefined;
+}
+
+function useMeasuredPreviewSize(ref: RefObject<HTMLElement | null>) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const measure = () => {
+      const rect = node.getBoundingClientRect();
+      setSize({
+        width: Math.max(1, Math.round(rect.width)),
+        height: Math.max(1, Math.round(rect.height)),
+      });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return size;
 }
 
 type PreviewBounds = {
@@ -368,103 +478,37 @@ function boundsForElements(elements: SlideElement[]): PreviewBounds {
   };
 }
 
-function previewElementStyle(
-  element: SlideElement,
+function previewScale(
   bounds: PreviewBounds,
-): CSSProperties {
-  const box = elementBox(element);
-  const left = ((box.x - bounds.x) / bounds.w) * 100;
-  const top = ((box.y - bounds.y) / bounds.h) * 100;
-  const width = (box.w / bounds.w) * 100;
-  const height = (box.h / bounds.h) * 100;
-  const style: CSSProperties = {
-    position: "absolute",
-    left: `${left}%`,
-    top: `${top}%`,
-    width: `${width}%`,
-    height: `${height}%`,
-    boxSizing: "border-box",
-    opacity: element.opacity ?? 1,
-    transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
-    transformOrigin: "center",
-  };
+  size: { width: number; height: number },
+): number {
+  const availableW = Math.max(1, size.width - PREVIEW_PADDING * 2);
+  const availableH = Math.max(1, size.height - PREVIEW_PADDING * 2);
+  return Math.max(
+    0.01,
+    Math.min(availableW / bounds.w, availableH / bounds.h),
+  );
+}
 
-  if (element.type === "text" || element.type === "text-list") {
-    return {
-      ...style,
-      borderRadius: 2,
-      background: withHash(elementFont(element).color),
-      opacity: 0.75,
-    };
-  }
+function centerElementsForInsertion(elements: readonly SlideElement[]): SlideElement[] {
+  const copies = elements.map(cloneElement);
+  if (copies.length === 0) return [];
+  const bounds = boundsForElements(copies);
+  const targetX = Math.max(0, (SLIDE_W - bounds.w) / 2);
+  const targetY = Math.max(0, (SLIDE_H - bounds.h) / 2);
+  const dx = targetX - bounds.x;
+  const dy = targetY - bounds.y;
+  return copies.map((element) => {
+    const box = elementBox(element);
+    return resizeElement(element, {
+      x: box.x + dx,
+      y: box.y + dy,
+    });
+  });
+}
 
-  if (element.type === "rectangle" || element.type === "ellipse") {
-    return {
-      ...style,
-      borderRadius: element.type === "ellipse" ? "999px" : 3,
-      background: colorWithOpacity(
-        fillColor(element.fill, "D4A24C"),
-        element.fill?.opacity,
-      ),
-      border: element.stroke
-        ? `1px solid ${colorWithOpacity(
-            strokeColor(element.stroke),
-            element.stroke.opacity,
-          )}`
-        : undefined,
-      boxShadow: element.shadow
-        ? `0 2px 8px rgba(0,0,0,${Math.min(0.35, (element.shadow.opacity ?? 0.2) + 0.12)})`
-        : undefined,
-    };
-  }
-
-  if (element.type === "line") {
-    return {
-      ...style,
-      height: `${Math.max(height, 2)}%`,
-      background: colorWithOpacity(
-        strokeColor(element.stroke),
-        element.stroke.opacity,
-      ),
-    };
-  }
-
-  if (element.type === "image") {
-    return {
-      ...style,
-      borderRadius: 4,
-      background: element.data
-        ? `linear-gradient(135deg, #26334a, #111827)`
-        : "#20283a",
-      border: "1px dashed rgba(216,223,237,0.3)",
-    };
-  }
-
-  if (element.type === "table") {
-    const headerFill = element.columns[0]?.fill?.color ?? "0B1F3A";
-    const border = element.columns[0]?.stroke ?? element.rows[0]?.[0]?.stroke;
-    return {
-      ...style,
-      borderRadius: 3,
-      background: withHash(element.rows[0]?.[0]?.fill?.color ?? "FFFFFF"),
-      border: `1px solid ${withHash(strokeColor(border, "D9E2EF"))}`,
-      backgroundImage: `linear-gradient(${withHash(headerFill)} 0 28%, transparent 28%)`,
-    };
-  }
-
-  if (element.type === "chart") {
-    return {
-      ...style,
-      borderRadius: 4,
-      background: `linear-gradient(135deg, ${withHash(element.color ?? "D4A24C")}, #20283a)`,
-    };
-  }
-
-  return {
-    ...style,
-    borderRadius: 4,
-    background: "#6a7894",
-  };
+function cloneElement(element: SlideElement): SlideElement {
+  return JSON.parse(JSON.stringify(element)) as SlideElement;
 }
 
 function componentLabel(componentId: string) {
