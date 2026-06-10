@@ -1,4 +1,6 @@
-import { DeckSchema, type Deck } from "./slide-schema";
+import { z } from "zod";
+import type { ExtractedDesignElementTemplate } from "./design-element-extraction";
+import { DeckSchema, SlideElementSchema, type Deck } from "./slide-schema";
 
 const DB_NAME = "ppty";
 const DB_VERSION = 1;
@@ -6,13 +8,36 @@ const STORE_NAME = "deckHandoff";
 const PREVIEW_DECK_ID = "generatedDeck";
 const SESSION_KEY = "ppty:generatedDeck";
 
-export async function savePreviewDeck(deck: Deck): Promise<void> {
+const PreviewComponentTemplateSchema = z.object({
+  id: z.string().min(1).max(120),
+  label: z.string().min(1).max(120),
+  description: z.string().max(600).optional(),
+  elements: z.array(SlideElementSchema).min(1).max(60),
+});
+
+const PreviewDeckPayloadSchema = z.object({
+  deck: DeckSchema,
+  componentTemplates: z.array(PreviewComponentTemplateSchema).max(60).optional(),
+});
+
+export type PreviewDeckPayload = {
+  deck: Deck;
+  componentTemplates?: ExtractedDesignElementTemplate[];
+};
+
+export async function savePreviewDeck(
+  deck: Deck,
+  componentTemplates?: ReadonlyArray<ExtractedDesignElementTemplate>,
+): Promise<void> {
   if (typeof window === "undefined") return;
+  const value = componentTemplates?.length
+    ? { deck, componentTemplates }
+    : deck;
 
   try {
     const db = await openDeckDb();
     try {
-      await putStoredValue(db, PREVIEW_DECK_ID, deck);
+      await putStoredValue(db, PREVIEW_DECK_ID, value);
     } finally {
       db.close();
     }
@@ -28,7 +53,7 @@ export async function savePreviewDeck(deck: Deck): Promise<void> {
   }
 
   try {
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(deck));
+    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
   } catch {
     throw new Error(
       "Browser storage is full or unavailable, so the deck could not be opened for preview.",
@@ -37,14 +62,18 @@ export async function savePreviewDeck(deck: Deck): Promise<void> {
 }
 
 export async function readPreviewDeck(): Promise<Deck | null> {
+  return (await readPreviewDeckPayload())?.deck ?? null;
+}
+
+export async function readPreviewDeckPayload(): Promise<PreviewDeckPayload | null> {
   if (typeof window === "undefined") return null;
 
   try {
     const db = await openDeckDb();
     try {
       const stored = await getStoredValue(db, PREVIEW_DECK_ID);
-      const deck = parseStoredDeck(stored);
-      if (deck) return deck;
+      const payload = parseStoredPayload(stored);
+      if (payload) return payload;
     } finally {
       db.close();
     }
@@ -53,7 +82,7 @@ export async function readPreviewDeck(): Promise<Deck | null> {
   }
 
   try {
-    return parseStoredDeck(window.sessionStorage.getItem(SESSION_KEY));
+    return parseStoredPayload(window.sessionStorage.getItem(SESSION_KEY));
   } catch {
     return null;
   }
@@ -116,10 +145,13 @@ function getStoredValue(
   });
 }
 
-function parseStoredDeck(value: unknown): Deck | null {
+function parseStoredPayload(value: unknown): PreviewDeckPayload | null {
   const raw = typeof value === "string" ? safeJsonParse(value) : value;
-  const parsed = DeckSchema.safeParse(raw);
-  return parsed.success ? parsed.data : null;
+  const payload = PreviewDeckPayloadSchema.safeParse(raw);
+  if (payload.success) return payload.data;
+
+  const deck = DeckSchema.safeParse(raw);
+  return deck.success ? { deck: deck.data } : null;
 }
 
 function safeJsonParse(value: string): unknown {

@@ -231,14 +231,14 @@ export function SlideEditorDrawer({
             <EditorButton
               onClick={() => setComponentPickerOpen(true)}
             >
-              + Component
+              + Design Element
             </EditorButton>
           ) : null}
         </div>
 
         {componentTemplates.length > 0 ? (
           <div style={drawerStyles.componentHint}>
-            {componentTemplates.length} reusable component templates available.
+            {componentTemplates.length} reusable design elements available.
           </div>
         ) : null}
 
@@ -278,8 +278,8 @@ function ComponentPickerDrawer({
     <aside style={drawerStyles.componentDrawer}>
       <div style={drawerStyles.header}>
         <div>
-          <div style={styles.eyebrow}>ADD COMPONENT</div>
-          <h2 style={drawerStyles.title}>Components</h2>
+          <div style={styles.eyebrow}>ADD DESIGN ELEMENT</div>
+          <h2 style={drawerStyles.title}>Design Elements</h2>
         </div>
         <button
           type="button"
@@ -292,7 +292,7 @@ function ComponentPickerDrawer({
       </div>
 
       <div style={drawerStyles.hint}>
-        Reusable grouped blocks for this template.
+        Reusable blocks extracted from this deck.
       </div>
 
       <div style={drawerStyles.componentPreviewGrid}>

@@ -12,6 +12,10 @@ import {
   generateFallbackDeck,
   type DeckGenerationInput,
 } from "../lib/deck-generator";
+import {
+  extractDesignElementTemplates,
+  type ExtractedDesignElementTemplate,
+} from "../lib/design-element-extraction";
 import { savePreviewDeck } from "../lib/deck-storage";
 import { DECK_THEME_PRESETS, type DeckTheme } from "../lib/deck-theme";
 import { DeckSchema, type Deck } from "../lib/slide-schema";
@@ -144,9 +148,12 @@ function GeneratePage() {
     }));
   };
 
-  const saveAndPreview = async (deck: Deck) => {
+  const saveAndPreview = async (
+    deck: Deck,
+    componentTemplates?: ReadonlyArray<ExtractedDesignElementTemplate>,
+  ) => {
     setStatus("Opening preview...");
-    await savePreviewDeck(deck);
+    await savePreviewDeck(deck, componentTemplates);
     window.location.href = "/preview";
   };
 
@@ -179,12 +186,17 @@ function GeneratePage() {
         // eslint-disable-next-line no-console
         console.warn("PPTX import warnings:", warnings);
       }
+      const componentTemplates = extractDesignElementTemplates(validated.data);
       setStatus(
         `Imported ${validated.data.slides.length} slide(s)${
           warnings.length > 0 ? ` (${warnings.length} warnings)` : ""
+        }${
+          componentTemplates.length > 0
+            ? ` Found ${componentTemplates.length} reusable design element(s).`
+            : ""
         }.`,
       );
-      await saveAndPreview(validated.data);
+      await saveAndPreview(validated.data, componentTemplates);
     } catch (error) {
       setStatus(
         error instanceof Error ? `Import failed: ${error.message}` : "Import failed.",

@@ -2,8 +2,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SlideEditor } from "../components/slide-editor";
-import { readPreviewDeck } from "../lib/deck-storage";
-import type { Deck } from "../lib/slide-schema";
+import {
+  readPreviewDeckPayload,
+  type PreviewDeckPayload,
+} from "../lib/deck-storage";
 import { layoutKitDeck } from "../templates/layout-kit";
 
 export const Route = createFileRoute("/preview")({
@@ -11,13 +13,13 @@ export const Route = createFileRoute("/preview")({
 });
 
 function PreviewPage() {
-  const [deck, setDeck] = useState<Deck | null>(null);
+  const [payload, setPayload] = useState<PreviewDeckPayload | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    void readPreviewDeck().then((storedDeck) => {
-      if (isMounted) setDeck(storedDeck ?? layoutKitDeck);
+    void readPreviewDeckPayload().then((storedPayload) => {
+      if (isMounted) setPayload(storedPayload ?? { deck: layoutKitDeck });
     });
 
     return () => {
@@ -25,9 +27,15 @@ function PreviewPage() {
     };
   }, []);
 
-  if (!deck) return <main style={loadingStyle}>Loading deck...</main>;
+  if (!payload) return <main style={loadingStyle}>Loading deck...</main>;
 
-  return <SlideEditor key={deck.title} initialDeck={deck} />;
+  return (
+    <SlideEditor
+      key={`${payload.deck.title}:${payload.componentTemplates?.length ?? 0}`}
+      componentTemplates={payload.componentTemplates}
+      initialDeck={payload.deck}
+    />
+  );
 }
 
 const loadingStyle = {
