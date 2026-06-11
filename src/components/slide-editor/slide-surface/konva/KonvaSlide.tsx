@@ -1,5 +1,9 @@
 import Konva from "konva";
-import { SLIDE_W, type Slide, type SlideElement } from "../../../../lib/slide-schema";
+import {
+  SLIDE_W,
+  type Slide,
+  type SlideElement,
+} from "../../../../lib/slide-schema";
 import type { NestedElementSelection } from "../../state";
 import { ElementLayer } from "./ElementLayer";
 import { useEditorCanvasInteractions } from "./hooks/useEditorCanvasInteractions";
@@ -59,10 +63,16 @@ export function KonvaSlide({
   onEditTable?: (index: number) => void;
   onEditNestedText?: (selection: NestedElementSelection) => void;
   onEnterGroupEdit?: (index: number) => void;
-  onSelectTableCell?: (index: number, rowIndex: number, colIndex: number) => void;
+  onSelectTableCell?: (
+    index: number,
+    rowIndex: number,
+    colIndex: number,
+  ) => void;
   onSelectNested?: (selection: NestedElementSelection | null) => void;
   onChange?: (index: number, element: SlideElement) => void;
-  onChangeMany?: (updates: Array<{ index: number; element: SlideElement }>) => void;
+  onChangeMany?: (
+    updates: Array<{ index: number; element: SlideElement }>,
+  ) => void;
   stageRef?: (stage: Konva.Stage | null) => void;
   bulletsRenderMode?: "canvas" | "proxy";
   chartRenderMode?: "canvas" | "proxy";
@@ -81,34 +91,43 @@ export function KonvaSlide({
     onEditImage,
     slide,
   });
-  const resolvedSelected = selected ?? (interactive ? editorInteractions.selected : undefined);
+  const resolvedSelected =
+    selected ?? (interactive ? editorInteractions.selected : undefined);
   const resolvedSelectedItems =
-    selectedItems ?? (interactive ? editorInteractions.selectedItems : undefined);
+    selectedItems ??
+    (interactive ? editorInteractions.selectedItems : undefined);
   const resolvedEditingTextIndex =
-    editingTextIndex ?? (interactive ? editorInteractions.editingTextIndex : undefined);
+    editingTextIndex ??
+    (interactive ? editorInteractions.editingTextIndex : undefined);
   const resolvedEditingBulletsIndex =
     editingBulletsIndex ??
     (interactive ? editorInteractions.editingBulletsIndex : undefined);
   const resolvedEditingChartIndex =
-    editingChartIndex ?? (interactive ? editorInteractions.editingChartIndex : undefined);
+    editingChartIndex ??
+    (interactive ? editorInteractions.editingChartIndex : undefined);
   const resolvedEditingNestedElement =
     editingNestedElement ??
     (interactive ? editorInteractions.editingNestedElement : undefined);
   const resolvedEditingSvgIndex =
-    editingSvgIndex ?? (interactive ? editorInteractions.editingSvgIndex : undefined);
+    editingSvgIndex ??
+    (interactive ? editorInteractions.editingSvgIndex : undefined);
   const resolvedEditingTableIndex =
-    editingTableIndex ?? (interactive ? editorInteractions.editingTableIndex : undefined);
+    editingTableIndex ??
+    (interactive ? editorInteractions.editingTableIndex : undefined);
   const resolvedGroupEditRootIndex =
     groupEditRootIndex ??
     (interactive ? editorInteractions.groupEditRootIndex : undefined);
-  const resolvedOnSelect = onSelect ?? (interactive ? editorInteractions.onSelect : undefined);
+  const resolvedOnSelect =
+    onSelect ?? (interactive ? editorInteractions.onSelect : undefined);
   const resolvedOnSelectMany =
     onSelectMany ?? (interactive ? editorInteractions.onSelectMany : undefined);
-  const resolvedOnDelete = onDelete ?? (interactive ? editorInteractions.onDelete : undefined);
+  const resolvedOnDelete =
+    onDelete ?? (interactive ? editorInteractions.onDelete : undefined);
   const resolvedOnEditText =
     onEditText ?? (interactive ? editorInteractions.onEditText : undefined);
   const resolvedOnEditBullets =
-    onEditBullets ?? (interactive ? editorInteractions.onEditBullets : undefined);
+    onEditBullets ??
+    (interactive ? editorInteractions.onEditBullets : undefined);
   const resolvedOnEditChart =
     onEditChart ?? (interactive ? editorInteractions.onEditChart : undefined);
   const resolvedOnEditImage =
@@ -127,8 +146,10 @@ export function KonvaSlide({
     onEnterGroupEdit ??
     (interactive ? editorInteractions.onEnterGroupEdit : undefined);
   const resolvedOnSelectNested =
-    onSelectNested ?? (interactive ? editorInteractions.onSelectNested : undefined);
-  const resolvedOnChange = onChange ?? (interactive ? editorInteractions.onChange : undefined);
+    onSelectNested ??
+    (interactive ? editorInteractions.onSelectNested : undefined);
+  const resolvedOnChange =
+    onChange ?? (interactive ? editorInteractions.onChange : undefined);
   const resolvedOnChangeMany =
     onChangeMany ?? (interactive ? editorInteractions.onChangeMany : undefined);
   const { nodeRefs, selectedBounds, selectedIndexes, transformerRef } =

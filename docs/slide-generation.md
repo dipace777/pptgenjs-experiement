@@ -8,6 +8,7 @@ User input → LLM outline → deterministic layout → typed `Deck` → Konva p
 | --- | --- |
 | [src/routes/generate.tsx](../src/routes/generate.tsx) | Form + `createServerFn` that calls the LLM. |
 | [src/lib/deck-generator.ts](../src/lib/deck-generator.ts) | Outline schema, layout logic, fallback. |
+| [src/lib/company-url-template.ts](../src/lib/company-url-template.ts) | Company URL brand research, logo/theme extraction, and deterministic branded template deck creation. |
 | [src/lib/slide-schema.ts](../src/lib/slide-schema.ts) | Zod schema for a `Deck`. Consumed by both preview and exporter. |
 | [src/routes/preview.tsx](../src/routes/preview.tsx) | Reads the deck from `sessionStorage`, mounts the editor. |
 | [src/components/slide-editor/SlideEditor.tsx](../src/components/slide-editor/SlideEditor.tsx) | Konva editor, export trigger. |
@@ -15,11 +16,18 @@ User input → LLM outline → deterministic layout → typed `Deck` → Konva p
 
 ## 1. Form input
 
-[/generate](../src/routes/generate.tsx#L73-L75) collects four fields:
+[/generate](../src/routes/generate.tsx) supports three sources:
+
+- **Generate from prompt** collects `title`, `description`, `slideCount`, and `theme`, then calls the LLM outline flow.
+- **Import from PPTX** parses the uploaded `.pptx`, validates it as a `Deck`, extracts reusable design elements, and opens the preview.
+- **Company URL** accepts a public company URL, uses website metadata plus OpenAI web search when available, then creates an editable placeholder-only brand template deck with reusable design elements.
+
+Prompt generation collects:
 
 - `title` (≤ 90 chars)
 - `description` (≤ 1200 chars)
-- `theme`: `background`, `primary`, `accent`, `text` (hex)
+- `slideCount` (5-20)
+- `theme`: `background`, `surface`, `primary`, `secondary`, `accent`, `text`, `muted` (hex)
 
 On submit, [generate.tsx:103-110](../src/routes/generate.tsx#L103-L110) calls the `generateDeck` server function.
 
@@ -77,6 +85,20 @@ The response includes `source: "ai" | "fallback"` and, on fallback, `message: er
 - `bullets` → styled bulleted list.
 
 Returns `DeckSchema.parse({ title, slides })` — throws if layout produced anything invalid.
+
+## Company URL Template Path
+
+The URL source calls `generateCompanyTemplateFromUrl()` in [company-url-template.ts](../src/lib/company-url-template.ts). It normalizes missing schemes to `https://`, blocks obvious local/private hosts, fetches the HTML with a short timeout, and uses OpenAI Responses web search when `OPENAI_API_KEY` is available.
+
+The brand profile combines:
+
+- brand name from `og:site_name`, application metadata, title, or hostname;
+- logo URLs from metadata, favicons, logo-like page images, and web-search image results;
+- description from meta description/OG/Twitter metadata;
+- brand colors from meta theme color, inline styles, HTML, up to four linked stylesheets, and web-search brand research;
+- typeface/design keywords from web-search brand research when available.
+
+If the fetch or web search fails, the handler still returns a deterministic fallback template based on the hostname. Both success and fallback produce a normal `Deck`; the richer path also stores reusable design elements, so the editor drawer can insert brand lockups, title lockups, cards, metrics, CTA buttons, image slots, navigation pills, and dividers.
 
 ## 6. Client handoff
 

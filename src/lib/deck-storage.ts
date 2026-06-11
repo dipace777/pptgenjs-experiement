@@ -8,16 +8,62 @@ const STORE_NAME = "deckHandoff";
 const PREVIEW_DECK_ID = "generatedDeck";
 const SESSION_KEY = "ppty:generatedDeck";
 
+const PreviewDesignElementIntentSchema = z.enum([
+  "author-pill",
+  "badge",
+  "content-card",
+  "cta-button",
+  "decorative-accent",
+  "divider",
+  "feature-list",
+  "icon-label-row",
+  "image-asset",
+  "insight-grid",
+  "media-card",
+  "metric-card",
+  "navigation-pill",
+  "stat-card",
+  "title-lockup",
+  "unknown",
+]);
+
+const PreviewDesignElementSlotKindSchema = z.enum([
+  "accent",
+  "body",
+  "chart",
+  "date",
+  "icon",
+  "image",
+  "label",
+  "list",
+  "metric",
+  "shape",
+  "table",
+  "title",
+]);
+
 const PreviewComponentTemplateSchema = z.object({
   id: z.string().min(1).max(120),
   label: z.string().min(1).max(120),
   description: z.string().max(600).optional(),
+  intent: PreviewDesignElementIntentSchema.optional(),
+  qualityScore: z.number().min(0).max(100).optional(),
+  slots: z.array(
+    z.object({
+      elementIndexes: z.array(z.number().int().min(0).max(120)).max(24),
+      kind: PreviewDesignElementSlotKindSchema,
+      name: z.string().min(1).max(80),
+      role: z.string().min(1).max(120),
+      text: z.string().max(140).optional(),
+    }).strict(),
+  ).max(24).optional(),
   elements: z.array(SlideElementSchema).min(1).max(60),
 });
 
+const PreviewComponentTemplatesSchema = z.array(PreviewComponentTemplateSchema).max(60);
 const PreviewDeckPayloadSchema = z.object({
   deck: DeckSchema,
-  componentTemplates: z.array(PreviewComponentTemplateSchema).max(60).optional(),
+  componentTemplates: PreviewComponentTemplatesSchema.optional(),
 });
 
 export type PreviewDeckPayload = {
@@ -25,13 +71,23 @@ export type PreviewDeckPayload = {
   componentTemplates?: ExtractedDesignElementTemplate[];
 };
 
+export type PreviewDeckStorageDebugSnapshot = {
+  indexedDbError?: string;
+  indexedDbValue?: unknown;
+  parsedPayload: PreviewDeckPayload | null;
+  sessionStorageError?: string;
+  sessionStorageValue?: unknown;
+  source: "indexedDB" | "sessionStorage" | "none";
+};
+
 export async function savePreviewDeck(
   deck: Deck,
   componentTemplates?: ReadonlyArray<ExtractedDesignElementTemplate>,
 ): Promise<void> {
   if (typeof window === "undefined") return;
-  const value = componentTemplates?.length
-    ? { deck, componentTemplates }
+  const validComponentTemplates = parsePreviewComponentTemplates(componentTemplates);
+  const value = validComponentTemplates?.length
+    ? { deck, componentTemplates: validComponentTemplates }
     : deck;
 
   try {
@@ -86,6 +142,47 @@ export async function readPreviewDeckPayload(): Promise<PreviewDeckPayload | nul
   } catch {
     return null;
   }
+}
+
+export async function readPreviewDeckStorageDebugSnapshot(): Promise<PreviewDeckStorageDebugSnapshot> {
+  const snapshot: PreviewDeckStorageDebugSnapshot = {
+    parsedPayload: null,
+    source: "none",
+  };
+
+  if (typeof window === "undefined") return snapshot;
+
+  try {
+    const db = await openDeckDb();
+    try {
+      snapshot.indexedDbValue = await getStoredValue(db, PREVIEW_DECK_ID);
+      const payload = parseStoredPayload(snapshot.indexedDbValue);
+      if (payload) {
+        snapshot.parsedPayload = payload;
+        snapshot.source = "indexedDB";
+        return snapshot;
+      }
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    snapshot.indexedDbError =
+      error instanceof Error ? error.message : "Failed to read IndexedDB.";
+  }
+
+  try {
+    snapshot.sessionStorageValue = window.sessionStorage.getItem(SESSION_KEY);
+    const payload = parseStoredPayload(snapshot.sessionStorageValue);
+    if (payload) {
+      snapshot.parsedPayload = payload;
+      snapshot.source = "sessionStorage";
+    }
+  } catch (error) {
+    snapshot.sessionStorageError =
+      error instanceof Error ? error.message : "Failed to read sessionStorage.";
+  }
+
+  return snapshot;
 }
 
 function openDeckDb(): Promise<IDBDatabase> {
@@ -145,13 +242,46 @@ function getStoredValue(
   });
 }
 
-function parseStoredPayload(value: unknown): PreviewDeckPayload | null {
+export function parsePreviewDeckPayload(value: unknown): PreviewDeckPayload | null {
   const raw = typeof value === "string" ? safeJsonParse(value) : value;
   const payload = PreviewDeckPayloadSchema.safeParse(raw);
   if (payload.success) return payload.data;
 
+  if (isObjectRecord(raw) && "deck" in raw) {
+    const deck = DeckSchema.safeParse(raw.deck);
+    if (!deck.success) return null;
+
+    const componentTemplates = parsePreviewComponentTemplates(
+      raw.componentTemplates,
+    );
+    return componentTemplates?.length
+      ? { deck: deck.data, componentTemplates }
+      : { deck: deck.data };
+  }
+
   const deck = DeckSchema.safeParse(raw);
   return deck.success ? { deck: deck.data } : null;
+}
+
+function parseStoredPayload(value: unknown): PreviewDeckPayload | null {
+  return parsePreviewDeckPayload(value);
+}
+
+function parsePreviewComponentTemplates(
+  value: unknown,
+): ExtractedDesignElementTemplate[] | undefined {
+  const payload = PreviewComponentTemplatesSchema.safeParse(value);
+  if (payload.success) return payload.data;
+  if (!Array.isArray(value)) return undefined;
+
+  const valid = value
+    .slice(0, 60)
+    .flatMap((template) => {
+      const result = PreviewComponentTemplateSchema.safeParse(template);
+      return result.success ? [result.data] : [];
+    });
+
+  return valid.length > 0 ? valid : undefined;
 }
 
 function safeJsonParse(value: string): unknown {
@@ -160,4 +290,8 @@ function safeJsonParse(value: string): unknown {
   } catch {
     return null;
   }
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

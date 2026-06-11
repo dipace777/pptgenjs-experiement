@@ -338,7 +338,6 @@ function layoutFlexChildren(
   children: SlideElement[],
 ): SlideElement[] {
   if (children.length === 0) return [];
-  if (children.every(hasExplicitFrame)) return children.map(cloneElement);
 
   const direction = element.direction ?? "column";
   const isRow = direction === "row";
@@ -395,12 +394,12 @@ function layoutFlexChildren(
     const frame = isRow
       ? {
           x: cursor,
-          y: child.position?.y ?? crossStart,
+          y: crossStart,
           w: mainSizes[index] ?? explicit.w,
           h: crossSize,
         }
       : {
-          x: child.position?.x ?? crossStart,
+          x: crossStart,
           y: cursor,
           w: crossSize,
           h: mainSizes[index] ?? explicit.h,
@@ -427,7 +426,6 @@ function layoutGridChildren(
   children: SlideElement[],
 ): SlideElement[] {
   if (children.length === 0) return [];
-  if (children.every(hasExplicitFrame)) return children.map(cloneElement);
 
   const columns = clampInt(element.columns, 1, 12);
   const rows = Math.max(
@@ -452,8 +450,8 @@ function layoutGridChildren(
       w: cellW * columnSpan + columnGap * (columnSpan - 1),
       h: cellH * rowSpan + rowGap * (rowSpan - 1),
     };
-    const justify = element.justifyItems ?? "stretch";
-    const align = child.layout?.alignSelf ?? element.alignItems ?? "stretch";
+    const justify = element.justifyItems ?? "flex-start";
+    const align = child.layout?.alignSelf ?? element.alignItems ?? "flex-start";
     const childW =
       justify === "stretch" || !child.size
         ? area.w
@@ -463,8 +461,8 @@ function layoutGridChildren(
         ? area.h
         : Math.min(area.h, child.size.height);
     return resizeElement(child, {
-      x: child.position?.x ?? alignedStart(justify, area.x, area.w, childW),
-      y: child.position?.y ?? alignedStart(align, area.y, area.h, childH),
+      x: alignedStart(justify, area.x, area.w, childW),
+      y: alignedStart(align, area.y, area.h, childH),
       w: childW,
       h: childH,
     });

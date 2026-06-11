@@ -8,9 +8,10 @@ import {
 } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Group, Layer, Rect, Stage } from "react-konva";
-import { elementBox, resizeElement } from "../../../lib/element-model";
+import { elementBox } from "../../../lib/element-model";
+import { prepareDesignElementsForInsertion } from "../../../lib/design-element-insertion";
 import { isSemanticElement } from "../../../lib/semantic-elements";
-import { SLIDE_H, SLIDE_W, type SlideElement } from "../../../lib/slide-schema";
+import type { SlideElement } from "../../../lib/slide-schema";
 import type { ComponentTemplate } from "../componentTemplates";
 import { styles } from "../editorStyles";
 import { kindLabel, withHash, withoutHash } from "../editorUtils";
@@ -95,7 +96,9 @@ export function SlideEditorDrawer({
   };
 
   const insertComponent = (component: ComponentTemplate) => {
-    insertElements(centerElementsForInsertion(component.elements));
+    insertElements(
+      prepareDesignElementsForInsertion(component.elements, activeSlide.background),
+    );
     setComponentPickerOpen(false);
   };
 
@@ -113,6 +116,7 @@ export function SlideEditorDrawer({
           components={componentTemplates}
           onClose={() => setComponentPickerOpen(false)}
           onInsert={insertComponent}
+          previewBackground={activeSlide.background}
         />
       ) : null}
       <aside style={drawerStyles.drawer}>
@@ -309,10 +313,12 @@ function ComponentPickerDrawer({
   components,
   onClose,
   onInsert,
+  previewBackground,
 }: {
   components: ReadonlyArray<ComponentTemplate>;
   onClose: () => void;
   onInsert: (component: ComponentTemplate) => void;
+  previewBackground: string;
 }) {
   return (
     <aside style={drawerStyles.componentDrawer}>
@@ -344,10 +350,13 @@ function ComponentPickerDrawer({
             onClick={() => onInsert(component)}
             style={drawerStyles.componentPreviewCard}
           >
-            <ComponentPreview elements={component.elements} />
+            <ComponentPreview
+              elements={component.elements}
+              preferredBackground={previewBackground}
+            />
             <span style={drawerStyles.componentPreviewName}>{component.label}</span>
             <span style={drawerStyles.componentPreviewMeta}>
-              {component.elements.length} elements
+              {componentMeta(component)}
             </span>
           </button>
         ))}
@@ -356,8 +365,18 @@ function ComponentPickerDrawer({
   );
 }
 
-function ComponentPreview({ elements }: { elements: SlideElement[] }) {
+function ComponentPreview({
+  elements,
+  preferredBackground,
+}: {
+  elements: SlideElement[];
+  preferredBackground: string;
+}) {
   const bounds = useMemo(() => boundsForElements(elements), [elements]);
+  const background = useMemo(
+    () => previewBackgroundForElements(elements, preferredBackground),
+    [elements, preferredBackground],
+  );
   const stageRef = useRef<HTMLSpanElement | null>(null);
   const previewSize = useMeasuredPreviewSize(stageRef);
   const scale = previewScale(bounds, previewSize);
@@ -379,7 +398,7 @@ function ComponentPreview({ elements }: { elements: SlideElement[] }) {
               <Rect
                 width={previewSize.width}
                 height={previewSize.height}
-                fill="#080b12"
+                fill={withHash(background)}
               />
               <Group x={offsetX} y={offsetY}>
                 {elements.map((element, index) => (
@@ -490,29 +509,120 @@ function previewScale(
   );
 }
 
-function centerElementsForInsertion(elements: readonly SlideElement[]): SlideElement[] {
-  const copies = elements.map(cloneElement);
-  if (copies.length === 0) return [];
-  const bounds = boundsForElements(copies);
-  const targetX = Math.max(0, (SLIDE_W - bounds.w) / 2);
-  const targetY = Math.max(0, (SLIDE_H - bounds.h) / 2);
-  const dx = targetX - bounds.x;
-  const dy = targetY - bounds.y;
-  return copies.map((element) => {
-    const box = elementBox(element);
-    return resizeElement(element, {
-      x: box.x + dx,
-      y: box.y + dy,
-    });
-  });
+function previewBackgroundForElements(
+  elements: readonly SlideElement[],
+  preferredBackground: string,
+): string {
+  const preferred = normalizePreviewHex(preferredBackground, "F8FAFC");
+  const textColor = dominantTextColor(elements);
+  if (!textColor || contrastRatio(textColor, preferred) >= 3) {
+    return preferred;
+  }
+  return relativeLuminance(textColor) < 0.45 ? "F8FAFC" : "080B12";
 }
 
-function cloneElement(element: SlideElement): SlideElement {
-  return JSON.parse(JSON.stringify(element)) as SlideElement;
+function dominantTextColor(elements: readonly SlideElement[]): string | null {
+  const colors = collectTextColors(elements)
+    .map((color) => normalizePreviewHex(color, ""))
+    .filter(Boolean);
+  if (colors.length === 0) return null;
+
+  const counts = new Map<string, number>();
+  for (const color of colors) counts.set(color, (counts.get(color) ?? 0) + 1);
+  return (
+    [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  );
+}
+
+function collectTextColors(elements: readonly SlideElement[]): string[] {
+  const colors: string[] = [];
+  for (const element of elements) collectElementTextColors(element, colors);
+  return colors;
+}
+
+function collectElementTextColors(element: SlideElement, colors: string[]) {
+  if (element.type === "text") {
+    if (element.font?.color) colors.push(element.font.color);
+    element.runs.forEach((run) => {
+      if (run.font?.color) colors.push(run.font.color);
+    });
+    return;
+  }
+
+  if (element.type === "text-list") {
+    if (element.font?.color) colors.push(element.font.color);
+    return;
+  }
+
+  if (element.type === "table") {
+    if (element.font?.color) colors.push(element.font.color);
+    [...element.columns, ...element.rows.flat()].forEach((cell) => {
+      if (cell.font?.color) colors.push(cell.font.color);
+    });
+    return;
+  }
+
+  if (element.type === "chart") {
+    if (element.labelColor) colors.push(element.labelColor);
+    return;
+  }
+
+  if (element.type === "container") {
+    if (element.child) collectElementTextColors(element.child, colors);
+    return;
+  }
+
+  if (
+    element.type === "group" ||
+    element.type === "flex" ||
+    element.type === "grid"
+  ) {
+    element.children.forEach((child) => collectElementTextColors(child, colors));
+    return;
+  }
+
+  if (element.type === "list-view" || element.type === "grid-view") {
+    collectElementTextColors(element.item, colors);
+  }
+}
+
+function normalizePreviewHex(color: string, fallback: string): string {
+  const clean = color.trim().replace(/^#/, "").toUpperCase();
+  if (/^[0-9A-F]{6}$/.test(clean)) return clean;
+  return fallback;
+}
+
+function contrastRatio(a: string, b: string): number {
+  const first = relativeLuminance(a);
+  const second = relativeLuminance(b);
+  const light = Math.max(first, second);
+  const dark = Math.min(first, second);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function relativeLuminance(hex: string): number {
+  const clean = normalizePreviewHex(hex, "000000");
+  const channels = [0, 2, 4].map((start) => {
+    const value = Number.parseInt(clean.slice(start, start + 2), 16) / 255;
+    return value <= 0.03928
+      ? value / 12.92
+      : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }
 
 function componentLabel(componentId: string) {
   return componentId
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function componentMeta(component: ComponentTemplate) {
+  const parts = [
+    component.intent ? component.intent.replace(/-/g, " ") : null,
+    component.slots?.length ? `${component.slots.length} slots` : null,
+    component.qualityScore != null ? `${Math.round(component.qualityScore)} quality` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" · ") : `${component.elements.length} elements`;
 }

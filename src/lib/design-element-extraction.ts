@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { agnes } from "ml-hclust";
+import { similarity as vectorSimilarity } from "ml-distance";
 import {
   SLIDE_H,
   SLIDE_W,
@@ -22,6 +24,9 @@ export type ExtractedDesignElementTemplate = {
   label: string;
   description?: string;
   elements: SlideElement[];
+  intent?: DesignElementIntent;
+  qualityScore?: number;
+  slots?: DesignElementSlot[];
 };
 
 const SLIDE_AREA = SLIDE_W * SLIDE_H;
@@ -30,6 +35,8 @@ const MAX_ELEMENTS_PER_TEMPLATE = 12;
 const MAX_LLM_CLUSTERS = 60;
 const MIN_GROUP_AREA = SLIDE_AREA * 0.006;
 const MAX_GROUP_AREA = SLIDE_AREA * 0.45;
+const MAX_LAYOUT_PATTERN_AREA = SLIDE_AREA * 0.68;
+const CLUSTER_DISTANCE_THRESHOLD = 0.22;
 
 export const DesignElementCategorySchema = z.enum([
   "navigation",
@@ -46,6 +53,58 @@ export const DesignElementCategorySchema = z.enum([
 ]);
 
 export type DesignElementCategory = z.infer<typeof DesignElementCategorySchema>;
+
+export const DesignElementIntentSchema = z.enum([
+  "author-pill",
+  "badge",
+  "content-card",
+  "cta-button",
+  "decorative-accent",
+  "divider",
+  "feature-list",
+  "icon-label-row",
+  "image-asset",
+  "insight-grid",
+  "media-card",
+  "metric-card",
+  "navigation-pill",
+  "stat-card",
+  "title-lockup",
+  "unknown",
+]);
+
+export type DesignElementIntent = z.infer<typeof DesignElementIntentSchema>;
+
+export const DesignElementSlotKindSchema = z.enum([
+  "accent",
+  "body",
+  "chart",
+  "date",
+  "icon",
+  "image",
+  "label",
+  "list",
+  "metric",
+  "shape",
+  "table",
+  "title",
+]);
+
+export type DesignElementSlotKind = z.infer<typeof DesignElementSlotKindSchema>;
+
+export type DesignElementSlot = {
+  elementIndexes: number[];
+  kind: DesignElementSlotKind;
+  name: string;
+  role: string;
+  text?: string;
+};
+
+type DesignElementQuality = {
+  issues: string[];
+  score: number;
+  strengths: string[];
+};
 
 export const DesignElementStructureSchema = z.enum([
   "group",
@@ -77,6 +136,16 @@ const CurationElementSummarySchema = z
   })
   .strict();
 
+const CurationSlotSchema = z
+  .object({
+    elementIndexes: z.array(z.number().int().min(0).max(MAX_ELEMENTS_PER_TEMPLATE)).max(8),
+    kind: DesignElementSlotKindSchema,
+    name: z.string().min(1).max(80),
+    role: z.string().min(1).max(120),
+    text: z.string().max(140).optional(),
+  })
+  .strict();
+
 export const DesignElementCurationClusterSchema = z
   .object({
     id: z.string().min(1).max(140),
@@ -84,6 +153,11 @@ export const DesignElementCurationClusterSchema = z
     label: z.string().min(1).max(120),
     description: z.string().max(600),
     categoryHint: DesignElementCategorySchema,
+    editableSlots: z.array(CurationSlotSchema).max(16),
+    intentHint: DesignElementIntentSchema,
+    qualityIssues: z.array(z.string().min(1).max(140)).max(10),
+    qualityScore: z.number().min(0).max(100),
+    qualitySignals: z.array(z.string().min(1).max(140)).max(10),
     recommendedStructure: DesignElementStructureSchema,
     score: z.number(),
     occurrenceCount: z.number().int().min(1).max(100),
@@ -108,6 +182,7 @@ export const DesignElementCurationDecisionSchema = z
     category: DesignElementCategorySchema,
     label: z.string().min(1).max(90),
     description: z.string().min(1).max(220),
+    intent: DesignElementIntentSchema.nullish(),
     representativeCandidateId: z.string().min(1).max(140).optional(),
     structure: DesignElementStructureSchema.nullish(),
     confidence: z.number().min(0).max(1),
@@ -164,11 +239,20 @@ type Candidate = {
   label: string;
   description: string;
   elements: SlideElement[];
-  source: "explicit" | "container" | "title-lockup" | "media";
+  source:
+    | "explicit"
+    | "container"
+    | "layout-flex"
+    | "layout-grid"
+    | "title-lockup"
+    | "media";
   slideIndex: number;
   elementIndexes: number[];
   categoryHint: DesignElementCategory;
   bounds: Bounds;
+  intentHint: DesignElementIntent;
+  quality: DesignElementQuality;
+  slots: DesignElementSlot[];
   score: number;
   signature: string;
   clusterSignature: string;
@@ -179,6 +263,12 @@ type Bounds = {
   y: number;
   w: number;
   h: number;
+};
+
+type IndexedElement = {
+  bounds: Bounds;
+  element: SlideElement;
+  index: number;
 };
 
 export function extractDesignElementTemplates(
@@ -192,12 +282,15 @@ export function createDesignElementExtraction(
   deck: Deck,
   limit = MAX_TEMPLATES,
 ): DesignElementExtraction {
-  const rawCandidates = [
+  const discoveredCandidates = [
     ...explicitComponentCandidates(deck),
     ...containerGroupCandidates(deck),
+    ...layoutPatternCandidates(deck),
     ...titleLockupCandidates(deck),
     ...mediaCandidates(deck),
-  ].sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
+  ];
+  const rawCandidates = repairCandidates(deck, discoveredCandidates)
+    .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
 
   const candidates = pruneOverlappingCandidates(rawCandidates);
   const clusters = clusterCandidates(candidates).sort(
@@ -210,7 +303,7 @@ export function createDesignElementExtraction(
     clusters,
     curationInput: buildCurationInput(deck, clusters),
     metrics: {
-      rawCandidateCount: rawCandidates.length,
+      rawCandidateCount: discoveredCandidates.length,
       candidateCount: candidates.length,
       clusterCount: clusters.length,
     },
@@ -234,6 +327,7 @@ export function templatesFromDesignElementCuration(
     cluster: DesignElementCandidateCluster;
     label?: string;
     description?: string;
+    intent?: DesignElementIntent;
     representativeCandidateId?: string;
     structure?: DesignElementStructure;
     confidence: number;
@@ -247,6 +341,7 @@ export function templatesFromDesignElementCuration(
       cluster,
       label: decision.label,
       description: decision.description,
+      intent: decision.intent ?? undefined,
       representativeCandidateId: decision.representativeCandidateId,
       structure: decision.structure ?? undefined,
       confidence: decision.confidence,
@@ -297,6 +392,7 @@ function templatesFromClusterSelections(
     description?: string;
     representativeCandidateId?: string;
     structure?: DesignElementStructure;
+    intent?: DesignElementIntent;
     confidence: number;
   }>,
   limit: number,
@@ -329,6 +425,9 @@ function templatesFromClusterSelections(
         description,
         selection.structure,
       ),
+      intent: selection.intent ?? candidate.intentHint,
+      qualityScore: candidate.quality.score,
+      slots: candidate.slots,
     });
     selected.add(cluster.id);
 
@@ -338,14 +437,336 @@ function templatesFromClusterSelections(
   return templates;
 }
 
-function makeCandidate(input: Omit<Candidate, "id" | "bounds" | "clusterSignature">): Candidate {
+function makeCandidate(
+  input: Omit<
+    Candidate,
+    "id" | "bounds" | "clusterSignature" | "intentHint" | "quality" | "slots"
+  >,
+): Candidate {
   const bounds = boundsForElements(input.elements);
+  const slots = editableSlotsForElements(input.elements);
+  const intentHint = inferIntent({
+    bounds,
+    categoryHint: input.categoryHint,
+    elements: input.elements,
+    source: input.source,
+    slots,
+  });
+  const quality = evaluateCandidateQuality({
+    bounds,
+    categoryHint: input.categoryHint,
+    elements: input.elements,
+    intentHint,
+    slots,
+    source: input.source,
+  });
   return {
     ...input,
     id: candidateId(input.source, input.slideIndex, input.elementIndexes, input.key),
     bounds,
+    intentHint,
+    quality,
+    score: input.score + quality.score * 2 + intentScoreBonus(intentHint),
+    slots,
     clusterSignature: fuzzyLayoutSignature(input.elements, input.categoryHint),
   };
+}
+
+function repairCandidates(deck: Deck, candidates: Candidate[]): Candidate[] {
+  return candidates.map((candidate) => repairCandidate(deck, candidate));
+}
+
+function repairCandidate(deck: Deck, candidate: Candidate): Candidate {
+  if (candidate.source === "media") return candidate;
+
+  const slide = deck.slides[candidate.slideIndex];
+  if (!slide) return candidate;
+
+  const indexes = new Set(candidate.elementIndexes);
+  const reasons = new Set<string>();
+
+  const sortedMembers = () =>
+    [...indexes]
+      .sort((a, b) => a - b)
+      .map((index) => ({ element: slide.elements[index], index }))
+      .filter(
+        (member): member is { element: SlideElement; index: number } =>
+          Boolean(member.element),
+      );
+  const sortedElements = () => sortedMembers().map(({ element }) => element);
+  const currentBounds = () => boundsForElements(sortedElements());
+
+  const addIndex = (index: number, reason: string) => {
+    if (indexes.has(index)) return;
+    const element = slide.elements[index];
+    if (!element) return;
+    if (indexes.size >= MAX_ELEMENTS_PER_TEMPLATE) return;
+    if (isLikelyBackgroundElement(element, slide)) return;
+    indexes.add(index);
+    reasons.add(reason);
+  };
+
+  expandWithContainingShells(slide, indexes, addIndex, currentBounds);
+  expandShellContents(slide, indexes, addIndex, sortedMembers);
+  expandHeadingAccents(slide, indexes, addIndex, sortedMembers);
+  expandIconTextPairs(slide, addIndex, sortedMembers);
+  expandTitleBodyPairs(slide, indexes, addIndex, sortedMembers);
+
+  if (reasons.size === 0) return candidate;
+
+  const elementIndexes = [...indexes].sort((a, b) => a - b);
+  const elements = elementIndexes
+    .map((index) => slide.elements[index])
+    .filter((element): element is SlideElement => Boolean(element));
+  if (elements.length === candidate.elements.length) return candidate;
+
+  const repairBonus = Math.min(90, 30 + reasons.size * 14);
+  const label = labelFromElements(
+    elements,
+    candidate.label.split(":")[0] ?? candidate.label,
+  );
+  const baseScore =
+    candidate.score -
+    candidate.quality.score * 2 -
+    intentScoreBonus(candidate.intentHint);
+
+  const repairedCandidate = makeCandidate({
+    key: `${candidate.key}-repaired-${sampleHash(elementIndexes.join(","))}`,
+    label: truncate(label, 120),
+    description: candidate.description,
+    elements,
+    source: candidate.source,
+    slideIndex: candidate.slideIndex,
+    elementIndexes,
+    categoryHint: classifyElements(elements),
+    score: Math.max(0, baseScore + repairBonus),
+    signature: `repaired:${candidate.source}:${layoutSignature(elements)}`,
+  });
+
+  if (repairedCandidate.quality.score + 8 < candidate.quality.score) {
+    return candidate;
+  }
+
+  return repairedCandidate;
+}
+
+function expandWithContainingShells(
+  slide: Slide,
+  indexes: Set<number>,
+  addIndex: (index: number, reason: string) => void,
+  currentBounds: () => Bounds,
+) {
+  const bounds = currentBounds();
+  slide.elements.forEach((element, index) => {
+    if (indexes.has(index)) return;
+    if (!isContainerElement(element, slide)) return;
+    const shellBounds = padBounds(elementBounds(element), 0.06);
+    if (!boundsFitWithin(bounds, shellBounds)) return;
+
+    const shellArea = Math.max(0.01, shellBounds.w * shellBounds.h);
+    const contentArea = bounds.w * bounds.h;
+    if (contentArea / shellArea < 0.04 && shellArea > SLIDE_AREA * 0.22) return;
+    addIndex(index, "container shell");
+  });
+}
+
+function expandShellContents(
+  slide: Slide,
+  indexes: Set<number>,
+  addIndex: (index: number, reason: string) => void,
+  sortedMembers: () => Array<{ element: SlideElement; index: number }>,
+) {
+  const shells = sortedMembers().filter(({ element }) =>
+    isContainerElement(element, slide),
+  );
+  for (const shell of shells) {
+    const shellBounds = padBounds(elementBounds(shell.element), 0.06);
+    slide.elements.forEach((element, index) => {
+      if (indexes.has(index)) return;
+      if (indexes.size >= MAX_ELEMENTS_PER_TEMPLATE) return;
+      if (isLikelyBackgroundElement(element, slide)) return;
+      if (!elementFitsWithin(element, shellBounds)) return;
+      if (!isMeaningfulCompanionElement(element)) return;
+      addIndex(index, "container contents");
+    });
+  }
+}
+
+function expandHeadingAccents(
+  slide: Slide,
+  indexes: Set<number>,
+  addIndex: (index: number, reason: string) => void,
+  sortedMembers: () => Array<{ element: SlideElement; index: number }>,
+) {
+  for (const { element } of sortedMembers()) {
+    if (element.type !== "text" || !isHeadingText(element)) continue;
+    slide.elements.forEach((candidate, index) => {
+      if (indexes.has(index)) return;
+      if (isNearbyAccent(candidate, element)) addIndex(index, "heading accent");
+    });
+  }
+}
+
+function expandIconTextPairs(
+  slide: Slide,
+  addIndex: (index: number, reason: string) => void,
+  sortedMembers: () => Array<{ element: SlideElement; index: number }>,
+) {
+  for (const { element } of sortedMembers()) {
+    if (isIconLikeElement(element)) {
+      nearestTextNeighbors(slide, element).forEach((index) =>
+        addIndex(index, "icon text"),
+      );
+      continue;
+    }
+
+    if (element.type === "text") {
+      nearestIconNeighbors(slide, element).forEach((index) =>
+        addIndex(index, "text icon"),
+      );
+    }
+  }
+}
+
+function expandTitleBodyPairs(
+  slide: Slide,
+  indexes: Set<number>,
+  addIndex: (index: number, reason: string) => void,
+  sortedMembers: () => Array<{ element: SlideElement; index: number }>,
+) {
+  for (const { element } of sortedMembers()) {
+    if (element.type !== "text") continue;
+    if (!isTitleLikeText(element)) continue;
+
+    slide.elements.forEach((candidate, index) => {
+      if (indexes.has(index)) return;
+      if (candidate.type !== "text" && candidate.type !== "text-list") return;
+      if (!isBodyCompanion(element, candidate)) return;
+      addIndex(index, "supporting text");
+    });
+  }
+}
+
+function nearestTextNeighbors(slide: Slide, anchor: SlideElement): number[] {
+  const anchorBox = elementBounds(anchor);
+  return slide.elements
+    .map((element, index) => ({ element, index }))
+    .filter(
+      (member): member is { element: SlideElement; index: number } =>
+        Boolean(member.element) &&
+        (member.element.type === "text" || member.element.type === "text-list") &&
+        isHorizontalCompanion(anchorBox, elementBounds(member.element)),
+    )
+    .sort(
+      (a, b) =>
+        horizontalGap(anchorBox, elementBounds(a.element)) -
+        horizontalGap(anchorBox, elementBounds(b.element)),
+    )
+    .slice(0, 2)
+    .map(({ index }) => index);
+}
+
+function nearestIconNeighbors(slide: Slide, text: SlideElement): number[] {
+  const textBox = elementBounds(text);
+  return slide.elements
+    .map((element, index) => ({ element, index }))
+    .filter(
+      (member): member is { element: SlideElement; index: number } =>
+        Boolean(member.element) &&
+        isIconLikeElement(member.element) &&
+        isHorizontalCompanion(elementBounds(member.element), textBox),
+    )
+    .sort(
+      (a, b) =>
+        horizontalGap(elementBounds(a.element), textBox) -
+        horizontalGap(elementBounds(b.element), textBox),
+    )
+    .slice(0, 1)
+    .map(({ index }) => index);
+}
+
+function isMeaningfulCompanionElement(element: SlideElement): boolean {
+  if (element.type === "text") return textContent(element).trim().length > 0;
+  if (element.type === "text-list") return textListStrings(element).length > 0;
+  return (
+    element.type === "image" ||
+    element.type === "svg" ||
+    element.type === "chart" ||
+    element.type === "table" ||
+    element.type === "line" ||
+    element.type === "rectangle" ||
+    element.type === "ellipse"
+  );
+}
+
+function isIconLikeElement(element: SlideElement): boolean {
+  const box = elementBounds(element);
+  if (element.type === "svg") return box.w <= 0.75 && box.h <= 0.75;
+  if (element.type === "image") return box.w <= 0.75 && box.h <= 0.75;
+  if (element.type === "ellipse") return box.w <= 0.75 && box.h <= 0.75;
+  if (element.type === "rectangle") {
+    return box.w <= 0.75 && box.h <= 0.75 && !isDividerLike([element], box);
+  }
+  return false;
+}
+
+function isTitleLikeText(element: Extract<SlideElement, { type: "text" }>): boolean {
+  const font = elementFont(element);
+  return isHeadingText(element) || font.bold === true || font.size >= 16;
+}
+
+function isBodyCompanion(title: SlideElement, candidate: SlideElement): boolean {
+  const titleBox = elementBounds(title);
+  const bodyBox = elementBounds(candidate);
+  if (bodyBox.y < titleBox.y + titleBox.h - 0.06) return false;
+  if (bodyBox.y - (titleBox.y + titleBox.h) > 0.62) return false;
+  const overlap = horizontalOverlapRatio(titleBox, bodyBox);
+  if (overlap < 0.28 && Math.abs(bodyBox.x - titleBox.x) > 0.28) return false;
+  const bodyText =
+    candidate.type === "text"
+      ? textContent(candidate).trim()
+      : candidate.type === "text-list"
+        ? textListStrings(candidate).join(" ").trim()
+        : "";
+  return bodyText.length > 0;
+}
+
+function isHorizontalCompanion(left: Bounds, right: Bounds): boolean {
+  const gap = horizontalGap(left, right);
+  if (gap < -0.08 || gap > 0.82) return false;
+  const centerDelta = Math.abs((left.y + left.h / 2) - (right.y + right.h / 2));
+  const verticalOverlap =
+    Math.min(left.y + left.h, right.y + right.h) - Math.max(left.y, right.y);
+  return (
+    verticalOverlap >= Math.min(left.h, right.h) * 0.25 ||
+    centerDelta <= Math.max(0.18, Math.max(left.h, right.h) * 0.55)
+  );
+}
+
+function horizontalGap(left: Bounds, right: Bounds): number {
+  return right.x - (left.x + left.w);
+}
+
+function horizontalOverlapRatio(a: Bounds, b: Bounds): number {
+  const overlap = Math.max(
+    0,
+    Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x),
+  );
+  return overlap / Math.max(0.01, Math.min(a.w, b.w));
+}
+
+function boundsFitWithin(inner: Bounds, outer: Bounds): boolean {
+  const centerX = inner.x + inner.w / 2;
+  const centerY = inner.y + inner.h / 2;
+  const centerInside =
+    centerX >= outer.x &&
+    centerX <= outer.x + outer.w &&
+    centerY >= outer.y &&
+    centerY <= outer.y + outer.h;
+  if (centerInside) return true;
+  return (
+    intersectionArea(inner, outer) / Math.max(0.01, inner.w * inner.h) >= 0.78
+  );
 }
 
 function pruneOverlappingCandidates(candidates: Candidate[]): Candidate[] {
@@ -387,30 +808,52 @@ function pruneOverlappingCandidates(candidates: Candidate[]): Candidate[] {
 }
 
 function clusterCandidates(candidates: Candidate[]): DesignElementCandidateCluster[] {
-  const clusters: DesignElementCandidateCluster[] = [];
-
-  for (const candidate of candidates) {
-    const best = bestClusterForCandidate(candidate, clusters);
-    if (best && best.similarity >= 0.78) {
-      best.cluster.candidates.push(candidate);
-      if (candidate.score > best.cluster.representative.score) {
-        best.cluster.representative = candidate;
-        best.cluster.label = candidate.label;
-        best.cluster.description = candidate.description;
-      }
-      best.cluster.score = clusterScore(best.cluster);
-      continue;
-    }
-
-    clusters.push({
-      id: uniqueClusterId(candidate, clusters),
+  if (candidates.length === 0) return [];
+  if (candidates.length === 1) {
+    const [candidate] = candidates;
+    return [{
+      id: uniqueClusterId(candidate, []),
       categoryHint: candidate.categoryHint,
-      label: candidate.label,
-      description: candidate.description,
+      label: labelForClusterCandidate(candidate),
+      description: descriptionForClusterCandidate(candidate),
       representative: candidate,
       candidates: [candidate],
-      score: candidate.score,
+      score: candidate.score + categoryScoreBonus(candidate.categoryHint),
       signature: candidate.clusterSignature,
+    }];
+  }
+
+  const tree = agnes(candidates, {
+    method: "average",
+    distanceFunction: candidateDistance,
+  });
+  const groups = tree
+    .cut(CLUSTER_DISTANCE_THRESHOLD)
+    .map((cluster) =>
+      cluster
+        .indices()
+        .map((index) => candidates[index])
+        .filter((candidate): candidate is Candidate => Boolean(candidate)),
+    )
+    .filter((group) => group.length > 0)
+    .sort((a, b) => candidates.indexOf(a[0]!) - candidates.indexOf(b[0]!));
+
+  const clusters: DesignElementCandidateCluster[] = [];
+  for (const group of groups) {
+    const representative = [...group].sort(
+      (a, b) => b.score - a.score || a.label.localeCompare(b.label),
+    )[0]!;
+    clusters.push({
+      id: uniqueClusterId(representative, clusters),
+      categoryHint: representative.categoryHint,
+      label: representative.label,
+      description: representative.description,
+      representative,
+      candidates: group.sort(
+        (a, b) => b.score - a.score || a.label.localeCompare(b.label),
+      ),
+      score: representative.score,
+      signature: representative.clusterSignature,
     });
   }
 
@@ -423,26 +866,11 @@ function clusterCandidates(candidates: Candidate[]): DesignElementCandidateClust
   return clusters;
 }
 
-function bestClusterForCandidate(
-  candidate: Candidate,
-  clusters: DesignElementCandidateCluster[],
-) {
-  let best:
-    | { cluster: DesignElementCandidateCluster; similarity: number }
-    | null = null;
-
-  for (const cluster of clusters) {
-    const similarity = candidateSimilarity(candidate, cluster.representative);
-    if (!best || similarity > best.similarity) {
-      best = { cluster, similarity };
-    }
-  }
-
-  return best;
+function candidateDistance(a: Candidate, b: Candidate): number {
+  return Math.max(0, Math.min(1, 1 - candidateSimilarity(a, b)));
 }
 
 function candidateSimilarity(a: Candidate, b: Candidate): number {
-  if (a.clusterSignature === b.clusterSignature) return 1;
   if (
     a.categoryHint === "image-asset" &&
     b.categoryHint === "image-asset" &&
@@ -450,21 +878,156 @@ function candidateSimilarity(a: Candidate, b: Candidate): number {
   ) {
     return 0.25;
   }
+  if (a.clusterSignature === b.clusterSignature) return 1;
 
   let score = 0;
-  if (a.categoryHint === b.categoryHint) score += 0.18;
-  else if (compatibleCategories(a.categoryHint, b.categoryHint)) score += 0.08;
+  if (a.categoryHint === b.categoryHint) score += 0.14;
+  else if (compatibleCategories(a.categoryHint, b.categoryHint)) score += 0.06;
+
+  if (a.source === b.source) score += 0.05;
+  if (a.intentHint === b.intentHint) score += 0.05;
 
   const aTypes = elementTypeSequence(a.elements);
   const bTypes = elementTypeSequence(b.elements);
-  if (aTypes === bTypes) score += 0.24;
-  else score += jaccard(aTypes.split(">"), bTypes.split(">")) * 0.12;
+  if (aTypes === bTypes) score += 0.18;
+  else score += jaccard(aTypes.split(">"), bTypes.split(">")) * 0.1;
 
-  score += jaccard(layoutTokens(a.elements), layoutTokens(b.elements)) * 0.32;
-  score += jaccard(styleTokensForElements(a.elements), styleTokensForElements(b.elements)) * 0.16;
-  score += sizeSimilarity(a.bounds, b.bounds) * 0.1;
+  score += jaccard(layoutTokens(a.elements), layoutTokens(b.elements)) * 0.24;
+  score += jaccard(styleTokensForElements(a.elements), styleTokensForElements(b.elements)) * 0.12;
+  score += sizeSimilarity(a.bounds, b.bounds) * 0.08;
+  score += vectorSimilarity.cosine(candidateFeatureVector(a), candidateFeatureVector(b)) * 0.2;
+  score += jaccard(candidateTextTokens(a), candidateTextTokens(b)) * 0.04;
 
-  return score;
+  return Math.max(0, Math.min(1, score));
+}
+
+function labelForClusterCandidate(candidate: Candidate): string {
+  return labelForCluster({
+    id: candidate.id,
+    categoryHint: candidate.categoryHint,
+    label: candidate.label,
+    description: candidate.description,
+    representative: candidate,
+    candidates: [candidate],
+    score: candidate.score,
+    signature: candidate.clusterSignature,
+  });
+}
+
+function descriptionForClusterCandidate(candidate: Candidate): string {
+  return descriptionForCluster({
+    id: candidate.id,
+    categoryHint: candidate.categoryHint,
+    label: candidate.label,
+    description: candidate.description,
+    representative: candidate,
+    candidates: [candidate],
+    score: candidate.score,
+    signature: candidate.clusterSignature,
+  });
+}
+
+const CATEGORY_FEATURE_ORDER: DesignElementCategory[] = [
+  "navigation",
+  "badge",
+  "title-lockup",
+  "content-card",
+  "media-card",
+  "stat-card",
+  "cta",
+  "image-asset",
+  "divider",
+  "decorative",
+  "unknown",
+];
+
+const SOURCE_FEATURE_ORDER: Candidate["source"][] = [
+  "explicit",
+  "container",
+  "layout-flex",
+  "layout-grid",
+  "title-lockup",
+  "media",
+];
+
+function candidateFeatureVector(candidate: Candidate): number[] {
+  const elements = candidate.elements;
+  const bounds = candidate.bounds;
+  const elementCount = Math.max(1, elements.length);
+  const typeCount = (predicate: (element: SlideElement) => boolean) =>
+    elements.filter(predicate).length / elementCount;
+  const textElements = elements.filter(
+    (element): element is Extract<SlideElement, { type: "text" }> =>
+      element.type === "text",
+  );
+  const fontSizes = textElements.map((element) => elementFont(element).size);
+  const averageFontSize =
+    fontSizes.length > 0
+      ? fontSizes.reduce((sum, value) => sum + value, 0) / fontSizes.length
+      : 0;
+  const boldRatio =
+    textElements.length > 0
+      ? textElements.filter((element) => elementFont(element).bold).length /
+        textElements.length
+      : 0;
+  const textLength =
+    elements.reduce((sum, element) => sum + textContentForSummary(element).length, 0) /
+    280;
+
+  return [
+    bounds.x / SLIDE_W,
+    bounds.y / SLIDE_H,
+    bounds.w / SLIDE_W,
+    bounds.h / SLIDE_H,
+    (bounds.w * bounds.h) / SLIDE_AREA,
+    Math.min(3, bounds.w / Math.max(0.01, bounds.h)) / 3,
+    (bounds.x + bounds.w / 2) / SLIDE_W,
+    (bounds.y + bounds.h / 2) / SLIDE_H,
+    Math.min(1, elements.length / MAX_ELEMENTS_PER_TEMPLATE),
+    typeCount((element) => element.type === "text"),
+    typeCount((element) => element.type === "text-list"),
+    typeCount((element) => element.type === "image"),
+    typeCount((element) => element.type === "svg"),
+    typeCount((element) => element.type === "rectangle" || element.type === "ellipse"),
+    typeCount((element) => element.type === "line"),
+    typeCount((element) => element.type === "chart"),
+    typeCount((element) => element.type === "table"),
+    typeCount(
+      (element) =>
+        element.type === "container" ||
+        element.type === "flex" ||
+        element.type === "grid" ||
+        element.type === "group" ||
+        element.type === "list-view" ||
+        element.type === "grid-view",
+    ),
+    Math.min(1, candidate.slots.length / 8),
+    Math.min(1, textSlotCount(candidate.slots) / 6),
+    hasIconSlot(candidate.slots) ? 1 : 0,
+    findContainerShellIndex(elements, bounds) >= 0 ? 1 : 0,
+    candidate.quality.score / 100,
+    Math.min(1, distinctStyleTokenCount(elements) / 8),
+    Math.min(1, averageFontSize / 72),
+    boldRatio,
+    Math.min(1, textLength),
+    highValueIntent(candidate.intentHint) ? 1 : 0,
+    ...CATEGORY_FEATURE_ORDER.map((category) =>
+      candidate.categoryHint === category ? 1 : 0,
+    ),
+    ...SOURCE_FEATURE_ORDER.map((source) =>
+      candidate.source === source ? 1 : 0,
+    ),
+  ];
+}
+
+function candidateTextTokens(candidate: Candidate): string[] {
+  return [
+    ...new Set(
+      candidate.elements
+        .flatMap((element) => textContentForSummary(element).toLowerCase().split(/[^a-z0-9]+/))
+        .filter((token) => token.length >= 3 && !/^\d+$/.test(token)),
+    ),
+  ].sort();
 }
 
 function clusterScore(cluster: DesignElementCandidateCluster): number {
@@ -476,7 +1039,12 @@ function clusterScore(cluster: DesignElementCandidateCluster): number {
 }
 
 function labelForCluster(cluster: DesignElementCandidateCluster): string {
-  const categoryLabel = categoryDisplayName(cluster.categoryHint);
+  const categoryLabel =
+    cluster.representative.source === "layout-grid"
+      ? "Content Grid"
+      : cluster.representative.source === "layout-flex"
+        ? "Content Row"
+        : categoryDisplayName(cluster.categoryHint);
   const bestText = cluster.candidates
     .flatMap((candidate) => candidate.elements)
     .find(
@@ -522,6 +1090,11 @@ function clusterSummary(cluster: DesignElementCandidateCluster) {
     label: truncate(cluster.label, 120),
     description: truncate(cluster.description, 600),
     categoryHint: cluster.categoryHint,
+    editableSlots: candidate.slots.slice(0, 16),
+    intentHint: candidate.intentHint,
+    qualityIssues: candidate.quality.issues.slice(0, 10),
+    qualityScore: candidate.quality.score,
+    qualitySignals: candidate.quality.strengths.slice(0, 10),
     recommendedStructure: recommendedStructureForCandidate(candidate),
     score: round(cluster.score),
     occurrenceCount: cluster.candidates.length,
@@ -542,6 +1115,384 @@ function elementSummary(element: SlideElement) {
         ? truncate(oneLine(textContentForSummary(element)), 140)
         : undefined,
   };
+}
+
+function editableSlotsForElements(elements: SlideElement[]): DesignElementSlot[] {
+  const slots = elements
+    .map((element, index) => slotForElement(element, index))
+    .filter((slot): slot is DesignElementSlot => Boolean(slot))
+    .slice(0, 16);
+
+  const seen = new Map<string, number>();
+  return slots.map((slot) => {
+    const count = (seen.get(slot.name) ?? 0) + 1;
+    seen.set(slot.name, count);
+    return count === 1 ? slot : { ...slot, name: `${slot.name} ${count}` };
+  });
+}
+
+function slotForElement(
+  element: SlideElement,
+  index: number,
+): DesignElementSlot | null {
+  if (element.type === "text") {
+    const kind = textSlotKind(element);
+    const role = elementRole(element);
+    return {
+      elementIndexes: [index],
+      kind,
+      name: slotNameForKind(kind),
+      role,
+      text: truncate(oneLine(textContent(element)), 140),
+    };
+  }
+
+  if (element.type === "text-list") {
+    return {
+      elementIndexes: [index],
+      kind: "list",
+      name: "List",
+      role: elementRole(element),
+      text: truncate(oneLine(textListStrings(element).join(" / ")), 140),
+    };
+  }
+
+  if (element.type === "image") {
+    const box = elementBounds(element);
+    const kind = box.w <= 0.45 && box.h <= 0.45 ? "icon" : "image";
+    return {
+      elementIndexes: [index],
+      kind,
+      name: kind === "icon" ? "Icon" : "Image",
+      role: elementRole(element),
+      text: element.name ? truncate(element.name, 140) : undefined,
+    };
+  }
+
+  if (element.type === "svg") {
+    return {
+      elementIndexes: [index],
+      kind: "icon",
+      name: "Icon",
+      role: elementRole(element),
+      text: element.name ? truncate(element.name, 140) : undefined,
+    };
+  }
+
+  if (element.type === "chart") {
+    return {
+      elementIndexes: [index],
+      kind: "chart",
+      name: "Chart",
+      role: elementRole(element),
+      text: element.title ? truncate(element.title, 140) : undefined,
+    };
+  }
+
+  if (element.type === "table") {
+    return {
+      elementIndexes: [index],
+      kind: "table",
+      name: "Table",
+      role: elementRole(element),
+    };
+  }
+
+  if (element.type === "line") {
+    return {
+      elementIndexes: [index],
+      kind: "accent",
+      name: "Accent",
+      role: elementRole(element),
+    };
+  }
+
+  if (element.type === "rectangle" || element.type === "ellipse") {
+    const box = elementBounds(element);
+    const small = box.w <= 0.45 && box.h <= 0.45;
+    return {
+      elementIndexes: [index],
+      kind: small ? "icon" : "shape",
+      name: small ? "Icon Shape" : "Shape",
+      role: elementRole(element),
+    };
+  }
+
+  return null;
+}
+
+function textSlotKind(
+  element: Extract<SlideElement, { type: "text" }>,
+): DesignElementSlotKind {
+  const text = textContent(element).trim();
+  const font = elementFont(element);
+  if (isStatText(text)) return "metric";
+  if (isDateLikeText(text)) return "date";
+  if (isHeadingText(element) || font.bold === true || font.size >= 18) return "title";
+  if (text.length <= 36) return "label";
+  return "body";
+}
+
+function slotNameForKind(kind: DesignElementSlotKind): string {
+  switch (kind) {
+    case "metric":
+      return "Metric";
+    case "date":
+      return "Date";
+    case "title":
+      return "Title";
+    case "body":
+      return "Body";
+    case "label":
+      return "Label";
+    case "image":
+      return "Image";
+    case "icon":
+      return "Icon";
+    case "list":
+      return "List";
+    case "chart":
+      return "Chart";
+    case "table":
+      return "Table";
+    case "accent":
+      return "Accent";
+    case "shape":
+      return "Shape";
+  }
+}
+
+function inferIntent({
+  bounds,
+  categoryHint,
+  elements,
+  slots,
+  source,
+}: {
+  bounds: Bounds;
+  categoryHint: DesignElementCategory;
+  elements: SlideElement[];
+  slots: DesignElementSlot[];
+  source: Candidate["source"];
+}): DesignElementIntent {
+  if (categoryHint === "image-asset") return "image-asset";
+  if (categoryHint === "divider" || isDividerLike(elements, bounds)) return "divider";
+  if (categoryHint === "navigation") return "navigation-pill";
+  if (categoryHint === "badge") return "badge";
+  if (categoryHint === "cta") return "cta-button";
+  if (categoryHint === "title-lockup" || source === "title-lockup") return "title-lockup";
+  if (isAuthorPill(elements, bounds, slots)) return "author-pill";
+  if (source === "layout-grid" && textSlotCount(slots) >= 4) return "insight-grid";
+  if (source === "layout-flex" && hasIconSlot(slots) && textSlotCount(slots) >= 2) {
+    return "icon-label-row";
+  }
+  if (source === "layout-flex" || source === "layout-grid") return "feature-list";
+  if (categoryHint === "media-card") return "media-card";
+  if (categoryHint === "stat-card") {
+    return slots.some((slot) => slot.kind === "metric") ? "metric-card" : "stat-card";
+  }
+  if (categoryHint === "decorative") return "decorative-accent";
+  if (categoryHint === "content-card") return "content-card";
+  return "unknown";
+}
+
+function evaluateCandidateQuality({
+  bounds,
+  categoryHint,
+  elements,
+  intentHint,
+  slots,
+  source,
+}: {
+  bounds: Bounds;
+  categoryHint: DesignElementCategory;
+  elements: SlideElement[];
+  intentHint: DesignElementIntent;
+  slots: DesignElementSlot[];
+  source: Candidate["source"];
+}): DesignElementQuality {
+  let score = 42;
+  const strengths: string[] = [];
+  const issues: string[] = [];
+  const areaRatio = (bounds.w * bounds.h) / SLIDE_AREA;
+  const hasText = slots.some((slot) =>
+    slot.kind === "title" ||
+    slot.kind === "body" ||
+    slot.kind === "label" ||
+    slot.kind === "metric" ||
+    slot.kind === "date" ||
+    slot.kind === "list",
+  );
+  const hasVisual = slots.some((slot) =>
+    slot.kind === "image" ||
+    slot.kind === "icon" ||
+    slot.kind === "chart" ||
+    slot.kind === "table" ||
+    slot.kind === "shape" ||
+    slot.kind === "accent",
+  );
+  const hasShell = findContainerShellIndex(elements, bounds) >= 0;
+
+  if (slots.length >= 2) {
+    score += 12;
+    strengths.push(`${slots.length} editable slots`);
+  } else if (slots.length === 0) {
+    score -= 18;
+    issues.push("no editable slots");
+  }
+
+  if (hasText && hasVisual) {
+    score += 14;
+    strengths.push("combines text with visual structure");
+  }
+
+  if (hasShell) {
+    score += 12;
+    strengths.push("has a clear container or frame");
+  }
+
+  if (source === "layout-grid" || source === "layout-flex") {
+    score += 12;
+    strengths.push("captures a reusable repeated layout");
+  }
+
+  if (source === "explicit") {
+    score += 10;
+    strengths.push("was explicitly grouped in the source deck");
+  }
+
+  if (highValueIntent(intentHint)) {
+    score += 12;
+    strengths.push(`clear ${intentDisplayName(intentHint)} intent`);
+  }
+
+  if (distinctStyleTokenCount(elements) >= 3) {
+    score += 8;
+    strengths.push("has distinctive styling");
+  }
+
+  if (areaRatio > 0.58) {
+    score -= 22;
+    issues.push("too close to full-slide layout");
+  } else if (areaRatio > 0.42) {
+    score -= 10;
+    issues.push("large block, may be slide-specific");
+  }
+
+  if (areaRatio < 0.004) {
+    score -= 18;
+    issues.push("tiny fragment");
+  }
+
+  if (categoryHint === "decorative" && !hasText) {
+    score -= 16;
+    issues.push("mostly decorative");
+  }
+
+  if (categoryHint === "image-asset" && elements.length === 1) {
+    score -= 10;
+    issues.push("single image asset");
+  }
+
+  if (elements.length === 1 && hasText) {
+    score -= 12;
+    issues.push("single text fragment");
+  }
+
+  return {
+    issues: issues.slice(0, 10),
+    score: clampQuality(score),
+    strengths: strengths.slice(0, 10),
+  };
+}
+
+function intentScoreBonus(intent: DesignElementIntent): number {
+  switch (intent) {
+    case "author-pill":
+    case "insight-grid":
+    case "metric-card":
+    case "navigation-pill":
+    case "title-lockup":
+      return 60;
+    case "content-card":
+    case "feature-list":
+    case "icon-label-row":
+    case "media-card":
+    case "stat-card":
+      return 42;
+    case "badge":
+    case "cta-button":
+      return 28;
+    case "divider":
+    case "image-asset":
+      return 8;
+    case "decorative-accent":
+      return -16;
+    default:
+      return 0;
+  }
+}
+
+function highValueIntent(intent: DesignElementIntent): boolean {
+  return (
+    intent === "author-pill" ||
+    intent === "content-card" ||
+    intent === "feature-list" ||
+    intent === "icon-label-row" ||
+    intent === "insight-grid" ||
+    intent === "media-card" ||
+    intent === "metric-card" ||
+    intent === "navigation-pill" ||
+    intent === "stat-card" ||
+    intent === "title-lockup"
+  );
+}
+
+function intentDisplayName(intent: DesignElementIntent): string {
+  return intent.replace(/-/g, " ");
+}
+
+function isAuthorPill(
+  elements: SlideElement[],
+  bounds: Bounds,
+  slots: DesignElementSlot[],
+): boolean {
+  const compact = bounds.h <= 0.95 && bounds.w >= 2;
+  const hasDate = slots.some((slot) => slot.kind === "date");
+  const titleSlots = slots.filter((slot) => slot.kind === "title" || slot.kind === "label");
+  const hasAvatarShape = elements.some((element) => {
+    if (element.type !== "ellipse" && element.type !== "image" && element.type !== "svg") {
+      return false;
+    }
+    const box = elementBounds(element);
+    return box.w <= 0.6 && box.h <= 0.6;
+  });
+  return compact && hasDate && titleSlots.length >= 1 && hasAvatarShape;
+}
+
+function textSlotCount(slots: DesignElementSlot[]): number {
+  return slots.filter((slot) =>
+    slot.kind === "title" ||
+    slot.kind === "body" ||
+    slot.kind === "label" ||
+    slot.kind === "metric" ||
+    slot.kind === "date" ||
+    slot.kind === "list",
+  ).length;
+}
+
+function hasIconSlot(slots: DesignElementSlot[]): boolean {
+  return slots.some((slot) => slot.kind === "icon");
+}
+
+function distinctStyleTokenCount(elements: SlideElement[]): number {
+  return new Set(styleTokensForElements(elements)).size;
+}
+
+function isDateLikeText(text: string): boolean {
+  return /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b20\d{2}\b/i.test(
+    text.trim(),
+  );
 }
 
 function explicitComponentCandidates(deck: Deck): Candidate[] {
@@ -633,6 +1584,312 @@ function containerGroupCandidates(deck: Deck): Candidate[] {
   });
 
   return candidates;
+}
+
+function layoutPatternCandidates(deck: Deck): Candidate[] {
+  const candidates: Candidate[] = [];
+
+  deck.slides.forEach((slide, slideIndex) => {
+    const members = reusableLayoutMembers(slide);
+    if (members.length < 2) return;
+
+    const gridMembers = bestGridPatternMembers(members);
+    if (gridMembers) {
+      const elements = gridMembers.map(({ element }) => element);
+      const indexes = gridMembers.map(({ index }) => index).sort((a, b) => a - b);
+      candidates.push(makeCandidate({
+        key: `imported-layout-grid-${slideIndex + 1}-${sampleHash(layoutSignature(elements))}`,
+        label: labelFromElements(elements, "Content Grid"),
+        description: `Grid layout extracted from imported slide ${slideIndex + 1}.`,
+        elements,
+        source: "layout-grid",
+        slideIndex,
+        elementIndexes: indexes,
+        categoryHint: layoutPatternCategory(elements, "grid"),
+        score: 640 + elements.length * 12 + layoutPatternScore(elements),
+        signature: `layout-grid:${layoutSignature(elements)}`,
+      }));
+    }
+
+    const flexMembers = gridMembers ? null : bestFlexPatternMembers(members);
+    if (flexMembers) {
+      const elements = flexMembers.map(({ element }) => element);
+      const indexes = flexMembers.map(({ index }) => index).sort((a, b) => a - b);
+      candidates.push(makeCandidate({
+        key: `imported-layout-flex-${slideIndex + 1}-${sampleHash(layoutSignature(elements))}`,
+        label: labelFromElements(elements, "Content Row"),
+        description: `Flex layout extracted from imported slide ${slideIndex + 1}.`,
+        elements,
+        source: "layout-flex",
+        slideIndex,
+        elementIndexes: indexes,
+        categoryHint: layoutPatternCategory(elements, "flex"),
+        score: 600 + elements.length * 10 + layoutPatternScore(elements),
+        signature: `layout-flex:${layoutSignature(elements)}`,
+      }));
+    }
+  });
+
+  return candidates;
+}
+
+function reusableLayoutMembers(slide: Slide): IndexedElement[] {
+  return slide.elements
+    .map((element, index) => ({ element, index, bounds: elementBounds(element) }))
+    .filter((member) => isReusableLayoutMember(member, slide))
+    .sort((a, b) => a.index - b.index);
+}
+
+function isReusableLayoutMember(
+  member: IndexedElement,
+  slide: Slide,
+): boolean {
+  const { bounds, element } = member;
+  if (element.opacity === 0) return false;
+  if (bounds.w <= 0.01 || bounds.h <= 0.01) return false;
+  if (isLikelyBackgroundElement(element, slide)) return false;
+  if (isSlideChromeElement(member)) return false;
+
+  if (element.type === "text") {
+    if (
+      isHeadingText(element) &&
+      slide.elements.some(
+        (candidate, index) =>
+          index !== member.index && isNearbyAccent(candidate, element),
+      )
+    ) {
+      return false;
+    }
+    return textContent(element).trim().length > 0;
+  }
+  if (element.type === "text-list") return textListStrings(element).length > 0;
+  if (
+    element.type === "image" ||
+    element.type === "svg" ||
+    element.type === "chart" ||
+    element.type === "table"
+  ) {
+    return true;
+  }
+  if (element.type === "line") return true;
+  if (element.type === "rectangle" || element.type === "ellipse") {
+    return elementArea(element) <= SLIDE_AREA * 0.12;
+  }
+  return false;
+}
+
+function isSlideChromeElement(member: IndexedElement): boolean {
+  const { bounds, element } = member;
+  const inTopChrome = bounds.y <= 0.85;
+
+  if (inTopChrome) {
+    if (
+      element.type === "image" ||
+      element.type === "svg" ||
+      element.type === "line"
+    ) {
+      return bounds.w <= 4.6 && bounds.h <= 0.35;
+    }
+    if (element.type === "rectangle" || element.type === "ellipse") {
+      return bounds.w <= 2.6 && bounds.h <= 0.5;
+    }
+  }
+
+  if (element.type === "text") {
+    const font = elementFont(element);
+    const text = textContent(element).trim();
+    const inHeader = bounds.y <= 0.9;
+    const inFooter = bounds.y >= SLIDE_H - 0.55;
+    const titleSized = font.size >= 24 || (font.bold === true && font.size >= 20);
+    if (inTopChrome && bounds.h <= 0.36 && font.size <= 18) return true;
+    if (inHeader && titleSized && text.length >= 2) return true;
+    if (inFooter && font.size <= 14) return true;
+  }
+
+  const thinHorizontal = bounds.h <= 0.12 && bounds.w >= 0.5;
+  const thinVertical = bounds.w <= 0.08 && bounds.h >= 0.5;
+  if ((element.type === "line" || element.type === "rectangle") && bounds.y <= SLIDE_H * 0.3) {
+    return thinHorizontal || thinVertical;
+  }
+
+  return false;
+}
+
+function bestGridPatternMembers(
+  members: IndexedElement[],
+): IndexedElement[] | null {
+  const sets = layoutMemberSets(members);
+  return (
+    sets
+      .filter(isReusableGridPattern)
+      .sort(
+        (a, b) =>
+          layoutPatternMemberScore(b) - layoutPatternMemberScore(a) ||
+          a[0]!.index - b[0]!.index,
+      )[0] ?? null
+  );
+}
+
+function bestFlexPatternMembers(
+  members: IndexedElement[],
+): IndexedElement[] | null {
+  const sets = layoutMemberSets(members);
+  return (
+    sets
+      .filter(isReusableFlexPattern)
+      .sort(
+        (a, b) =>
+          layoutPatternMemberScore(b) - layoutPatternMemberScore(a) ||
+          a[0]!.index - b[0]!.index,
+      )[0] ?? null
+  );
+}
+
+function layoutMemberSets(members: IndexedElement[]): IndexedElement[][] {
+  const sets: IndexedElement[][] = [];
+  const seen = new Set<string>();
+  const push = (items: IndexedElement[]) => {
+    if (items.length < 2 || items.length > MAX_ELEMENTS_PER_TEMPLATE) return;
+    const sorted = [...items].sort((a, b) => a.index - b.index);
+    const key = sorted.map(({ index }) => index).join(",");
+    if (seen.has(key)) return;
+    seen.add(key);
+    sets.push(sorted);
+  };
+
+  push(members);
+
+  const visualOrder = [...members].sort(
+    (a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x,
+  );
+  if (visualOrder.length > MAX_ELEMENTS_PER_TEMPLATE) {
+    for (let start = 0; start <= visualOrder.length - 4; start += 1) {
+      push(visualOrder.slice(start, start + MAX_ELEMENTS_PER_TEMPLATE));
+    }
+  }
+
+  const allBounds = boundsForElements(members.map(({ element }) => element));
+  const rowBands = groupMembersByBand(
+    members,
+    ({ bounds }) => bounds.y,
+    Math.max(0.12, allBounds.h * 0.08),
+  );
+  const columnBands = groupMembersByBand(
+    members,
+    ({ bounds }) => bounds.x,
+    Math.max(0.16, allBounds.w * 0.08),
+  );
+
+  rowBands.forEach(({ items }) => push(items));
+  columnBands.forEach(({ items }) => push(items));
+
+  return sets;
+}
+
+function isReusableGridPattern(members: IndexedElement[]): boolean {
+  if (members.length < 4 || members.length > MAX_ELEMENTS_PER_TEMPLATE) return false;
+  const elements = members.map(({ element }) => element);
+  if (!hasReusableContent(elements, 3)) return false;
+
+  const bounds = boundsForElements(elements);
+  const area = bounds.w * bounds.h;
+  if (area < MIN_GROUP_AREA || area > MAX_LAYOUT_PATTERN_AREA) return false;
+  if (!looksGridLike(elements, bounds)) return false;
+
+  const columnBands = groupMembersByBand(
+    members,
+    ({ bounds: box }) => box.x,
+    Math.max(0.16, bounds.w * 0.08),
+  );
+  const rowBands = groupMembersByBand(
+    members,
+    ({ bounds: box }) => box.y,
+    Math.max(0.12, bounds.h * 0.08),
+  );
+  const populatedColumns = columnBands.filter(({ items }) => items.length >= 2).length;
+  const populatedRows = rowBands.filter(({ items }) => items.length >= 2).length;
+  return populatedColumns >= 2 && populatedRows >= 2;
+}
+
+function isReusableFlexPattern(members: IndexedElement[]): boolean {
+  if (members.length < 2 || members.length > MAX_ELEMENTS_PER_TEMPLATE) return false;
+  const elements = members.map(({ element }) => element);
+  if (!hasReusableContent(elements, 2)) return false;
+
+  const bounds = boundsForElements(elements);
+  const area = bounds.w * bounds.h;
+  if (area < MIN_GROUP_AREA * 0.35 || area > MAX_LAYOUT_PATTERN_AREA) return false;
+  if (!looksFlexLike(elements, bounds)) return false;
+
+  const rowLike = bounds.w >= bounds.h;
+  const crossBands = groupMembersByBand(
+    members,
+    ({ bounds: box }) => rowLike ? box.y + box.h / 2 : box.x + box.w / 2,
+    rowLike ? Math.max(0.12, bounds.h * 0.24) : Math.max(0.16, bounds.w * 0.24),
+  );
+  return crossBands.length <= 2;
+}
+
+function hasReusableContent(elements: SlideElement[], minimum: number): boolean {
+  const count = elements.filter((element) => {
+    if (element.type === "text") return textContent(element).trim().length > 0;
+    if (element.type === "text-list") return textListStrings(element).length > 0;
+    return (
+      element.type === "image" ||
+      element.type === "svg" ||
+      element.type === "chart" ||
+      element.type === "table"
+    );
+  }).length;
+  return count >= minimum;
+}
+
+function layoutPatternMemberScore(members: IndexedElement[]): number {
+  return layoutPatternScore(members.map(({ element }) => element));
+}
+
+function layoutPatternScore(elements: SlideElement[]): number {
+  const bounds = boundsForElements(elements);
+  const columns = inferGridColumns(elements);
+  const rows = inferGridRows(elements);
+  const repeatBonus = Math.min(120, Math.max(columns, rows) * 18 + elements.length * 4);
+  const compactnessBonus = Math.max(0, 35 - (bounds.w * bounds.h) / SLIDE_AREA * 35);
+  return repeatBonus + compactnessBonus;
+}
+
+function layoutPatternCategory(
+  elements: SlideElement[],
+  structure: "flex" | "grid",
+): DesignElementCategory {
+  const classified = classifyElements(elements);
+  if (classified === "media-card" || classified === "image-asset") return classified;
+  if (structure === "grid") return "content-card";
+  return classified === "unknown" || classified === "decorative"
+    ? "content-card"
+    : classified;
+}
+
+function groupMembersByBand<T>(
+  items: T[],
+  valueForItem: (item: T) => number,
+  tolerance: number,
+): Array<{ center: number; items: T[] }> {
+  const bands: Array<{ center: number; items: T[] }> = [];
+
+  for (const item of [...items].sort((a, b) => valueForItem(a) - valueForItem(b))) {
+    const value = valueForItem(item);
+    const existing = bands.find((band) => Math.abs(value - band.center) <= tolerance);
+    if (existing) {
+      existing.items.push(item);
+      existing.center =
+        existing.items.reduce((sum, bandItem) => sum + valueForItem(bandItem), 0) /
+        existing.items.length;
+    } else {
+      bands.push({ center: value, items: [item] });
+    }
+  }
+
+  return bands;
 }
 
 function titleLockupCandidates(deck: Deck): Candidate[] {
@@ -752,10 +2009,18 @@ function resolveTemplateStructure(
   if (requested === "container" && findContainerShellIndex(candidate.elements, candidate.bounds) >= 0) {
     return "container";
   }
-  if (requested === "grid" && looksGridLike(candidate.elements, candidate.bounds)) {
+  if (
+    requested === "grid" &&
+    canUseGridStructure(candidate.elements) &&
+    looksGridLike(candidate.elements, candidate.bounds)
+  ) {
     return "grid";
   }
-  if (requested === "flex" && looksFlexLike(candidate.elements, candidate.bounds)) {
+  if (
+    requested === "flex" &&
+    canUseFlexStructure(candidate.elements) &&
+    looksFlexLike(candidate.elements, candidate.bounds)
+  ) {
     return "flex";
   }
   if (requested === "group") return "group";
@@ -768,16 +2033,8 @@ function recommendedStructureForCandidate(
   if (findContainerShellIndex(candidate.elements, candidate.bounds) >= 0) {
     return "container";
   }
-  if (looksGridLike(candidate.elements, candidate.bounds)) return "grid";
-  if (
-    (candidate.categoryHint === "navigation" ||
-      candidate.categoryHint === "badge" ||
-      candidate.categoryHint === "cta" ||
-      candidate.categoryHint === "title-lockup") &&
-    looksFlexLike(candidate.elements, candidate.bounds)
-  ) {
-    return "flex";
-  }
+  if (canUseGridStructure(candidate.elements) && looksGridLike(candidate.elements, candidate.bounds)) return "grid";
+  if (canUseFlexStructure(candidate.elements) && looksFlexLike(candidate.elements, candidate.bounds)) return "flex";
   return "group";
 }
 
@@ -786,8 +2043,8 @@ function groupTemplateElement(candidate: Candidate): SlideElement {
     type: "group",
     position: { x: safeGeometry(candidate.bounds.x), y: safeGeometry(candidate.bounds.y) },
     size: {
-      width: safeSize(candidate.bounds.w),
-      height: safeSize(candidate.bounds.h),
+      width: safeWidth(candidate.bounds.w),
+      height: safeHeight(candidate.bounds.h),
     },
     children: relativeElements(candidate.elements, candidate.bounds),
   };
@@ -795,24 +2052,31 @@ function groupTemplateElement(candidate: Candidate): SlideElement {
 
 function flexTemplateElement(candidate: Candidate): SlideElement {
   const direction = candidate.bounds.w >= candidate.bounds.h ? "row" : "column";
+  const structured = structuredFlexChildrenForCandidate(candidate, direction);
   return {
     ...groupFrame(candidate.bounds),
     type: "flex",
     direction,
     alignItems: "center",
     justifyContent: "flex-start",
-    gap: inferFlexGap(candidate.elements, candidate.bounds, direction),
-    children: relativeElements(candidate.elements, candidate.bounds),
+    gap: structured?.gap ?? inferFlexGap(candidate.elements, candidate.bounds, direction),
+    children: structured?.children ?? relativeElements(candidate.elements, candidate.bounds),
   };
 }
 
 function gridTemplateElement(candidate: Candidate): SlideElement {
+  const structured = structuredGridChildrenForCandidate(candidate);
   return {
     ...groupFrame(candidate.bounds),
     type: "grid",
-    columns: inferGridColumns(candidate.elements),
-    gap: inferGridGap(candidate.elements, candidate.bounds),
-    children: relativeElements(candidate.elements, candidate.bounds),
+    columns: structured?.columns ?? inferGridColumns(candidate.elements),
+    rows: structured?.rows ?? inferGridRows(candidate.elements),
+    gap: structured ? 0 : inferGridGap(candidate.elements, candidate.bounds),
+    columnGap: structured?.columnGap,
+    rowGap: structured?.rowGap,
+    alignItems: "flex-start",
+    justifyItems: "flex-start",
+    children: structured?.children ?? relativeElements(candidate.elements, candidate.bounds),
   };
 }
 
@@ -829,8 +2093,8 @@ function containerTemplateElement(candidate: Candidate): SlideElement | null {
           type: "group",
           position: { x: 0, y: 0 },
           size: {
-            width: safeSize(shellBounds.w),
-            height: safeSize(shellBounds.h),
+            width: safeWidth(shellBounds.w),
+            height: safeHeight(shellBounds.h),
           },
           children: relativeElements(childElements, shellBounds),
         }
@@ -840,8 +2104,8 @@ function containerTemplateElement(candidate: Candidate): SlideElement | null {
     type: "container",
     position: { x: safeGeometry(shellBounds.x), y: safeGeometry(shellBounds.y) },
     size: {
-      width: safeSize(shellBounds.w),
-      height: safeSize(shellBounds.h),
+      width: safeWidth(shellBounds.w),
+      height: safeHeight(shellBounds.h),
     },
     fill: fillWithElementOpacity(shell.fill, shell.opacity),
     stroke: strokeWithElementOpacity(shell.stroke, shell.opacity),
@@ -870,8 +2134,8 @@ function groupFrame(bounds: Bounds) {
   return {
     position: { x: safeGeometry(bounds.x), y: safeGeometry(bounds.y) },
     size: {
-      width: safeSize(bounds.w),
-      height: safeSize(bounds.h),
+      width: safeWidth(bounds.w),
+      height: safeHeight(bounds.h),
     },
   };
 }
@@ -890,8 +2154,8 @@ function relativeElement(element: SlideElement, bounds: Bounds): SlideElement {
       y: safeGeometry(box.y - bounds.y),
     },
     size: {
-      width: safeSize(box.w),
-      height: safeSize(box.h),
+      width: safeWidth(box.w),
+      height: safeHeight(box.h),
     },
   } as SlideElement;
 }
@@ -955,6 +2219,241 @@ function findContainerShellIndex(elements: SlideElement[], bounds: Bounds): numb
   });
 }
 
+type StructuredGridChildren = {
+  children: SlideElement[];
+  columnGap: number;
+  columns: number;
+  rowGap: number;
+  rows: number;
+};
+
+type StructuredFlexChildren = {
+  children: SlideElement[];
+  gap: number;
+};
+
+function structuredGridChildrenForCandidate(
+  candidate: Candidate,
+): StructuredGridChildren | null {
+  const elements = candidate.elements;
+  if (elements.length < 4) return null;
+
+  const columns = groupMembersByBand(
+    elements,
+    (element) => elementBounds(element).x,
+    Math.max(0.16, candidate.bounds.w * 0.08),
+  ).sort((a, b) => a.center - b.center);
+  if (columns.length < 2 || columns.length > 6) return null;
+
+  const yBands = groupMembersByBand(
+    elements,
+    (element) => elementBounds(element).y,
+    Math.max(0.12, candidate.bounds.h * 0.08),
+  ).sort((a, b) => a.center - b.center);
+  if (yBands.length < 2) return null;
+
+  const rowBandGroups = groupedSequentialBands(yBands);
+  const rows = rowBandGroups.length;
+  if (rows < 2 || rows > 8) return null;
+
+  const cells = rowBandGroups.flatMap((rowBands, row) =>
+    columns.map((column, columnIndex) => {
+      const rowItems = new Set(rowBands.flatMap((band) => band.items));
+      const items = column.items.filter((element) => rowItems.has(element));
+      return { column: columnIndex, row, items };
+    }),
+  );
+  if (cells.length < 4 || cells.some((cell) => cell.items.length === 0)) {
+    return null;
+  }
+
+  const columnBoxes = columns.map((column) => boundsForElements(column.items));
+  const rowBoxes = rowBandGroups.map((rowBands) =>
+    boundsForElements(rowBands.flatMap((band) => band.items)),
+  );
+  const columnGap = inferredBandGap(columnBoxes, candidate.bounds.w, "x");
+  const rowGap = inferredBandGap(rowBoxes, candidate.bounds.h, "y");
+  const columnWidth = inferredBandSize(columnBoxes, candidate.bounds.w, columnGap, "x");
+  const rowHeight = inferredBandSize(rowBoxes, candidate.bounds.h, rowGap, "y");
+
+  return {
+    columns: columns.length,
+    rows,
+    columnGap,
+    rowGap,
+    children: cells.map((cell) => {
+      const cellFrame = {
+        x: candidate.bounds.x + cell.column * (columnWidth + columnGap),
+        y: candidate.bounds.y + cell.row * (rowHeight + rowGap),
+        w: columnWidth,
+        h: rowHeight,
+      };
+      return semanticCellGroup(cell.items, cellFrame, candidate.bounds);
+    }),
+  };
+}
+
+function structuredFlexChildrenForCandidate(
+  candidate: Candidate,
+  direction: "row" | "column",
+): StructuredFlexChildren | null {
+  const elements = candidate.elements;
+  if (elements.length < 3) return null;
+
+  const bands = groupMembersByBand(
+    elements,
+    (element) => {
+      const box = elementBounds(element);
+      return direction === "row" ? box.x : box.y;
+    },
+    direction === "row"
+      ? Math.max(0.16, candidate.bounds.w * 0.08)
+      : Math.max(0.12, candidate.bounds.h * 0.08),
+  ).sort((a, b) => a.center - b.center);
+  if (bands.length < 2 || bands.every((band) => band.items.length === 1)) {
+    return null;
+  }
+
+  const boxes = bands.map((band) => boundsForElements(band.items));
+  const available = direction === "row" ? candidate.bounds.w : candidate.bounds.h;
+  const gap = inferredBandGap(boxes, available, direction === "row" ? "x" : "y");
+
+  return {
+    gap,
+    children: bands.map((band) =>
+      semanticCellGroup(band.items, boundsForElements(band.items), candidate.bounds),
+    ),
+  };
+}
+
+function semanticCellGroup(
+  elements: SlideElement[],
+  bounds: Bounds,
+  parentBounds: Bounds,
+): SlideElement {
+  return {
+    type: "group",
+    position: {
+      x: safeGeometry(bounds.x - parentBounds.x),
+      y: safeGeometry(bounds.y - parentBounds.y),
+    },
+    size: {
+      width: safeWidth(bounds.w),
+      height: safeHeight(bounds.h),
+    },
+    children: relativeElements(elements, bounds),
+  };
+}
+
+function groupedSequentialBands<T>(
+  bands: Array<{ center: number; items: T[] }>,
+): Array<Array<{ center: number; items: T[] }>> {
+  if (bands.length <= 2) return bands.map((band) => [band]);
+
+  const gaps = bands.slice(1).map((band, index) => {
+    const previous = bands[index];
+    return previous ? band.center - previous.center : 0;
+  });
+  const medianGap = median(gaps.filter((gap) => gap > 0));
+  const splitThreshold = Math.max(0.22, medianGap * 1.25);
+  const groups: Array<Array<{ center: number; items: T[] }>> = [[bands[0]!]];
+
+  gaps.forEach((gap, index) => {
+    const nextBand = bands[index + 1];
+    if (!nextBand) return;
+    if (gap >= splitThreshold) {
+      groups.push([nextBand]);
+    } else {
+      groups[groups.length - 1]?.push(nextBand);
+    }
+  });
+
+  return groups;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
+    : sorted[mid] ?? 0;
+}
+
+function inferredBandGap(
+  boxes: Bounds[],
+  available: number,
+  axis: "x" | "y",
+): number {
+  if (boxes.length <= 1) return 0;
+  const ordered = [...boxes].sort((a, b) =>
+    axis === "x" ? a.x - b.x || a.y - b.y : a.y - b.y || a.x - b.x,
+  );
+  const rawGaps = ordered
+    .slice(1)
+    .map((box, index) => {
+      const previous = ordered[index];
+      if (!previous) return 0;
+      return axis === "x"
+        ? Math.max(0, box.x - (previous.x + previous.w))
+        : Math.max(0, box.y - (previous.y + previous.h));
+    })
+    .filter((gap) => gap > 0.01);
+  if (rawGaps.length > 0) {
+    return safeGeometry(rawGaps.reduce((sum, gap) => sum + gap, 0) / rawGaps.length);
+  }
+
+  const averageSize =
+    boxes.reduce((sum, box) => sum + (axis === "x" ? box.w : box.h), 0) /
+    boxes.length;
+  return safeGeometry(Math.max(0, (available - averageSize * boxes.length) / (boxes.length - 1)));
+}
+
+function inferredBandSize(
+  boxes: Bounds[],
+  available: number,
+  gap: number,
+  axis: "x" | "y",
+): number {
+  if (boxes.length === 0) {
+    return safeSize(available, axis === "x" ? SLIDE_W : SLIDE_H);
+  }
+  const layoutSize = (available - gap * Math.max(0, boxes.length - 1)) / boxes.length;
+  const averageBoxSize =
+    boxes.reduce((sum, box) => sum + (axis === "x" ? box.w : box.h), 0) /
+    boxes.length;
+  return safeSize(
+    Math.max(0.01, Math.max(layoutSize, averageBoxSize)),
+    axis === "x" ? SLIDE_W : SLIDE_H,
+  );
+}
+
+function canUseGridStructure(elements: SlideElement[]): boolean {
+  if (hasMixedShapeTextPattern(elements)) return false;
+  return true;
+}
+
+function canUseFlexStructure(elements: SlideElement[]): boolean {
+  if (hasMixedShapeTextPattern(elements)) return false;
+  return true;
+}
+
+function hasMixedShapeTextPattern(elements: SlideElement[]): boolean {
+  const shapeCount = elements.filter(
+    (element) =>
+      element.type === "rectangle" ||
+      element.type === "ellipse" ||
+      element.type === "line",
+  ).length;
+  const textCount = elements.filter(
+    (element) => element.type === "text" || element.type === "text-list",
+  ).length;
+  if (shapeCount > 0 && textCount > 0) {
+    return shapeCount / elements.length >= 0.25;
+  }
+  return false;
+}
+
 function looksFlexLike(elements: SlideElement[], bounds: Bounds): boolean {
   if (elements.length < 2 || elements.length > MAX_ELEMENTS_PER_TEMPLATE) return false;
   const boxes = elements.map(elementBounds);
@@ -970,15 +2469,26 @@ function looksFlexLike(elements: SlideElement[], bounds: Bounds): boolean {
 function looksGridLike(elements: SlideElement[], bounds: Bounds): boolean {
   if (elements.length < 4) return false;
   const boxes = elements.map(elementBounds);
-  const xBands = bandCount(
+  const xStartBands = bandCount(
+    boxes.map((box) => box.x),
+    Math.max(0.16, bounds.w * 0.08),
+  );
+  const yStartBands = bandCount(
+    boxes.map((box) => box.y),
+    Math.max(0.12, bounds.h * 0.08),
+  );
+  const xCenterBands = bandCount(
     boxes.map((box) => box.x + box.w / 2),
     Math.max(0.16, bounds.w * 0.08),
   );
-  const yBands = bandCount(
+  const yCenterBands = bandCount(
     boxes.map((box) => box.y + box.h / 2),
-    Math.max(0.16, bounds.h * 0.08),
+    Math.max(0.12, bounds.h * 0.08),
   );
-  return xBands >= 2 && yBands >= 2;
+  return (
+    Math.max(xStartBands, xCenterBands) >= 2 &&
+    Math.max(yStartBands, yCenterBands) >= 2
+  );
 }
 
 function inferGridColumns(elements: SlideElement[]): number {
@@ -989,8 +2499,23 @@ function inferGridColumns(elements: SlideElement[]): number {
     Math.min(
       6,
       bandCount(
-        boxes.map((box) => box.x + box.w / 2),
+        boxes.map((box) => box.x),
         Math.max(0.16, bounds.w * 0.08),
+      ),
+    ),
+  );
+}
+
+function inferGridRows(elements: SlideElement[]): number {
+  const boxes = elements.map(elementBounds);
+  const bounds = boundsForElements(elements);
+  return Math.max(
+    1,
+    Math.min(
+      12,
+      bandCount(
+        boxes.map((box) => box.y),
+        Math.max(0.12, bounds.h * 0.08),
       ),
     ),
   );
@@ -1044,8 +2569,16 @@ function safeGeometry(value: number): number {
   return Math.max(0, Math.round(value * 10_000) / 10_000);
 }
 
-function safeSize(value: number): number {
-  return Math.max(0.01, Math.round(value * 10_000) / 10_000);
+function safeWidth(value: number): number {
+  return safeSize(value, SLIDE_W);
+}
+
+function safeHeight(value: number): number {
+  return safeSize(value, SLIDE_H);
+}
+
+function safeSize(value: number, max = SLIDE_W): number {
+  return Math.min(max, Math.max(0.01, Math.round(value * 10_000) / 10_000));
 }
 
 function isContainerElement(element: SlideElement, slide: Slide): boolean {
@@ -1091,7 +2624,12 @@ function isHeadingText(element: Extract<SlideElement, { type: "text" }>): boolea
 }
 
 function isNearbyAccent(candidate: SlideElement, heading: SlideElement): boolean {
-  if (candidate.type !== "rectangle" && candidate.type !== "ellipse" && candidate.type !== "image") {
+  if (
+    candidate.type !== "rectangle" &&
+    candidate.type !== "ellipse" &&
+    candidate.type !== "image" &&
+    candidate.type !== "line"
+  ) {
     return false;
   }
   if (candidate.opacity === 0) return false;
@@ -1210,8 +2748,8 @@ function styleSignature(element: SlideElement): string {
 }
 
 function imageIdentity(element: Extract<SlideElement, { type: "image" }>): string {
-  if (element.name?.trim()) return `name-${slugify(element.name)}`;
   if (element.data) return `data-${sampleHash(element.data)}`;
+  if (element.name?.trim()) return `name-${slugify(element.name)}`;
   return "empty";
 }
 
@@ -1287,7 +2825,11 @@ function isDividerLike(elements: SlideElement[], bounds: Bounds): boolean {
 }
 
 function isStatText(text: string): boolean {
-  return /(?:\$|%|\b\d+(?:\.\d+)?x\b|\b\d{2,}\b)/i.test(text.trim());
+  const trimmed = text.trim();
+  if (/(?:\$|€|£|¥|%|\b\d+(?:\.\d+)?x\b)/i.test(trimmed)) return true;
+  const numeric = trimmed.replace(/,/g, "");
+  if (!/^[+-]?\d+(?:\.\d+)?$/.test(numeric)) return false;
+  return !/^20\d{2}$/.test(numeric);
 }
 
 function compatibleCategories(
@@ -1575,6 +3117,10 @@ function quantize(value: number, steps: number): number {
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function clampQuality(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function uniqueTemplateId(key: string, usedIds: Set<string>): string {

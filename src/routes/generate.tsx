@@ -21,12 +21,14 @@ import { curateDesignElementsWithAi } from "../lib/design-element-curation-ai";
 import { savePreviewDeck } from "../lib/deck-storage";
 import { DECK_THEME_PRESETS, type DeckTheme } from "../lib/deck-theme";
 import { DeckSchema, type Deck } from "../lib/slide-schema";
+import { generateCompanyTemplateFromUrl } from "../lib/company-url-template";
 
-type GenerateMode = "prompt" | "pptx";
+type GenerateMode = "prompt" | "pptx" | "url";
 
 const MODE_OPTIONS: Array<{ value: GenerateMode; label: string }> = [
   { value: "prompt", label: "Generate from prompt" },
   { value: "pptx", label: "Import from PPTX" },
+  { value: "url", label: "Company URL" },
 ];
 
 const AI_GENERATION_TIMEOUT_MS = 20_000;
@@ -127,9 +129,11 @@ export const Route = createFileRoute("/generate")({
 
 function GeneratePage() {
   const generateDeckFn = useServerFn(generateDeck);
+  const generateCompanyTemplateFn = useServerFn(generateCompanyTemplateFromUrl);
   const curateDesignElementsFn = useServerFn(curateDesignElementsWithAi);
   const [mode, setMode] = useState<GenerateMode>("prompt");
   const [input, setInput] = useState<DeckGenerationInput>(defaultInput);
+  const [companyUrl, setCompanyUrl] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [pptxFile, setPptxFile] = useState<File | null>(null);
@@ -262,6 +266,39 @@ function GeneratePage() {
     }
   };
 
+  const submitCompanyUrl = async () => {
+    const trimmedUrl = companyUrl.trim();
+    if (!trimmedUrl) {
+      setStatus("Enter a company URL first.");
+      return;
+    }
+    setIsGenerating(true);
+    setStatus("Researching company brand...");
+    try {
+      const result = await generateCompanyTemplateFn({
+        data: { url: trimmedUrl },
+      });
+      setStatus(
+        result.source === "fallback"
+          ? `Created a fallback template for ${result.profile.name}. ${
+              result.message ?? ""
+            }`
+          : `Created a brand template for ${result.profile.name}${
+              result.profile.webSearchUsed ? " with web search" : ""
+            }.`,
+      );
+      await saveAndPreview(result.deck, result.componentTemplates);
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? `Template creation failed: ${error.message}`
+          : "Template creation failed.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <main style={pageStyle}>
       <form
@@ -269,13 +306,18 @@ function GeneratePage() {
         onSubmit={async (event) => {
           event.preventDefault();
           if (mode === "pptx") await submitPptx();
+          else if (mode === "url") await submitCompanyUrl();
           else await submitPrompt();
         }}
       >
         <div>
           <div style={eyebrowStyle}>NEW DECK</div>
           <h1 style={titleStyle}>
-            {mode === "pptx" ? "Import a PPTX" : "Describe the deck"}
+            {mode === "pptx"
+              ? "Import a PPTX"
+              : mode === "url"
+                ? "Create a company template"
+                : "Describe the deck"}
           </h1>
         </div>
 
@@ -428,7 +470,7 @@ function GeneratePage() {
               />
             </div>
           </>
-        ) : (
+        ) : mode === "pptx" ? (
           <div style={fieldStyle}>
             <span>PPTX file</span>
             <input
@@ -468,21 +510,44 @@ function GeneratePage() {
               </span>
             </div>
           </div>
+        ) : (
+          <div style={fieldStyle}>
+            <span>Company URL</span>
+            <input
+              value={companyUrl}
+              type="text"
+              inputMode="url"
+              placeholder="https://company.com"
+              onChange={(event) => {
+                setCompanyUrl(event.target.value);
+                setStatus(null);
+              }}
+              style={inputStyle}
+            />
+          </div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             type="submit"
-            disabled={isGenerating || (mode === "pptx" && !pptxFile)}
+            disabled={
+              isGenerating ||
+              (mode === "pptx" && !pptxFile) ||
+              (mode === "url" && !companyUrl.trim())
+            }
             style={primaryButtonStyle}
           >
             {isGenerating
               ? mode === "pptx"
                 ? "Importing..."
-                : "Generating..."
+                : mode === "url"
+                  ? "Creating..."
+                  : "Generating..."
               : mode === "pptx"
                 ? "Import preview"
-                : "Generate preview"}
+                : mode === "url"
+                  ? "Create template"
+                  : "Generate preview"}
           </button>
           <a href="/" style={secondaryLinkStyle}>
             Back

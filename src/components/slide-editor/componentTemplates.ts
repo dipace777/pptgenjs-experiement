@@ -5,6 +5,15 @@ export type ComponentTemplate = {
   label: string;
   description?: string;
   elements: SlideElement[];
+  intent?: string;
+  qualityScore?: number;
+  slots?: Array<{
+    elementIndexes: number[];
+    kind: string;
+    name: string;
+    role: string;
+    text?: string;
+  }>;
 };
 
 export type SlideTemplate = {
