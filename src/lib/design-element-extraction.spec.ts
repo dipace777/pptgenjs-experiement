@@ -1,18 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
   createDesignElementExtraction,
+  templatesFromDesignElementCuration,
   type DesignElementCandidate,
 } from "./design-element-extraction";
+import {
+  editableDescendantsForSemanticElement,
+  editableElementsForInsertion,
+  isSemanticElement,
+} from "./semantic-elements";
 import exampleDeckRaw from "./example-deck.json?raw";
 import type {
   Deck,
   Font,
+  ChartElement,
   ImageElement,
   LineElement,
   RectangleElement,
   Slide,
   SlideElement,
   SvgElement,
+  TableElement,
   TextElement,
 } from "./slide-schema";
 
@@ -123,6 +131,55 @@ function svgIcon(
     ...geometry(box),
     name,
     svg: `<svg aria-label="${name}"></svg>`,
+    ...overrides,
+  };
+}
+
+function chart(
+  title: string,
+  box: Box,
+  overrides: Partial<ChartElement> = {},
+): ChartElement {
+  return {
+    type: "chart",
+    ...geometry(box),
+    chartType: "bar",
+    title,
+    color: "2563EB",
+    data: [
+      { label: "Acquire", value: 42 },
+      { label: "Activate", value: 68 },
+      { label: "Retain", value: 54 },
+    ],
+    ...overrides,
+  };
+}
+
+function table(
+  box: Box,
+  overrides: Partial<TableElement> = {},
+): TableElement {
+  return {
+    type: "table",
+    ...geometry(box),
+    font: baseFont,
+    columns: [
+      { text: "Phase", fill: { color: "111827" }, font: { color: "FFFFFF", bold: true } },
+      { text: "Owner", fill: { color: "111827" }, font: { color: "FFFFFF", bold: true } },
+      { text: "Output", fill: { color: "111827" }, font: { color: "FFFFFF", bold: true } },
+    ],
+    rows: [
+      [
+        { text: "Discover" },
+        { text: "Product" },
+        { text: "Evidence" },
+      ],
+      [
+        { text: "Launch" },
+        { text: "Growth" },
+        { text: "Pipeline" },
+      ],
+    ],
     ...overrides,
   };
 }
@@ -329,6 +386,127 @@ describe("design element extraction", () => {
         name: "Reusable logo",
       });
     });
+
+    it("discovers standalone charts and tables as first-class data design elements", () => {
+      const extraction = createDesignElementExtraction(
+        deck([
+          slide([
+            chart("Funnel Conversion", { x: 1, y: 1, w: 3.8, h: 2.2 }),
+          ]),
+          slide([
+            table({ x: 1, y: 1, w: 4.3, h: 2.15 }),
+          ]),
+        ]),
+      );
+
+      const dataCandidates = extraction.candidates.filter(
+        (candidate) => candidate.source === "data",
+      );
+      const chartCandidate = dataCandidates.find(
+        (candidate) => candidate.categoryHint === "chart",
+      );
+      const tableCandidate = dataCandidates.find(
+        (candidate) => candidate.categoryHint === "table",
+      );
+
+      expect(chartCandidate).toMatchObject({
+        label: "Chart: Funnel Conversion",
+        intentHint: "chart",
+        elementIndexes: [0],
+      });
+      expect(chartCandidate?.slots).toEqual([
+        expect.objectContaining({
+          kind: "chart",
+          text: expect.stringContaining("Funnel Conversion"),
+        }),
+      ]);
+      expect(tableCandidate).toMatchObject({
+        label: "Table: Phase / Owner / Output",
+        intentHint: "table",
+        elementIndexes: [0],
+      });
+      expect(tableCandidate?.slots).toEqual([
+        expect.objectContaining({
+          kind: "table",
+          text: expect.stringContaining("Discover"),
+        }),
+      ]);
+      expect(extraction.templates.map((template) => template.elements[0]?.type)).toEqual(
+        expect.arrayContaining(["chart", "table"]),
+      );
+    });
+
+    it("keeps imported charts as standalone design elements even when nearby labels repair richer candidates", () => {
+      const extraction = createDesignElementExtraction(
+        deck([
+          slide([
+            text("Quarterly trend", { x: 1, y: 0.72, w: 2.4, h: 0.28 }, { bold: true }),
+            chart("Quarterly trend", { x: 1, y: 1, w: 4.2, h: 1.8 }),
+          ]),
+        ]),
+      );
+
+      const standaloneChart = extraction.candidates.find(
+        (candidate) =>
+          candidate.source === "data" &&
+          candidate.categoryHint === "chart" &&
+          candidate.elements.length === 1 &&
+          candidate.elements[0]?.type === "chart",
+      );
+
+      expect(standaloneChart).toMatchObject({
+        label: "Chart: Quarterly trend",
+        intentHint: "chart",
+      });
+      expect(extraction.templates).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: "Chart: Quarterly trend",
+            elements: [expect.objectContaining({ type: "chart" })],
+          }),
+        ]),
+      );
+    });
+
+    it("pins imported chart templates even if AI curation drops the chart cluster", () => {
+      const extraction = createDesignElementExtraction(
+        deck([
+          slide([
+            chart("Revenue", { x: 1, y: 1, w: 4.2, h: 1.8 }),
+            text("Pipeline", { x: 5.6, y: 1, w: 2, h: 0.35 }, { bold: true }),
+          ]),
+        ]),
+      );
+      const chartCluster = extraction.clusters.find(
+        (cluster) => cluster.categoryHint === "chart",
+      );
+      expect(chartCluster).toBeTruthy();
+
+      const templates = templatesFromDesignElementCuration(extraction, {
+        source: "ai",
+        decisions: [
+          {
+            clusterId: chartCluster!.id,
+            action: "drop",
+            category: "chart",
+            label: "Dropped chart",
+            description: "Dropped by AI",
+            intent: "chart",
+            confidence: 0.99,
+          },
+        ],
+      });
+
+      expect(templates).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: "Chart: Revenue",
+            elements: [expect.objectContaining({ type: "chart" })],
+          }),
+        ]),
+      );
+    });
+
   });
 
   describe("candidate repair and expansion", () => {
@@ -411,6 +589,156 @@ describe("design element extraction", () => {
       ]);
       expect(repaired?.slots.map((slot) => slot.kind)).toEqual(["icon", "label"]);
       expect(textValues(repaired!)).toEqual(["Fast setup"]);
+    });
+
+    it("repairs chart candidates by adding a nearby chart title", () => {
+      const extraction = createDesignElementExtraction(
+        deck([
+          slide([
+            text("Pipeline Mix", { x: 1, y: 0.82, w: 2.4, h: 0.34 }, {
+              size: 20,
+              bold: true,
+            }),
+            chart("", { x: 1, y: 1.3, w: 4.2, h: 2.15 }, {
+              title: undefined,
+            }),
+          ]),
+        ]),
+      );
+
+      const dataCandidate = extraction.candidates.find(
+        (candidate) => candidate.source === "data",
+      );
+
+      expect(dataCandidate).toMatchObject({
+        categoryHint: "chart",
+        intentHint: "chart",
+        elementIndexes: [0, 1],
+      });
+      expect(dataCandidate?.elements.map((element) => element.type)).toEqual([
+        "text",
+        "chart",
+      ]);
+      expect(dataCandidate?.slots.map((slot) => slot.kind)).toEqual([
+        "title",
+        "chart",
+      ]);
+    });
+  });
+
+  describe("component reconstruction and slots", () => {
+    it("reconstructs title lockups as semantic columns with stable editable slots", () => {
+      const extraction = createDesignElementExtraction(
+        deck([
+          slide([
+            text("Q3 Highlights", { x: 1, y: 1, w: 2.6, h: 0.42 }, {
+              size: 26,
+              bold: true,
+            }),
+            line({ x: 1, y: 1.5, w: 1.2, h: 0.04 }),
+            text(
+              "Pipeline quality improved across every major segment this quarter.",
+              { x: 1, y: 1.72, w: 3.4, h: 0.42 },
+              { size: 13 },
+            ),
+          ]),
+        ]),
+      );
+
+      const template = extraction.templates.find(
+        (item) => item.intent === "title-lockup",
+      );
+      const root = template?.elements[0];
+
+      expect(root).toMatchObject({
+        type: "flex",
+        direction: "column",
+      });
+      expect(isSemanticElement(root!)).toBe(true);
+
+      const descendants = editableDescendantsForSemanticElement(root!);
+      const textSlots = descendants
+        .filter((descendant) => descendant.element.type === "text")
+        .map((descendant) => ({
+          slot: descendant.element.componentSlot,
+          text:
+            descendant.element.type === "text"
+              ? descendant.element.runs.map((run) => run.text).join("")
+              : "",
+        }));
+
+      expect(descendants.map((descendant) => descendant.element.componentSlot)).toEqual(
+        expect.arrayContaining(["title", "accent", "body"]),
+      );
+      expect(textSlots).toEqual(
+        expect.arrayContaining([
+          { slot: "title", text: "Q3 Highlights" },
+          {
+            slot: "body",
+            text: "Pipeline quality improved across every major segment this quarter.",
+          },
+        ]),
+      );
+
+      const flattened = editableElementsForInsertion(template!.elements);
+      const flattenedTitle = flattened.find(
+        (element) =>
+          element.type === "text" &&
+          element.runs.map((run) => run.text).join("") === "Q3 Highlights",
+      );
+      expect(flattenedTitle).toMatchObject({
+        componentId: template?.id,
+        componentSlot: "title",
+      });
+    });
+
+    it("reconstructs metric card shells as containers with column child slots", () => {
+      const extraction = createDesignElementExtraction(
+        deck([
+          slide([
+            rectangle({ x: 1, y: 1, w: 2.8, h: 1.35 }),
+            text("42%", { x: 1.25, y: 1.2, w: 1.2, h: 0.38 }, {
+              size: 28,
+              bold: true,
+            }),
+            text("Activated accounts", { x: 1.25, y: 1.72, w: 1.9, h: 0.28 }, {
+              size: 12,
+            }),
+          ]),
+        ]),
+      );
+
+      const template = extraction.templates.find((item) =>
+        item.slots?.some((slot) => slot.kind === "metric"),
+      );
+      const root = template?.elements[0];
+
+      expect(root).toMatchObject({
+        type: "container",
+        child: {
+          type: "flex",
+          direction: "column",
+        },
+      });
+      expect(isSemanticElement(root!)).toBe(true);
+
+      const descendants = editableDescendantsForSemanticElement(root!);
+      const textSlots = descendants
+        .filter((descendant) => descendant.element.type === "text")
+        .map((descendant) => ({
+          slot: descendant.element.componentSlot,
+          text:
+            descendant.element.type === "text"
+              ? descendant.element.runs.map((run) => run.text).join("")
+              : "",
+        }));
+
+      expect(textSlots).toEqual(
+        expect.arrayContaining([
+          { slot: "metric", text: "42%" },
+          { slot: "label", text: "Activated accounts" },
+        ]),
+      );
     });
   });
 

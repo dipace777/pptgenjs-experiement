@@ -42,8 +42,14 @@ import {
 
 const VALIGN = { top: "top", middle: "middle", bottom: "bottom" } as const;
 export type PptxChartMode = "native" | "shapes";
+export type PptxRemoteImageResolver = (url: string) => Promise<string | null>;
 export type GeneratePptxOptions = {
   chartMode?: PptxChartMode;
+  resolveRemoteImage?: PptxRemoteImageResolver;
+};
+type ResolvedGeneratePptxOptions = {
+  chartMode: PptxChartMode;
+  resolveRemoteImage?: PptxRemoteImageResolver;
 };
 
 function transparencyPct(opacity?: number): number {
@@ -62,6 +68,127 @@ function svgDataUri(svg: string): string {
           ).join(""),
         );
   return `data:image/svg+xml;base64,${encoded}`;
+}
+
+type PptxImageSource = { data: string } | { path: string };
+type ResolvePptxImageSourceOptions = {
+  resolveRemoteImage?: PptxRemoteImageResolver;
+};
+
+export async function resolvePptxImageSource(
+  src: string | null | undefined,
+  options: ResolvePptxImageSourceOptions = {},
+): Promise<PptxImageSource | null> {
+  const value = src?.trim();
+  if (!value) return null;
+
+  const normalizedDataUri = normalizeImageDataUri(value);
+  if (normalizedDataUri) return { data: normalizedDataUri };
+
+  if (isHttpImageUrl(value) && options.resolveRemoteImage) {
+    const resolved = await options.resolveRemoteImage(value).catch(() => null);
+    const normalized = resolved ? normalizeImageDataUri(resolved) : null;
+    return normalized ? { data: normalized } : { path: value };
+  }
+
+  if (isFetchableImageUrl(value)) {
+    const fetched = await fetchImageAsDataUri(value);
+    if (fetched) return { data: fetched };
+    return { path: value };
+  }
+
+  const rawBase64 = normalizeRawBase64Image(value);
+  return rawBase64 ? { data: rawBase64 } : null;
+}
+
+function normalizeImageDataUri(value: string): string | null {
+  if (!value.startsWith("data:")) return null;
+  if (/^data:[^,]+;base64,/i.test(value)) return value;
+
+  const match = value.match(/^data:([^,]*),(.*)$/s);
+  if (!match) return null;
+
+  const metadata = match[1] || "image/png";
+  const mime = metadata.split(";")[0] || "image/png";
+  const payload = match[2] ?? "";
+  try {
+    const decoded = decodeURIComponent(payload);
+    return `data:${mime};base64,${bytesToBase64(
+      new TextEncoder().encode(decoded),
+    )}`;
+  } catch {
+    return null;
+  }
+}
+
+function isFetchableImageUrl(value: string): boolean {
+  return /^(https?:|blob:)/i.test(value);
+}
+
+function isHttpImageUrl(value: string): boolean {
+  return /^https?:/i.test(value);
+}
+
+async function fetchImageAsDataUri(url: string): Promise<string | null> {
+  if (typeof fetch !== "function") return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const contentType =
+      response.headers.get("content-type")?.split(";")[0]?.trim() ||
+      mimeFromUrl(url) ||
+      "image/png";
+    return `data:${contentType};base64,${bytesToBase64(bytes)}`;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRawBase64Image(value: string): string | null {
+  const compact = value.replace(/\s+/g, "");
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(compact) || compact.length < 16) {
+    return null;
+  }
+  return `data:${mimeFromBase64(compact)};base64,${compact}`;
+}
+
+function mimeFromUrl(url: string): string | null {
+  const pathname = url.split(/[?#]/)[0]?.toLowerCase() ?? "";
+  if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) return "image/jpeg";
+  if (pathname.endsWith(".png")) return "image/png";
+  if (pathname.endsWith(".gif")) return "image/gif";
+  if (pathname.endsWith(".webp")) return "image/webp";
+  if (pathname.endsWith(".svg")) return "image/svg+xml";
+  return null;
+}
+
+function mimeFromBase64(value: string): string {
+  if (value.startsWith("/9j/")) return "image/jpeg";
+  if (value.startsWith("iVBORw0KGgo")) return "image/png";
+  if (value.startsWith("R0lGOD")) return "image/gif";
+  if (value.startsWith("UklGR")) return "image/webp";
+  if (value.startsWith("PHN2Zy") || value.startsWith("PD94bW")) {
+    return "image/svg+xml";
+  }
+  return "image/png";
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return window.btoa(binary);
+}
+
+function pptxImageSourceToSrc(source: PptxImageSource): string {
+  return "data" in source ? source.data : source.path;
 }
 
 function pptxShadow(shadow?: Shadow | null): PptxGenJS.ShadowProps | undefined {
@@ -589,13 +716,13 @@ function shapeLine(stroke: Stroke | null | undefined) {
   };
 }
 
-function addSemanticElement(
+async function addSemanticElement(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
   el: SlideElement,
   bg: string,
-  options: Required<GeneratePptxOptions>,
-): void {
+  options: ResolvedGeneratePptxOptions,
+): Promise<void> {
   if (!isSemanticElement(el)) return;
   const box = elementBox(el);
 
@@ -611,11 +738,11 @@ function addSemanticElement(
       shadow: el.shadow,
       rotation: el.rotation,
     };
-    addElement(pptx, s, frame, bg, options);
+    await addElement(pptx, s, frame, bg, options);
   }
 
   for (const child of renderableChildrenForSemanticElement(el)) {
-    addElement(
+    await addElement(
       pptx,
       s,
       inheritOpacity(elementWithOffset(child, box.x, box.y), el.opacity),
@@ -636,15 +763,15 @@ function inheritOpacity(
   } as SlideElement;
 }
 
-function addElement(
+async function addElement(
   pptx: PptxGenJS,
   s: PptxGenJS.Slide,
   el: SlideElement,
   bg: string,
-  options: Required<GeneratePptxOptions>,
-): void {
+  options: ResolvedGeneratePptxOptions,
+): Promise<void> {
   if (isSemanticElement(el)) {
-    addSemanticElement(pptx, s, el, bg, options);
+    await addSemanticElement(pptx, s, el, bg, options);
     return;
   }
 
@@ -757,9 +884,12 @@ function addElement(
   }
 
   if (el.type === "image") {
-    if (el.data) {
+    const source = await resolvePptxImageSource(el.data, {
+      resolveRemoteImage: options.resolveRemoteImage,
+    });
+    if (source) {
       s.addImage({
-        data: el.data,
+        ...source,
         x: box.x,
         y: box.y,
         w: box.w,
@@ -864,38 +994,45 @@ function loadImageNaturalSize(
 async function addSlide(
   pptx: PptxGenJS,
   slide: Slide,
-  options: Required<GeneratePptxOptions>,
+  options: ResolvedGeneratePptxOptions,
 ): Promise<void> {
   const s = pptx.addSlide();
   s.background = { color: slide.background };
   if (slide.backgroundImage) {
     const fit = slide.backgroundImage.fit ?? "cover";
+    const source = await resolvePptxImageSource(slide.backgroundImage.data, {
+      resolveRemoteImage: options.resolveRemoteImage,
+    });
     // pptxgenjs computes cover/contain srcRect using addImage's `w`/`h` as
     // the natural image size. If we pass slide dims for both, the ratio is
     // 1:1 and the crop collapses to fill. Decode natural dims so cover and
     // contain produce the right srcRect.
     const natural =
-      fit === "fill"
+      !source || fit === "fill"
         ? null
-        : await loadImageNaturalSize(slide.backgroundImage.data);
+        : await loadImageNaturalSize(pptxImageSourceToSrc(source));
     const imgW = natural?.w ? natural.w / 96 : SLIDE_W;
     const imgH = natural?.h ? natural.h / 96 : SLIDE_H;
-    s.addImage({
-      data: slide.backgroundImage.data,
-      x: 0,
-      y: 0,
-      w: imgW,
-      h: imgH,
-      sizing:
-        fit === "cover"
-          ? { type: "cover", w: SLIDE_W, h: SLIDE_H }
-          : fit === "contain"
-            ? { type: "contain", w: SLIDE_W, h: SLIDE_H }
-            : undefined,
-      transparency: transparencyPct(slide.backgroundImage.opacity ?? undefined),
-    });
+    if (source) {
+      s.addImage({
+        ...source,
+        x: 0,
+        y: 0,
+        w: imgW,
+        h: imgH,
+        sizing:
+          fit === "cover"
+            ? { type: "cover", w: SLIDE_W, h: SLIDE_H }
+            : fit === "contain"
+              ? { type: "contain", w: SLIDE_W, h: SLIDE_H }
+              : undefined,
+        transparency: transparencyPct(slide.backgroundImage.opacity ?? undefined),
+      });
+    }
   }
-  for (const el of slide.elements) addElement(pptx, s, el, slide.background, options);
+  for (const el of slide.elements) {
+    await addElement(pptx, s, el, slide.background, options);
+  }
 }
 
 export async function generatePptx(
@@ -903,8 +1040,9 @@ export async function generatePptx(
   filename = "presentation.pptx",
   options: GeneratePptxOptions = {},
 ) {
-  const resolvedOptions: Required<GeneratePptxOptions> = {
+  const resolvedOptions: ResolvedGeneratePptxOptions = {
     chartMode: options.chartMode ?? "native",
+    resolveRemoteImage: options.resolveRemoteImage,
   };
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "PPTY_16x9", width: SLIDE_W, height: SLIDE_H });

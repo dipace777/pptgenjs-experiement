@@ -51,7 +51,7 @@ export const curateDesignElementsWithAi = createServerFn({ method: "POST" })
                 "You do not invent geometry, elements, IDs, or coordinates.",
                 "Return keep/drop decisions for candidate clusters only.",
                 "Optimize for design intent and editor usefulness, not raw element repetition.",
-                "Keep blocks a user would intentionally insert and edit: author pills, navigation pills, title lockups, metric cards, stat cards, media cards, insight grids, feature lists, icon-label systems, CTA buttons, strong badges, distinctive dividers, and polished framed content blocks.",
+                "Keep blocks a user would intentionally insert and edit: author pills, navigation pills, title lockups, metric cards, stat cards, charts, tables, media cards, insight grids, feature lists, icon-label systems, CTA buttons, strong badges, distinctive dividers, and polished framed content blocks.",
                 "Prefer candidates with clear editableSlots, high qualityScore, concrete qualitySignals, and a specific intentHint.",
                 "Drop full-slide backgrounds, plain one-off photos, isolated text, isolated decorative shapes, tiny fragments, repeated noise, candidates with severe qualityIssues, redundant variants, and anything unlikely to be reused by an editor user.",
                 "Prefer fewer, higher-quality reusable components over many near-duplicates. A deck with 8 excellent components is better than 24 mediocre ones.",
@@ -66,7 +66,7 @@ export const curateDesignElementsWithAi = createServerFn({ method: "POST" })
                 content: [
                   "Curate this imported deck's reusable design elements.",
                   "Return at most 18 keep decisions. Drop the rest explicitly only when useful.",
-                  "Keep labels concise, noun-like, and intentful, for example: Author Pill, Navigation Pill, Insight Grid, Feature List, Metric Card, Title Lockup, Media Card.",
+                  "Keep labels concise, noun-like, and intentful, for example: Author Pill, Navigation Pill, Insight Grid, Feature List, Metric Card, Chart, Table, Title Lockup, Media Card.",
                   "Use each cluster's recommendedStructure unless another structure is clearly better.",
                   "If qualityScore is below 50, keep it only when qualitySignals and editableSlots show a clearly reusable design intent.",
                   "Descriptions should explain what this block is for, not where it came from.",

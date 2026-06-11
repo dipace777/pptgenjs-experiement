@@ -288,7 +288,8 @@ function applyComponentMetadata<T extends SlideElement>(
   } else {
     delete next.componentDescription;
   }
-  if (metadata.componentSlot) next.componentSlot = metadata.componentSlot;
+  const componentSlot = element.componentSlot ?? metadata.componentSlot;
+  if (componentSlot) next.componentSlot = componentSlot;
   else delete next.componentSlot;
   delete next.componentInstanceId;
   return next;

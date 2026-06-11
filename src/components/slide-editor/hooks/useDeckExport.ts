@@ -1,7 +1,9 @@
 import type Konva from "konva";
+import { useServerFn } from "@tanstack/react-start";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { SLIDE_H, SLIDE_W } from "../../../lib/slide-schema";
+import { resolveRemotePptxImage } from "../../../slide/pptx-remote-image";
 import { filenameFromTitle } from "../editorUtils";
 import { waitForDeckExportAssets } from "../slide-surface/konva/exportAssets";
 import {
@@ -21,18 +23,30 @@ export function useDeckExport() {
   const deck = useAtomValue(deckAtom);
   const exportMode = useAtomValue(exportModeAtom);
   const setIsExporting = useSetAtom(isExportingAtom);
+  const resolveRemotePptxImageFn = useServerFn(resolveRemotePptxImage);
   const exportStageRefs = useRef<Array<Konva.Stage | null>>([]);
   const [exportingType, setExportingType] = useState<"pptx" | "pdf" | null>(null);
 
+  const resolveRemoteImage = async (url: string) => {
+    const result = await resolveRemotePptxImageFn({ data: { url } });
+    if (!result.data && result.message) {
+      console.warn("PPTX image export fallback:", result.message, url);
+    }
+    return result.data;
+  };
+
   const handleNativeExport = async () => {
     const { generatePptx } = await import("../../../slide/generatePptx");
-    await generatePptx(deck, filenameFromTitle(deck.title));
+    await generatePptx(deck, filenameFromTitle(deck.title), {
+      resolveRemoteImage,
+    });
   };
 
   const handleKeynoteExport = async () => {
     const { generatePptx } = await import("../../../slide/generatePptx");
     await generatePptx(deck, filenameFromTitle(deck.title, "-keynote"), {
       chartMode: "shapes",
+      resolveRemoteImage,
     });
   };
 

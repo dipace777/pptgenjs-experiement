@@ -156,6 +156,25 @@ export const drawerStyles = {
     color: "#7d89a3",
     fontSize: 11,
   },
+  componentSlotGrid: {
+    display: "grid",
+    gap: 8,
+  },
+  componentSlotSummary: {
+    border: "1px solid #20283a",
+    borderRadius: 7,
+    background: "#111722",
+    color: "#d8dfed",
+    fontSize: 12,
+    lineHeight: 1.35,
+    padding: "9px 10px",
+  },
+  componentImageSlotRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 8,
+    alignItems: "center",
+  },
   componentHint: {
     marginTop: 10,
     color: "#7d89a3",

@@ -8,9 +8,20 @@ import {
 } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Group, Layer, Rect, Stage } from "react-konva";
-import { elementBox } from "../../../lib/element-model";
+import {
+  elementBox,
+  setTextContent,
+  setTextListStrings,
+  textContent,
+  textListStrings,
+} from "../../../lib/element-model";
 import { prepareDesignElementsForInsertion } from "../../../lib/design-element-insertion";
-import { isSemanticElement } from "../../../lib/semantic-elements";
+import {
+  editableDescendantsForSemanticElement,
+  isSemanticElement,
+  updateElementAtPath,
+  type ElementPath,
+} from "../../../lib/semantic-elements";
 import type { SlideElement } from "../../../lib/slide-schema";
 import type { ComponentTemplate } from "../componentTemplates";
 import { styles } from "../editorStyles";
@@ -18,7 +29,7 @@ import { kindLabel, withHash, withoutHash } from "../editorUtils";
 import { useSvgGeneration } from "../hooks";
 import { ElementInspector } from "../inspector/ElementInspector";
 import { ADDABLE_ELEMENT_KINDS } from "../registry";
-import { EditorButton, TextareaField } from "../shared/FormControls";
+import { EditorButton, TextareaField, TextField } from "../shared/FormControls";
 import { renderKonvaElement } from "../slide-surface/konva/elementRenderers";
 import type { ElementEvents } from "../slide-surface/konva/types";
 import {
@@ -56,6 +67,9 @@ export function SlideEditorDrawer({
   const selectedIndex = useAtomValue(selectedIndexAtom);
   const groupEditRootIndex = useAtomValue(groupEditRootIndexAtom);
   const selectedComponentRun = getComponentRun(activeSlide.elements, selectedIndex);
+  const selectedComponentSlots = selectedComponentRun
+    ? componentSlotsForRun(activeSlide.elements, selectedComponentRun.indexes)
+    : [];
   const updateActiveSlide = useSetAtom(updateActiveSlideAtom);
   const updateElement = useSetAtom(updateElementAtom);
   const patchSelected = useSetAtom(patchSelectedAtom);
@@ -100,6 +114,85 @@ export function SlideEditorDrawer({
       prepareDesignElementsForInsertion(component.elements, activeSlide.background),
     );
     setComponentPickerOpen(false);
+  };
+
+  const updateComponentSlot = (componentSlot: string, value: string) => {
+    updateActiveSlide((slide) => {
+      const run = getComponentRun(slide.elements, selectedIndex);
+      if (!run) return;
+
+      for (const index of run.indexes) {
+        const element = slide.elements[index];
+        if (!element) continue;
+
+        if (element.componentSlot === componentSlot && isTextEditableElement(element)) {
+          slide.elements[index] = updateTextEditableElement(element, value);
+          continue;
+        }
+
+        if (!isSemanticElement(element)) continue;
+
+        let nextRoot: SlideElement = element;
+        const descendants = editableDescendantsForSemanticElement(element);
+        for (const descendant of descendants) {
+          if (
+            descendant.element.componentSlot !== componentSlot ||
+            !isTextEditableElement(descendant.element)
+          ) {
+            continue;
+          }
+          nextRoot = updateElementAtPath(nextRoot, descendant.path, (child) =>
+            isTextEditableElement(child)
+              ? updateTextEditableElement(child, value)
+              : child,
+          );
+        }
+        slide.elements[index] = nextRoot;
+      }
+    });
+  };
+
+  const updateComponentImageSlot = (
+    componentSlot: string,
+    fileName: string,
+    data: string,
+  ) => {
+    updateActiveSlide((slide) => {
+      const run = getComponentRun(slide.elements, selectedIndex);
+      if (!run) return;
+
+      for (const index of run.indexes) {
+        const element = slide.elements[index];
+        if (!element) continue;
+
+        if (
+          element.componentSlot === componentSlot &&
+          isImageReplaceableElement(element)
+        ) {
+          slide.elements[index] = imageElementWithUpload(element, fileName, data);
+          continue;
+        }
+
+        if (!isSemanticElement(element)) continue;
+
+        let nextRoot: SlideElement = element;
+        const descendants = editableDescendantsForSemanticElement(element);
+        for (const descendant of descendants) {
+          if (
+            descendant.element.componentSlot !== componentSlot ||
+            !isImageReplaceableElement(descendant.element)
+          ) {
+            continue;
+          }
+          nextRoot = updateElementAtPath(nextRoot, descendant.path, (child) =>
+            isImageReplaceableElement(child)
+              ? imageElementWithUpload(child, fileName, data)
+              : child,
+          );
+        }
+        slide.elements[index] = nextRoot;
+      }
+    });
   };
 
   return (
@@ -165,6 +258,13 @@ export function SlideEditorDrawer({
             <div style={drawerStyles.componentMeta}>
               {selectedComponentRun.indexes.length} editable elements selected as one component.
             </div>
+            {selectedComponentSlots.length > 0 ? (
+              <ComponentSlotFields
+                slots={selectedComponentSlots}
+                onChange={updateComponentSlot}
+                onImageChange={updateComponentImageSlot}
+              />
+            ) : null}
             <EditorButton onClick={() => deleteSelectedComponentRun()}>
               Delete component
             </EditorButton>
@@ -307,6 +407,311 @@ export function SlideEditorDrawer({
       </aside>
     </div>
   );
+}
+
+type ComponentSlotMember = {
+  element: SlideElement;
+  index: number;
+  path?: ElementPath;
+};
+
+type ComponentSlotField = {
+  editor: "image" | "summary" | "text";
+  key: string;
+  label: string;
+  rows: number;
+  value: string;
+};
+
+function ComponentSlotFields({
+  slots,
+  onChange,
+  onImageChange,
+}: {
+  slots: ComponentSlotField[];
+  onChange: (componentSlot: string, value: string) => void;
+  onImageChange: (componentSlot: string, fileName: string, data: string) => void;
+}) {
+  return (
+    <div style={drawerStyles.componentSlotGrid}>
+      {slots.map((slot) =>
+        slot.editor === "text" ? (
+          slot.rows <= 1 ? (
+            <TextField
+              key={slot.key}
+              label={slot.label}
+              value={slot.value}
+              onChange={(value) => onChange(slot.key, value)}
+            />
+          ) : (
+            <TextareaField
+              key={slot.key}
+              label={slot.label}
+              value={slot.value}
+              rows={slot.rows}
+              onChange={(value) => onChange(slot.key, value)}
+            />
+          )
+        ) : slot.editor === "image" ? (
+          <ImageSlotField
+            key={slot.key}
+            slot={slot}
+            onChange={onImageChange}
+          />
+        ) : (
+          <div key={slot.key} style={styles.field}>
+            <span>{slot.label}</span>
+            <div style={drawerStyles.componentSlotSummary}>{slot.value}</div>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function ImageSlotField({
+  slot,
+  onChange,
+}: {
+  slot: ComponentSlotField;
+  onChange: (componentSlot: string, fileName: string, data: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result !== "string") return;
+      onChange(slot.key, file.name, reader.result);
+    });
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
+
+  return (
+    <div style={styles.field}>
+      <span>{slot.label}</span>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        onChange={handleChange}
+        style={{ display: "none" }}
+      />
+      <div style={drawerStyles.componentImageSlotRow}>
+        <div style={drawerStyles.componentSlotSummary}>{slot.value}</div>
+        <EditorButton onClick={() => inputRef.current?.click()}>
+          {slot.value ? "Replace" : "Upload"}
+        </EditorButton>
+      </div>
+    </div>
+  );
+}
+
+function componentSlotsForRun(
+  elements: SlideElement[],
+  indexes: number[],
+): ComponentSlotField[] {
+  const membersBySlot = new Map<string, ComponentSlotMember[]>();
+
+  for (const index of indexes) {
+    const element = elements[index];
+    if (!element) continue;
+    addSlotMember(membersBySlot, element.componentSlot, { element, index });
+
+    if (!isSemanticElement(element)) continue;
+    for (const descendant of editableDescendantsForSemanticElement(element)) {
+      addSlotMember(membersBySlot, descendant.element.componentSlot, {
+        element: descendant.element,
+        index,
+        path: descendant.path,
+      });
+    }
+  }
+
+  return [...membersBySlot.entries()]
+    .map(([key, members]) => componentSlotField(key, members))
+    .sort(
+      (a, b) =>
+        componentSlotSortOrder(a.key) - componentSlotSortOrder(b.key) ||
+        a.label.localeCompare(b.label),
+    );
+}
+
+function addSlotMember(
+  membersBySlot: Map<string, ComponentSlotMember[]>,
+  componentSlot: string | null | undefined,
+  member: ComponentSlotMember,
+) {
+  if (!componentSlot) return;
+  const members = membersBySlot.get(componentSlot);
+  if (members) members.push(member);
+  else membersBySlot.set(componentSlot, [member]);
+}
+
+function componentSlotField(
+  key: string,
+  members: ComponentSlotMember[],
+): ComponentSlotField {
+  const editableMembers = members.filter(isTextEditableMember);
+  const imageMembers = members.filter(isImageReplaceableMember);
+  const editor =
+    editableMembers.length > 0
+      ? "text"
+      : imageMembers.length > 0
+        ? "image"
+        : "summary";
+  const value =
+    editor === "text"
+      ? editableMembers.map((member) => textEditableValue(member.element)).join("\n")
+      : members.map((member) => slotSummary(member.element)).filter(Boolean).join(" / ");
+
+  return {
+    editor,
+    key,
+    label: componentSlotLabel(key),
+    rows: slotRows(key, value, editableMembers),
+    value: value || slotSummary(members[0]?.element),
+  };
+}
+
+function componentSlotLabel(componentSlot: string) {
+  return componentSlot
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function componentSlotSortOrder(componentSlot: string) {
+  const normalized = componentSlot.toLowerCase();
+  const order = [
+    "title",
+    "subtitle",
+    "metric",
+    "date",
+    "label",
+    "body",
+    "list",
+    "image",
+    "icon",
+    "chart",
+    "table",
+    "accent",
+    "shape",
+  ];
+  const index = order.findIndex((key) => normalized.includes(key));
+  return index >= 0 ? index : order.length;
+}
+
+function slotRows(
+  key: string,
+  value: string,
+  members: ComponentSlotMember[],
+): number {
+  if (key.includes("body") || key.includes("list")) return 3;
+  if (members.some((member) => member.element.type === "text-list")) return 3;
+  if (value.length > 72 || value.includes("\n")) return 3;
+  return 1;
+}
+
+function isTextEditableElement(
+  element: SlideElement,
+): element is Extract<SlideElement, { type: "text" | "text-list" }> {
+  return element.type === "text" || element.type === "text-list";
+}
+
+function isTextEditableMember(
+  member: ComponentSlotMember,
+): member is ComponentSlotMember & {
+  element: Extract<SlideElement, { type: "text" | "text-list" }>;
+} {
+  return isTextEditableElement(member.element);
+}
+
+function isImageReplaceableElement(
+  element: SlideElement,
+): element is Extract<SlideElement, { type: "image" | "svg" }> {
+  return element.type === "image" || element.type === "svg";
+}
+
+function isImageReplaceableMember(
+  member: ComponentSlotMember,
+): member is ComponentSlotMember & {
+  element: Extract<SlideElement, { type: "image" | "svg" }>;
+} {
+  return isImageReplaceableElement(member.element);
+}
+
+function textEditableValue(
+  element: Extract<SlideElement, { type: "text" | "text-list" }>,
+) {
+  if (element.type === "text") return textContent(element);
+  return textListStrings(element).join("\n");
+}
+
+function updateTextEditableElement(
+  element: Extract<SlideElement, { type: "text" | "text-list" }>,
+  value: string,
+): SlideElement {
+  if (element.type === "text") return setTextContent(element, value);
+  const items = value
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return setTextListStrings(element, items.length > 0 ? items : [" "]);
+}
+
+function imageElementWithUpload(
+  element: Extract<SlideElement, { type: "image" | "svg" }>,
+  fileName: string,
+  data: string,
+): SlideElement {
+  if (element.type === "image") {
+    return {
+      ...element,
+      data,
+      name: fileName,
+      fit: element.fit ?? "cover",
+    };
+  }
+
+  return {
+    type: "image",
+    fixed: element.fixed,
+    position: element.position,
+    size: element.size,
+    rotation: element.rotation,
+    opacity: element.opacity,
+    shadow: element.shadow,
+    componentId: element.componentId,
+    componentInstanceId: element.componentInstanceId,
+    componentDescription: element.componentDescription,
+    componentSlot: element.componentSlot,
+    layout: element.layout,
+    data,
+    name: fileName,
+    fit: "contain",
+  };
+}
+
+function slotSummary(element: SlideElement | undefined): string {
+  if (!element) return "";
+  if (element.type === "chart") {
+    return element.title ?? `${componentSlotLabel(element.chartType)} chart`;
+  }
+  if (element.type === "table") {
+    return `${element.columns.length} columns, ${element.rows.length} rows`;
+  }
+  if (element.type === "image" || element.type === "svg") {
+    return element.name ?? componentSlotLabel(element.type);
+  }
+  if (element.type === "line") return "Divider";
+  return componentSlotLabel(element.type);
 }
 
 function ComponentPickerDrawer({

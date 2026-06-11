@@ -11,6 +11,7 @@ const SESSION_KEY = "ppty:generatedDeck";
 const PreviewDesignElementIntentSchema = z.enum([
   "author-pill",
   "badge",
+  "chart",
   "content-card",
   "cta-button",
   "decorative-accent",
@@ -23,6 +24,7 @@ const PreviewDesignElementIntentSchema = z.enum([
   "metric-card",
   "navigation-pill",
   "stat-card",
+  "table",
   "title-lockup",
   "unknown",
 ]);

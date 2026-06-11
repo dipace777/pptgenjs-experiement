@@ -132,9 +132,9 @@ The `templates` array is the deterministic fallback. Even if AI curation is disa
 
 ## 4. Candidate Discovery
 
-Candidate discovery is deterministic. It scans each slide and asks: "Which existing elements might be a reusable visual block?"
+Candidate discovery starts with deterministic scans. Every candidate still points back to existing slide elements.
 
-`createDesignElementExtraction()` gathers raw candidates from five sources.
+`createDesignElementExtraction()` gathers raw candidates from six sources.
 
 ### 4.1 Explicit Component Candidates
 
@@ -320,7 +320,37 @@ Why this source matters:
 
 Title compositions are often reusable brand language. A heading plus accent is more useful than either piece alone.
 
-### 4.5 Media Candidates
+### 4.5 Data Candidates
+
+Function:
+
+```ts
+dataElementCandidates(deck)
+```
+
+What it finds:
+
+Standalone charts and tables that are large enough to reuse. During repair, these candidates can pull in a nearby title, caption, or containing frame.
+
+Example:
+
+```ts
+{
+  source: "data",
+  label: "Chart: Funnel Conversion",
+  categoryHint: "chart",
+  intentHint: "chart",
+  elements: [{ type: "chart", chartType: "bar" }],
+}
+```
+
+Standalone chart/table templates stay as raw `chart` or `table` elements so the editor's chart/table controls still work naturally. If a title/frame belongs with the data element, the final template may become a semantic `group` or `container`.
+
+Why this source matters:
+
+Charts and tables are reusable design elements in their own right. Without this source, they only appeared when a surrounding card, explicit component tag, or layout pattern happened to catch them.
+
+### 4.6 Media Candidates
 
 Function:
 
@@ -1012,7 +1042,7 @@ in [design-element-extraction.spec.ts](../src/lib/design-element-extraction.spec
 
 ## 17. What The AI Sees Vs What The Editor Inserts
 
-AI sees compact cluster summaries:
+Curation AI sees compact cluster summaries:
 
 ```txt
 label, category, intent, slots, quality, bounds, element summaries
@@ -1024,5 +1054,4 @@ Editor inserts real `SlideElement[]`:
 actual text elements, images, shapes, containers, groups, grids, flex layouts
 ```
 
-That separation is deliberate. The AI makes curation decisions; the deterministic extractor owns geometry and rendering fidelity.
-
+That separation is deliberate. AI may make curation decisions, but the extractor owns validation, geometry, clustering, and rendering fidelity.

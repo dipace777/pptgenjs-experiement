@@ -6,11 +6,15 @@ import {
   SLIDE_W,
   type Deck,
   type BorderRadius,
+  type ChartDatum,
+  type ChartType,
   type Fill,
+  type Font,
   type Shadow,
   type Slide,
   type SlideElement,
   type Stroke,
+  type TableCell,
 } from "./slide-schemaV2";
 import {
   PPTY_DECK_SIDECAR_PATH,
@@ -64,6 +68,12 @@ const PARSER = new XMLParser({
       "a:p",
       "a:r",
       "a:br",
+      "a:tr",
+      "a:tc",
+      "a:gridCol",
+      "c:ser",
+      "c:pt",
+      "c:dPt",
     ].includes(name);
   },
 });
@@ -309,10 +319,27 @@ async function parseSlide(
       if (el) elements.push(el);
     }
 
-    if (spTree["p:graphicFrame"]) {
-      warnings.push(
-        `Slide ${slidePath.split("/").pop()}: tables/charts/graphic frames are not yet imported.`,
+    const graphicFrames = toArray(spTree["p:graphicFrame"]);
+    let warnedGraphicFrame = false;
+    for (const graphicFrame of graphicFrames) {
+      if (elements.length >= MAX_ELEMENTS_PER_SLIDE) break;
+      const el = await graphicFrameToElement(
+        graphicFrame,
+        scale,
+        themeColors,
+        IDENTITY_TRANSFORM,
+        zip,
+        rels,
+        slidePath,
       );
+      if (el) {
+        elements.push(el);
+      } else if (!warnedGraphicFrame) {
+        warnedGraphicFrame = true;
+        warnings.push(
+          `Slide ${slidePath.split("/").pop()}: unsupported charts/graphic frames were skipped.`,
+        );
+      }
     }
     if (spTree["p:grpSp"]) {
       warnings.push(
@@ -398,11 +425,24 @@ async function appendOrderedElements({
         warnings,
         zip,
       });
-    } else if (item.kind === "graphicFrame" && !warnedGraphicFrame) {
-      warnedGraphicFrame = true;
-      warnings.push(
-        `Slide ${slidePath.split("/").pop()}: tables/charts/graphic frames are not yet imported.`,
+    } else if (item.kind === "graphicFrame") {
+      const el = await graphicFrameToElement(
+        item.node,
+        scale,
+        themeColors,
+        transform,
+        zip,
+        rels,
+        slidePath,
       );
+      if (el) {
+        elements.push(el);
+      } else if (!warnedGraphicFrame) {
+        warnedGraphicFrame = true;
+        warnings.push(
+          `Slide ${slidePath.split("/").pop()}: unsupported charts/graphic frames were skipped.`,
+        );
+      }
     }
   }
 }
@@ -580,6 +620,351 @@ function cxnSpToElement(
     rotation,
     stroke,
     shadow: extractShadow(spPr, scale, themeColors),
+  };
+}
+
+async function graphicFrameToElement(
+  graphicFrame: unknown,
+  scale: number,
+  themeColors: ThemeColorMap,
+  transform: GeometryTransform,
+  zip: JSZip,
+  rels: RelMap,
+  slidePath: string,
+): Promise<SlideElement | null> {
+  if (!graphicFrame || typeof graphicFrame !== "object") return null;
+  const node = graphicFrame as Record<string, unknown>;
+  const xfrm = pickGraphicFrameXfrm(node);
+  if (!xfrm) return null;
+  const box = boxFromXfrm(xfrm, scale, transform);
+  if (!box) return null;
+  const rotation = rotationFromXfrm(xfrm, transform);
+
+  const table = graphicFrameTable(node);
+  if (table) return tableToElement(table, box, rotation, scale, themeColors);
+
+  return chartGraphicFrameToElement(node, box, rotation, zip, rels, slidePath, themeColors);
+}
+
+function pickGraphicFrameXfrm(
+  node: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const xfrm = node["p:xfrm"] as Record<string, unknown> | undefined;
+  return xfrm ?? null;
+}
+
+function graphicFrameTable(
+  node: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const graphic = node["a:graphic"] as Record<string, unknown> | undefined;
+  const graphicData = graphic?.["a:graphicData"] as
+    | Record<string, unknown>
+    | undefined;
+  const table = graphicData?.["a:tbl"];
+  return table && typeof table === "object"
+    ? (table as Record<string, unknown>)
+    : null;
+}
+
+async function chartGraphicFrameToElement(
+  node: Record<string, unknown>,
+  box: { x: number; y: number; w: number; h: number },
+  rotation: number | undefined,
+  zip: JSZip,
+  rels: RelMap,
+  slidePath: string,
+  themeColors: ThemeColorMap,
+): Promise<SlideElement | null> {
+  const chartRef = graphicFrameChartRef(node);
+  if (!chartRef) return null;
+  const rel = rels.get(chartRef);
+  if (!rel) return null;
+
+  const chartPath = resolvePath(slidePath, rel.target);
+  const chartXml = await readText(zip, chartPath);
+  if (!chartXml) return null;
+
+  const parsed = PARSER.parse(chartXml);
+  const chartSpace = parsed["c:chartSpace"] as
+    | Record<string, unknown>
+    | undefined;
+  const chart = chartSpace?.["c:chart"] as Record<string, unknown> | undefined;
+  const plotArea = chart?.["c:plotArea"] as Record<string, unknown> | undefined;
+  if (!chart || !plotArea) return null;
+
+  const chartKind = chartTypeFromPlotArea(plotArea);
+  if (!chartKind) return null;
+  const source = firstRecord(plotArea[chartKind.xmlKey]);
+  if (!source) return null;
+
+  const series = firstRecord(source["c:ser"]);
+  if (!series) return null;
+  const data = chartSeriesData(series, themeColors);
+  if (data.length === 0) return null;
+
+  const title = chartTitle(chart);
+  const color = extractChartFillColor(series, themeColors) ?? themeColors.accent1;
+
+  return {
+    type: "chart",
+    ...boxToPositionSize(box),
+    rotation,
+    chartType: chartKind.type,
+    title: title || undefined,
+    color,
+    axisColor: "D1D5DB",
+    labelColor: "111827",
+    showValues: chartKind.type === "donut",
+    data,
+  };
+}
+
+function graphicFrameChartRef(node: Record<string, unknown>): string | null {
+  const graphic = node["a:graphic"] as Record<string, unknown> | undefined;
+  const graphicData = graphic?.["a:graphicData"] as
+    | Record<string, unknown>
+    | undefined;
+  const chart = graphicData?.["c:chart"] as Record<string, unknown> | undefined;
+  const rId = chart?.["@_r:id"];
+  return typeof rId === "string" ? rId : null;
+}
+
+function chartTypeFromPlotArea(
+  plotArea: Record<string, unknown>,
+): { type: ChartType; xmlKey: string } | null {
+  if (plotArea["c:barChart"]) return { type: "bar", xmlKey: "c:barChart" };
+  if (plotArea["c:lineChart"]) return { type: "line", xmlKey: "c:lineChart" };
+  if (plotArea["c:doughnutChart"]) {
+    return { type: "donut", xmlKey: "c:doughnutChart" };
+  }
+  if (plotArea["c:pieChart"]) return { type: "donut", xmlKey: "c:pieChart" };
+  return null;
+}
+
+function chartSeriesData(
+  series: Record<string, unknown>,
+  themeColors: ThemeColorMap,
+): ChartDatum[] {
+  const labels = chartPointStrings(
+    chartDataSource(series["c:cat"] ?? series["c:xVal"]),
+  );
+  const values = chartPointNumbers(
+    chartDataSource(series["c:val"] ?? series["c:yVal"]),
+  );
+  const pointColors = chartPointColors(series, themeColors);
+
+  return values.slice(0, 8).map((value, index) => ({
+    label: (labels[index] || `Item ${index + 1}`).slice(0, 40),
+    value,
+    color: pointColors.get(index),
+  }));
+}
+
+function chartDataSource(value: unknown): Record<string, unknown> | null {
+  const node = firstRecord(value);
+  if (!node) return null;
+  return (
+    firstRecord(node["c:strRef"]) ??
+    firstRecord(node["c:strLit"]) ??
+    firstRecord(node["c:numRef"]) ??
+    firstRecord(node["c:numLit"])
+  ) ?? null;
+}
+
+function chartPointStrings(source: Record<string, unknown> | null): string[] {
+  const cache =
+    firstRecord(source?.["c:strCache"]) ??
+    firstRecord(source?.["c:numCache"]) ??
+    source;
+  return (toArray(cache?.["c:pt"]) as Record<string, unknown>[])
+    .map((point) => textFromChartPoint(point))
+    .filter((value) => value.length > 0);
+}
+
+function chartPointNumbers(source: Record<string, unknown> | null): number[] {
+  const cache = firstRecord(source?.["c:numCache"]) ?? source;
+  return (toArray(cache?.["c:pt"]) as Record<string, unknown>[])
+    .map((point) => Number(textFromChartPoint(point)))
+    .filter((value) => Number.isFinite(value))
+    .map((value) => clamp(value, -1_000_000, 1_000_000));
+}
+
+function textFromChartPoint(point: Record<string, unknown>): string {
+  const value = point["c:v"];
+  if (typeof value === "string") return value.trim();
+  return extractTextNode(value).trim();
+}
+
+function chartPointColors(
+  series: Record<string, unknown>,
+  themeColors: ThemeColorMap,
+): Map<number, string> {
+  const colors = new Map<number, string>();
+  for (const point of toArray(series["c:dPt"]) as Record<string, unknown>[]) {
+    const idx = firstRecord(point["c:idx"])?.["@_val"];
+    const parsedIdx = typeof idx === "string" ? Number(idx) : NaN;
+    if (!Number.isInteger(parsedIdx)) continue;
+    const color = extractChartFillColor(point, themeColors);
+    if (color) colors.set(parsedIdx, color);
+  }
+  return colors;
+}
+
+function extractChartFillColor(
+  node: Record<string, unknown>,
+  themeColors: ThemeColorMap,
+): string | null {
+  const spPr = firstRecord(node["c:spPr"]);
+  return extractSolidColor(spPr?.["a:solidFill"], themeColors);
+}
+
+function chartTitle(chart: Record<string, unknown>): string {
+  const title = firstRecord(chart["c:title"]);
+  if (!title) return "";
+  const tx = firstRecord(title["c:tx"]);
+  const rich = firstRecord(tx?.["c:rich"]);
+  if (rich) return extractTextBody(rich, DEFAULT_THEME_COLORS).text.slice(0, 80);
+
+  const strRef = firstRecord(tx?.["c:strRef"]);
+  const cache = firstRecord(strRef?.["c:strCache"]);
+  const firstPoint = firstRecord(cache?.["c:pt"]);
+  return textFromChartPoint(firstPoint ?? {}).slice(0, 80);
+}
+
+function tableToElement(
+  table: Record<string, unknown>,
+  box: { x: number; y: number; w: number; h: number },
+  rotation: number | undefined,
+  scale: number,
+  themeColors: ThemeColorMap,
+): SlideElement | null {
+  const rows = toArray(table["a:tr"]) as Record<string, unknown>[];
+  if (rows.length === 0) return null;
+
+  const parsedRows = rows
+    .slice(0, 8)
+    .map((row, rowIndex) => tableRowCells(row, rowIndex, scale, themeColors));
+  const populatedRows = parsedRows.filter((row) =>
+    row.some((cell) => (cell.text ?? "").trim().length > 0),
+  );
+  if (populatedRows.length === 0) return null;
+
+  const columnCount = clamp(
+    Math.max(1, ...populatedRows.map((row) => row.length)),
+    1,
+    6,
+  );
+  const normalizedRows = populatedRows.map((row) =>
+    Array.from({ length: columnCount }, (_, colIndex) =>
+      normalizedTableCell(row[colIndex], colIndex === 0),
+    ),
+  );
+  const columns = normalizedRows[0] ?? [];
+  const bodyRows = normalizedRows.slice(1, 8);
+  if (bodyRows.length === 0) {
+    bodyRows.push(
+      Array.from({ length: columnCount }, () => ({
+        text: "",
+        fill: { color: "FFFFFF" },
+        stroke: { color: "E5E7EB", width: 0.5 },
+      })),
+    );
+  }
+
+  return {
+    type: "table",
+    ...boxToPositionSize(box),
+    rotation,
+    font: tableBaseFont(normalizedRows),
+    columns,
+    rows: bodyRows,
+  };
+}
+
+function tableRowCells(
+  row: Record<string, unknown>,
+  rowIndex: number,
+  scale: number,
+  themeColors: ThemeColorMap,
+): TableCell[] {
+  return (toArray(row["a:tc"]) as Record<string, unknown>[])
+    .slice(0, 6)
+    .map((cell, colIndex) =>
+      tableCellFromXml(cell, rowIndex, colIndex, scale, themeColors),
+    );
+}
+
+function tableCellFromXml(
+  cell: Record<string, unknown>,
+  rowIndex: number,
+  colIndex: number,
+  scale: number,
+  themeColors: ThemeColorMap,
+): TableCell {
+  const txBody = cell["a:txBody"] as Record<string, unknown> | undefined;
+  const text = txBody ? extractTextBody(txBody, themeColors) : null;
+  const tcPr = cell["a:tcPr"] as Record<string, unknown> | undefined;
+  const isHeader = rowIndex === 0;
+
+  const font: Font = {
+    family: text?.fontFace ?? "Arial",
+    size: clampFontSize((text?.fontSize ?? 14) * scale * (text?.fontScale ?? 1)),
+    color: text?.color ?? "111827",
+    bold: text?.bold ?? isHeader,
+    italic: text?.italic || undefined,
+    letterSpacing:
+      text?.charSpacing != null
+        ? clampCharSpacing(text.charSpacing * scale * (text.fontScale ?? 1))
+        : undefined,
+    lineHeight: text?.lineHeight ?? undefined,
+  };
+
+  return {
+    text: (text?.text ?? "").slice(0, 80),
+    fill: extractFill(tcPr, themeColors) ?? {
+      color: isHeader ? "FFFFFF" : "FFFFFF",
+    },
+    stroke: extractTableCellStroke(tcPr, themeColors) ?? {
+      color: "E5E7EB",
+      width: 0.5,
+    },
+    font:
+      colIndex === 0 || isHeader || text?.fontFace || text?.fontSize || text?.color
+        ? font
+        : undefined,
+  };
+}
+
+function normalizedTableCell(
+  cell: TableCell | undefined,
+  firstColumn: boolean,
+): TableCell {
+  return {
+    text: cell?.text ?? "",
+    fill: cell?.fill ?? { color: "FFFFFF" },
+    stroke: cell?.stroke ?? { color: "E5E7EB", width: firstColumn ? 0.5 : 0.5 },
+    font: cell?.font,
+  };
+}
+
+function tableBaseFont(rows: TableCell[][]): Font {
+  for (const row of rows) {
+    for (const cell of row) {
+      if (cell.font) {
+        return {
+          family: cell.font.family ?? "Arial",
+          size: cell.font.size ?? 11,
+          color: cell.font.color ?? "111827",
+          lineHeight: cell.font.lineHeight ?? 1.2,
+        };
+      }
+    }
+  }
+  return {
+    family: "Arial",
+    size: 11,
+    color: "111827",
+    lineHeight: 1.2,
   };
 }
 
@@ -839,6 +1224,28 @@ function extractStroke(
   themeColors: ThemeColorMap,
 ): Stroke | undefined {
   const ln = spPr?.["a:ln"] as Record<string, unknown> | undefined;
+  return extractStrokeFromLine(ln, themeColors);
+}
+
+function extractTableCellStroke(
+  tcPr: Record<string, unknown> | undefined,
+  themeColors: ThemeColorMap,
+): Stroke | undefined {
+  if (!tcPr) return undefined;
+  for (const key of ["a:lnL", "a:lnR", "a:lnT", "a:lnB"]) {
+    const stroke = extractStrokeFromLine(
+      tcPr[key] as Record<string, unknown> | undefined,
+      themeColors,
+    );
+    if (stroke) return stroke;
+  }
+  return undefined;
+}
+
+function extractStrokeFromLine(
+  ln: Record<string, unknown> | undefined,
+  themeColors: ThemeColorMap,
+): Stroke | undefined {
   if (!ln || "a:noFill" in ln) return undefined;
   const color = extractSolidColor(ln["a:solidFill"], themeColors);
   if (!color) return undefined;
