@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from "jotai";
 import type { ReactNode } from "react";
+import type { Deck } from "../../../lib/slide-schema";
 import { styles } from "../editorStyles";
 import { truncateWords } from "../editorUtils";
 import { ExportPptxButton } from "../shared/ExportPptxButton";
@@ -18,6 +19,8 @@ type EditorTopbarProps = {
   onExport: () => void;
   onPdfExport: () => void;
   onOpenTheme: () => void;
+  onSave?: (deck: Deck) => void;
+  saveButtonTitle?: string;
   toolbarLeading?: ReactNode;
 };
 
@@ -26,6 +29,8 @@ export function EditorTopbar({
   onExport,
   onPdfExport,
   onOpenTheme,
+  onSave,
+  saveButtonTitle = "Log current deck JSON",
   toolbarLeading,
 }: EditorTopbarProps) {
   const deck = useAtomValue(deckAtom);
@@ -35,6 +40,10 @@ export function EditorTopbar({
   const [exportMode, setExportMode] = useAtom(exportModeAtom);
   const [, setPresenting] = useAtom(presentingAtom);
   const handleSave = () => {
+    if (onSave) {
+      onSave(deck);
+      return;
+    }
     console.log(JSON.stringify(deck, null, 2));
   };
 
@@ -56,7 +65,7 @@ export function EditorTopbar({
           type="button"
           onClick={handleSave}
           style={styles.primaryButton}
-          title="Log current deck JSON"
+          title={saveButtonTitle}
         >
           Save
         </button>

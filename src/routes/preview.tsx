@@ -1,11 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { SlideEditor } from "../components/slide-editor";
 import {
   readPreviewDeckStorageDebugSnapshot,
   type PreviewDeckPayload,
 } from "../lib/deck-storage";
+import { savePptxContentJsonSchema } from "../lib/pptx-content-save";
+import { generateDeckContentJsonSchema } from "../lib/slide-content-schema";
 import type { SlideElement } from "../lib/slide-schema";
 
 export const Route = createFileRoute("/preview")({
@@ -14,6 +17,7 @@ export const Route = createFileRoute("/preview")({
 
 function PreviewPage() {
   const [payload, setPayload] = useState<PreviewDeckPayload | null>();
+  const savePptxContentFn = useServerFn(savePptxContentJsonSchema);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,6 +74,25 @@ function PreviewPage() {
       key={previewDeckKey(payload)}
       componentTemplates={payload.componentTemplates}
       initialDeck={payload.deck}
+      onSave={(deck) => {
+        const jsonSchema = generateDeckContentJsonSchema(deck);
+        void savePptxContentFn({
+          data: {
+            rawPptxJson: deck,
+            jsonSchema,
+          },
+        })
+          .then((result) => {
+            console.log("preview saved raw PPTX JSON and JSON schema:", result);
+          })
+          .catch((error) => {
+            console.error(
+              "preview failed to save raw PPTX JSON and JSON schema:",
+              error,
+            );
+          });
+      }}
+      saveButtonTitle="Save raw PPTX JSON and content JSON schema"
     />
   );
 }

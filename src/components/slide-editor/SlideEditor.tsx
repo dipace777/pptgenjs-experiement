@@ -37,11 +37,15 @@ import {
 export function SlideEditor({
   componentTemplates = [],
   initialDeck = layoutKitDeck,
+  onSave,
+  saveButtonTitle,
   slideTemplates,
   toolbarLeading,
 }: {
   componentTemplates?: ReadonlyArray<ComponentTemplate>;
   initialDeck?: Deck;
+  onSave?: (deck: Deck) => void;
+  saveButtonTitle?: string;
   slideTemplates?: ReadonlyArray<SlideTemplate>;
   toolbarLeading?: ReactNode;
 }) {
@@ -55,6 +59,8 @@ export function SlideEditor({
       <SlideEditorBody
         componentTemplates={componentTemplates}
         initialDeck={initialDeck}
+        onSave={onSave}
+        saveButtonTitle={saveButtonTitle}
         slideTemplates={resolvedSlideTemplates}
         toolbarLeading={toolbarLeading}
       />
@@ -65,11 +71,15 @@ export function SlideEditor({
 function SlideEditorBody({
   componentTemplates,
   initialDeck,
+  onSave,
+  saveButtonTitle,
   slideTemplates,
   toolbarLeading,
 }: {
   componentTemplates: ReadonlyArray<ComponentTemplate>;
   initialDeck: Deck;
+  onSave?: (deck: Deck) => void;
+  saveButtonTitle?: string;
   slideTemplates: ReadonlyArray<SlideTemplate>;
   toolbarLeading?: ReactNode;
 }) {
@@ -100,6 +110,8 @@ function SlideEditorBody({
           onExport={handleExport}
           onPdfExport={handlePdfExport}
           onOpenTheme={() => setThemeOpen(true)}
+          onSave={onSave}
+          saveButtonTitle={saveButtonTitle}
           toolbarLeading={toolbarLeading}
         />
 
