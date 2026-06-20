@@ -8,7 +8,7 @@ import {
   type PreviewDeckPayload,
 } from "../lib/deck-storage";
 import { savePptxContentJsonSchema } from "../lib/pptx-content-save";
-import { generateDeckContentJsonSchema } from "../lib/slide-content-schema";
+import { generateSlideContentJsonSchemas } from "../lib/slide-content-schema";
 import type { SlideElement } from "../lib/slide-schema";
 
 export const Route = createFileRoute("/preview")({
@@ -75,24 +75,27 @@ function PreviewPage() {
       componentTemplates={payload.componentTemplates}
       initialDeck={payload.deck}
       onSave={(deck) => {
-        const jsonSchema = generateDeckContentJsonSchema(deck);
+        const slideJsonSchemas = generateSlideContentJsonSchemas(deck);
         void savePptxContentFn({
           data: {
             rawPptxJson: deck,
-            jsonSchema,
+            slideJsonSchemas,
           },
         })
           .then((result) => {
-            console.log("preview saved raw PPTX JSON and JSON schema:", result);
+            console.log(
+              "preview saved raw PPTX JSON and per-slide JSON schemas:",
+              result,
+            );
           })
           .catch((error) => {
             console.error(
-              "preview failed to save raw PPTX JSON and JSON schema:",
+              "preview failed to save raw PPTX JSON and per-slide JSON schemas:",
               error,
             );
           });
       }}
-      saveButtonTitle="Save raw PPTX JSON and content JSON schema"
+      saveButtonTitle="Save raw PPTX JSON and per-slide content JSON schemas"
     />
   );
 }
